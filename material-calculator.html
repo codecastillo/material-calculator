@@ -1,0 +1,2094 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stucco Material Calculator</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      :root {
+        --bg: #1b2433;
+        --surface: #243044;
+        --surface-hover: #2d3d56;
+        --border: #3a4d66;
+        --primary: #3b82f6;
+        --primary-hover: #2563eb;
+        --text: #f1f5f9;
+        --text-secondary: #94a3b8;
+        --text-muted: #64748b;
+        --success: #10b981;
+        --danger: #ef4444;
+        --danger-hover: #dc2626;
+        --warning: #f59e0b;
+        --radius: 8px;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        line-height: 1.5;
+      }
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      header {
+        text-align: center;
+        padding: 20px 0;
+        border-bottom: 2px solid var(--border);
+        margin-bottom: 20px;
+      }
+      header h1 {
+        font-size: 1.8rem;
+        color: var(--primary);
+        margin-bottom: 2px;
+      }
+      header p {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+      }
+
+      /* Tabs */
+      .tabs {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+      }
+      .tab {
+        padding: 11px 22px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-bottom: none;
+        border-radius: var(--radius) var(--radius) 0 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .tab.active {
+        background: var(--surface);
+        color: var(--primary);
+        border-color: var(--primary);
+        border-bottom: 2px solid var(--surface);
+        position: relative;
+        z-index: 1;
+        margin-bottom: -1px;
+      }
+      .tab:hover:not(.active) {
+        color: var(--text);
+        background: var(--surface-hover);
+      }
+      .tab-content {
+        display: none;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 0 var(--radius) var(--radius) var(--radius);
+        padding: 20px;
+      }
+      .tab-content.active {
+        display: block;
+      }
+
+      /* Buttons */
+      .btn {
+        padding: 9px 18px;
+        border: none;
+        border-radius: var(--radius);
+        font-size: 0.85rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .btn-primary {
+        background: var(--primary);
+        color: #fff;
+      }
+      .btn-primary:hover {
+        background: var(--primary-hover);
+      }
+      .btn-secondary {
+        background: var(--border);
+        color: var(--text);
+      }
+      .btn-secondary:hover {
+        background: var(--text-muted);
+      }
+      .btn-success {
+        background: var(--success);
+        color: #fff;
+      }
+      .btn-success:hover {
+        background: #059669;
+      }
+      .btn-danger {
+        background: var(--danger);
+        color: #fff;
+      }
+      .btn-danger:hover {
+        background: var(--danger-hover);
+      }
+      .btn-warning {
+        background: var(--warning);
+        color: #000;
+      }
+      .btn-sm {
+        padding: 5px 10px;
+        font-size: 0.8rem;
+      }
+      .btn-icon {
+        padding: 5px 8px;
+        font-size: 1rem;
+        background: none;
+        color: var(--text-secondary);
+        border: none;
+        cursor: pointer;
+      }
+      .btn-icon:hover {
+        color: var(--text);
+      }
+      .btn-icon.danger:hover {
+        color: var(--danger);
+      }
+
+      /* Forms */
+      .form-group {
+        margin-bottom: 14px;
+      }
+      .form-group label {
+        display: block;
+        margin-bottom: 3px;
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+        font-weight: 500;
+      }
+      .form-input {
+        width: 100%;
+        padding: 9px 11px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        color: var(--text);
+        font-size: 0.9rem;
+        transition: border-color 0.2s;
+      }
+      .form-input:focus {
+        outline: none;
+        border-color: var(--primary);
+      }
+      select.form-input {
+        cursor: pointer;
+      }
+      .form-row {
+        display: grid;
+        gap: 14px;
+      }
+      .form-row-2 {
+        grid-template-columns: 1fr 1fr;
+      }
+      .form-row-3 {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+      .form-row-4 {
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+      }
+
+      /* Toolbar */
+      .toolbar {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+      }
+      .toolbar-spacer {
+        flex: 1;
+      }
+      .toolbar-divider {
+        width: 1px;
+        height: 28px;
+        background: var(--border);
+        margin: 0 4px;
+      }
+
+      /* Supplier tabs within pricing */
+      .supplier-tabs {
+        display: flex;
+        gap: 0;
+        margin-bottom: 16px;
+        border-bottom: 2px solid var(--border);
+        flex-wrap: wrap;
+      }
+      .supplier-tab {
+        padding: 8px 18px;
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        font-weight: 500;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        transition: all 0.2s;
+      }
+      .supplier-tab.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+      }
+      .supplier-tab:hover:not(.active) {
+        color: var(--text-secondary);
+      }
+      .supplier-tab.add-supplier {
+        color: var(--success);
+        font-weight: 600;
+      }
+      .supplier-tab.add-supplier:hover {
+        color: #059669;
+      }
+
+      /* Tables */
+      .table-wrap {
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+      }
+      thead th {
+        background: var(--bg);
+        color: var(--text-secondary);
+        font-weight: 600;
+        text-align: left;
+        padding: 9px 10px;
+        border-bottom: 2px solid var(--border);
+        white-space: nowrap;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      tbody td {
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+      }
+      tbody tr:hover {
+        background: rgba(59, 130, 246, 0.05);
+      }
+      .text-right {
+        text-align: right;
+      }
+      .text-center {
+        text-align: center;
+      }
+
+      .inline-input {
+        width: 100%;
+        padding: 5px 7px;
+        background: var(--bg);
+        border: 1px solid var(--primary);
+        border-radius: 4px;
+        color: var(--text);
+        font-size: 0.85rem;
+      }
+      .inline-input:focus {
+        outline: none;
+      }
+      .inline-select {
+        padding: 5px 7px;
+        background: var(--bg);
+        border: 1px solid var(--primary);
+        border-radius: 4px;
+        color: var(--text);
+        font-size: 0.85rem;
+      }
+
+      /* Phase colors - dynamically assigned */
+      .phase-color-0 {
+        color: #f59e0b;
+      }
+      .phase-bg-0 {
+        background: rgba(245, 158, 11, 0.1);
+        border-color: #f59e0b;
+      }
+      .phase-color-1 {
+        color: #6b7280;
+      }
+      .phase-bg-1 {
+        background: rgba(107, 114, 128, 0.15);
+        border-color: #6b7280;
+      }
+      .phase-color-2 {
+        color: #8b5cf6;
+      }
+      .phase-bg-2 {
+        background: rgba(139, 92, 246, 0.1);
+        border-color: #8b5cf6;
+      }
+      .phase-color-3 {
+        color: #ec4899;
+      }
+      .phase-bg-3 {
+        background: rgba(236, 72, 153, 0.1);
+        border-color: #ec4899;
+      }
+      .phase-color-4 {
+        color: #14b8a6;
+      }
+      .phase-bg-4 {
+        background: rgba(20, 184, 166, 0.1);
+        border-color: #14b8a6;
+      }
+      .phase-color-5 {
+        color: #f97316;
+      }
+      .phase-bg-5 {
+        background: rgba(249, 115, 22, 0.1);
+        border-color: #f97316;
+      }
+      .phase-color-6 {
+        color: #06b6d4;
+      }
+      .phase-bg-6 {
+        background: rgba(6, 182, 212, 0.1);
+        border-color: #06b6d4;
+      }
+      .phase-color-7 {
+        color: #84cc16;
+      }
+      .phase-bg-7 {
+        background: rgba(132, 204, 22, 0.1);
+        border-color: #84cc16;
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 2px 9px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 600;
+      }
+
+      /* Phase cards */
+      .phase-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+      .phase-card {
+        padding: 16px;
+        border-radius: var(--radius);
+        border-left: 4px solid;
+      }
+      .phase-card h3 {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-bottom: 2px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .phase-card .amount {
+        font-size: 1.4rem;
+        font-weight: 700;
+      }
+      .phase-card .items {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 2px;
+      }
+
+      .total-card {
+        border-radius: var(--radius);
+        padding: 16px;
+        text-align: center;
+        margin-top: 12px;
+        border: 2px solid var(--primary);
+        background: rgba(59, 130, 246, 0.08);
+      }
+      .total-card h3 {
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .total-card .amount {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: var(--primary);
+      }
+
+      /* Profit/margin row */
+      .profit-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+      }
+      .profit-card {
+        padding: 14px;
+        border-radius: var(--radius);
+        background: var(--bg);
+        border: 1px solid var(--border);
+        text-align: center;
+      }
+      .profit-card h4 {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 4px;
+      }
+      .profit-card .val {
+        font-size: 1.3rem;
+        font-weight: 700;
+      }
+      .profit-card .val.green {
+        color: var(--success);
+      }
+
+      /* Phase header rows in order table */
+      .phase-header td {
+        background: var(--bg);
+        font-weight: 700;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 10px;
+        border-bottom: 2px solid var(--border);
+      }
+      .subtotal-row td {
+        font-weight: 600;
+        background: rgba(255, 255, 255, 0.03);
+        border-bottom: 2px solid var(--border);
+      }
+      .grand-total-row td {
+        font-weight: 700;
+        font-size: 0.95rem;
+        background: rgba(59, 130, 246, 0.08);
+        color: var(--primary);
+        border-top: 2px solid var(--primary);
+      }
+
+      /* Order header */
+      .order-header {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin-bottom: 20px;
+        padding: 16px;
+        background: var(--bg);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+      }
+      .order-header .form-group {
+        margin-bottom: 6px;
+      }
+
+      .order-qty-input {
+        width: 65px;
+        padding: 4px 6px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        color: var(--text);
+        font-size: 0.85rem;
+        text-align: center;
+      }
+      .order-qty-input:focus {
+        outline: none;
+        border-color: var(--primary);
+      }
+
+      /* Section */
+      .section-title {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 12px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      /* Empty state */
+      .empty-state {
+        text-align: center;
+        padding: 50px 20px;
+        color: var(--text-muted);
+      }
+      .empty-state p {
+        margin-bottom: 12px;
+      }
+
+      #csvFileInput {
+        display: none;
+      }
+
+      /* Notification */
+      .notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 10px 18px;
+        border-radius: var(--radius);
+        color: #fff;
+        font-size: 0.85rem;
+        font-weight: 500;
+        z-index: 1000;
+        transform: translateX(120%);
+        transition: transform 0.3s ease;
+      }
+      .notification.show {
+        transform: translateX(0);
+      }
+      .notification.success {
+        background: var(--success);
+      }
+      .notification.error {
+        background: var(--danger);
+      }
+      .notification.info {
+        background: var(--primary);
+      }
+
+      /* Modal */
+      .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 500;
+        align-items: center;
+        justify-content: center;
+      }
+      .modal-overlay.open {
+        display: flex;
+      }
+      .modal {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 24px;
+        min-width: 340px;
+        max-width: 90vw;
+      }
+      .modal h3 {
+        margin-bottom: 16px;
+        font-size: 1.1rem;
+      }
+      .modal-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+        margin-top: 20px;
+      }
+
+      /* Ratio hint */
+      .ratio-hint {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        font-style: italic;
+      }
+
+      /* Usage notes */
+      .usage-note {
+        background: rgba(59, 130, 246, 0.08);
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        border-radius: var(--radius);
+        padding: 10px 14px;
+        margin-bottom: 16px;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+      }
+
+      /* Responsive */
+      @media (max-width: 768px) {
+        .container {
+          padding: 10px;
+        }
+        header h1 {
+          font-size: 1.3rem;
+        }
+        .tab {
+          padding: 8px 12px;
+          font-size: 0.8rem;
+        }
+        .tab-content {
+          padding: 12px;
+        }
+        .form-row-2,
+        .form-row-3,
+        .form-row-4 {
+          grid-template-columns: 1fr;
+        }
+        .toolbar {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .order-header {
+          grid-template-columns: 1fr;
+        }
+        .phase-cards {
+          grid-template-columns: 1fr;
+        }
+        .profit-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
+      /* Print */
+      @media print {
+        body {
+          background: #fff;
+          color: #000;
+          font-size: 10pt;
+        }
+        .container {
+          max-width: 100%;
+          padding: 0;
+        }
+        header,
+        .tabs,
+        #pricingTab,
+        #calculatorTab,
+        .no-print,
+        .btn,
+        .modal-overlay {
+          display: none !important;
+        }
+        #orderTab {
+          display: block !important;
+          border: none;
+          padding: 0;
+          background: #fff;
+        }
+        .order-header {
+          background: #f9f9f9;
+          border: 1px solid #ccc;
+          color: #000;
+        }
+        .order-header label {
+          color: #555;
+        }
+        .order-header .form-input {
+          background: transparent;
+          border: none;
+          border-bottom: 1px solid #ccc;
+          color: #000;
+          padding: 3px 0;
+          border-radius: 0;
+        }
+        table {
+          font-size: 9pt;
+        }
+        thead th {
+          background: #eee;
+          color: #333;
+          border-bottom: 2px solid #333;
+        }
+        tbody td {
+          border-bottom: 1px solid #ddd;
+          color: #000;
+        }
+        .phase-header td {
+          background: #f0f0f0;
+          color: #333;
+        }
+        .subtotal-row td {
+          background: #f9f9f9;
+          color: #000;
+        }
+        .grand-total-row td {
+          background: #e8f0fe;
+          color: #1d4ed8;
+          border-top: 2px solid #1d4ed8;
+        }
+        .order-qty-input {
+          border: none;
+          background: transparent;
+          color: #000;
+          text-align: center;
+          font-size: 9pt;
+        }
+        .notification {
+          display: none !important;
+        }
+        .print-header {
+          display: block !important;
+          text-align: center;
+          margin-bottom: 16px;
+          padding-bottom: 8px;
+          border-bottom: 2px solid #333;
+        }
+        .print-header h1 {
+          font-size: 16pt;
+          color: #333;
+        }
+        .print-header p {
+          color: #666;
+          font-size: 9pt;
+        }
+      }
+      .print-header {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Stucco Material Calculator</h1>
+        <p>Multi-Supplier Material Estimating &amp; Order Management</p>
+      </header>
+
+      <div class="tabs">
+        <button class="tab active" onclick="showTab('pricing')">
+          Material Pricing
+        </button>
+        <button class="tab" onclick="showTab('calculator')">
+          Job Calculator
+        </button>
+        <button class="tab" onclick="showTab('order')">Order Form</button>
+      </div>
+
+      <!-- ===== TAB 1: MATERIAL PRICING ===== -->
+      <div id="pricingTab" class="tab-content active">
+        <!-- Supplier sub-tabs -->
+        <div class="supplier-tabs" id="supplierTabs"></div>
+
+        <div class="toolbar">
+          <button
+            class="btn btn-primary btn-sm"
+            onclick="document.getElementById('csvFileInput').click()"
+          >
+            Import CSV
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="exportCSV()">
+            Export CSV
+          </button>
+          <input
+            type="file"
+            id="csvFileInput"
+            accept=".csv"
+            onchange="handleCSVImport(event)"
+          />
+          <div class="toolbar-divider"></div>
+          <select
+            class="form-input"
+            style="width: auto; padding: 5px 8px; font-size: 0.8rem"
+            id="categoryFilter"
+            onchange="renderMaterialTable()"
+          >
+            <option value="All">All Phases</option>
+          </select>
+          <button
+            class="btn btn-success btn-sm"
+            onclick="openAddCategoryModal()"
+          >
+            + Add Phase
+          </button>
+          <button
+            class="btn btn-secondary btn-sm"
+            onclick="openDeleteCategoryModal()"
+          >
+            - Remove Phase
+          </button>
+          <div class="toolbar-spacer"></div>
+          <button class="btn btn-success btn-sm" onclick="addMaterial()">
+            + Add Material
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="resetToDefaults()">
+            Reset Defaults
+          </button>
+        </div>
+
+        <div class="usage-note" id="usageNote">
+          <strong>Coverage = sqft one unit covers.</strong> To set material
+          ratios, adjust coverage values. Example: If 1 roll of wire lath covers
+          450 sqft and you need 3 rolls of paper per roll of wire, set paper
+          coverage to 150 sqft/roll.
+        </div>
+
+        <div class="table-wrap">
+          <table id="materialTable">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>SKU</th>
+                <th>Unit</th>
+                <th class="text-right">Price/Unit</th>
+                <th>Phase</th>
+                <th class="text-right">Coverage (sqft/unit)</th>
+                <th class="text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="materialTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ===== TAB 2: JOB CALCULATOR ===== -->
+      <div id="calculatorTab" class="tab-content">
+        <div class="form-row form-row-2" style="margin-bottom: 14px">
+          <div class="form-group">
+            <label>Project Name</label>
+            <input
+              type="text"
+              class="form-input"
+              id="calcProjectName"
+              placeholder="e.g. Smith Residence"
+            />
+          </div>
+          <div class="form-group">
+            <label>Project Address</label>
+            <input
+              type="text"
+              class="form-input"
+              id="calcProjectAddress"
+              placeholder="e.g. 123 Main St, City, ST 00000"
+            />
+          </div>
+        </div>
+        <div class="form-row form-row-4" style="margin-bottom: 14px">
+          <div class="form-group">
+            <label>Supplier</label>
+            <select class="form-input" id="calcSupplier"></select>
+          </div>
+          <div class="form-group">
+            <label>Total Wall Square Footage</label>
+            <input
+              type="number"
+              class="form-input"
+              id="calcSqft"
+              placeholder="0"
+              min="0"
+              style="font-weight: 600; font-size: 1.1rem; text-align: center"
+            />
+          </div>
+          <div class="form-group">
+            <label>Waste Factor %</label>
+            <input
+              type="number"
+              class="form-input"
+              id="calcWaste"
+              value="10"
+              min="0"
+              max="50"
+              style="text-align: center"
+            />
+          </div>
+          <div class="form-group">
+            <label>Profit Markup %</label>
+            <input
+              type="number"
+              class="form-input"
+              id="calcProfit"
+              value="20"
+              min="0"
+              max="200"
+              style="text-align: center"
+            />
+          </div>
+        </div>
+        <div style="margin-bottom: 20px">
+          <button
+            class="btn btn-primary"
+            onclick="calculateJob()"
+            style="padding: 12px 36px; font-size: 0.95rem"
+          >
+            Calculate
+          </button>
+        </div>
+
+        <div id="calcResults" style="display: none">
+          <div class="phase-cards" id="phaseCards"></div>
+          <div id="calcBreakdown"></div>
+          <div class="total-card" id="calcGrandTotal"></div>
+          <div class="profit-grid" id="profitGrid"></div>
+          <div style="text-align: center; margin-top: 18px" class="no-print">
+            <button class="btn btn-success" onclick="generateOrderForm()">
+              Generate Order Form
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== TAB 3: ORDER FORM ===== -->
+      <div id="orderTab" class="tab-content">
+        <div class="print-header">
+          <h1>Material Order Form</h1>
+          <p>Stucco Material Calculator</p>
+        </div>
+
+        <div id="orderEmpty" class="empty-state">
+          <p>No order generated yet.</p>
+          <button class="btn btn-primary" onclick="showTab('calculator')">
+            Go to Calculator
+          </button>
+        </div>
+
+        <div id="orderContent" style="display: none">
+          <div class="toolbar no-print">
+            <label
+              style="
+                color: var(--text-secondary);
+                font-size: 0.85rem;
+                font-weight: 500;
+              "
+              >Phase:</label
+            >
+            <select
+              class="form-input"
+              style="width: auto; padding: 6px 10px; font-size: 0.85rem"
+              id="orderPhaseFilter"
+              onchange="renderOrderTable()"
+            >
+              <option value="All">All Phases</option>
+            </select>
+            <div class="toolbar-spacer"></div>
+            <button class="btn btn-primary btn-sm" onclick="printOrder()">
+              Print Order
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="exportOrderCSV()">
+              Export CSV
+            </button>
+          </div>
+
+          <div class="order-header">
+            <div>
+              <div class="form-group">
+                <label>Project Name</label>
+                <input
+                  type="text"
+                  class="form-input"
+                  id="orderProjectName"
+                  readonly
+                />
+              </div>
+              <div class="form-group">
+                <label>Project Address</label>
+                <input
+                  type="text"
+                  class="form-input"
+                  id="orderProjectAddress"
+                  readonly
+                />
+              </div>
+            </div>
+            <div>
+              <div class="form-group">
+                <label>Supplier</label>
+                <input
+                  type="text"
+                  class="form-input"
+                  id="orderSupplier"
+                  readonly
+                />
+              </div>
+              <div class="form-row form-row-2">
+                <div class="form-group">
+                  <label>Date</label>
+                  <input type="date" class="form-input" id="orderDate" />
+                </div>
+                <div class="form-group">
+                  <label>PO Number</label>
+                  <input
+                    type="text"
+                    class="form-input"
+                    id="orderPO"
+                    placeholder="Optional"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table id="orderTable">
+              <thead>
+                <tr>
+                  <th>SKU</th>
+                  <th>Material</th>
+                  <th class="text-center">Qty</th>
+                  <th>Unit</th>
+                  <th class="text-right">Unit Price</th>
+                  <th class="text-right">Line Total</th>
+                </tr>
+              </thead>
+              <tbody id="orderTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal-overlay" id="addCategoryModal">
+      <div class="modal">
+        <h3>Add New Phase</h3>
+        <div class="form-group">
+          <label>Phase Name</label>
+          <input
+            type="text"
+            class="form-input"
+            id="newCategoryName"
+            placeholder="e.g. Painting, Trim, Cleanup"
+          />
+        </div>
+        <div class="modal-actions">
+          <button
+            class="btn btn-secondary btn-sm"
+            onclick="closeModal('addCategoryModal')"
+          >
+            Cancel
+          </button>
+          <button class="btn btn-success btn-sm" onclick="addCategory()">
+            Add Phase
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="deleteCategoryModal">
+      <div class="modal">
+        <h3>Remove Phase</h3>
+        <div class="form-group">
+          <label>Select phase to remove</label>
+          <select class="form-input" id="deleteCategorySelect"></select>
+        </div>
+        <p style="font-size: 0.8rem; color: var(--danger); margin-top: 8px">
+          This will delete all materials in this phase across all suppliers.
+        </p>
+        <div class="modal-actions">
+          <button
+            class="btn btn-secondary btn-sm"
+            onclick="closeModal('deleteCategoryModal')"
+          >
+            Cancel
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="deleteCategory()">
+            Remove Phase
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="addSupplierModal">
+      <div class="modal">
+        <h3>Add Supplier</h3>
+        <div class="form-group">
+          <label>Supplier Name</label>
+          <input
+            type="text"
+            class="form-input"
+            id="newSupplierName"
+            placeholder="e.g. Home Depot"
+          />
+        </div>
+        <div class="form-group" style="margin-top: 12px">
+          <label
+            ><input type="checkbox" id="copyDefaultsToSupplier" checked />
+            Pre-fill with default materials</label
+          >
+        </div>
+        <div class="modal-actions">
+          <button
+            class="btn btn-secondary btn-sm"
+            onclick="closeModal('addSupplierModal')"
+          >
+            Cancel
+          </button>
+          <button class="btn btn-success btn-sm" onclick="addSupplier()">
+            Add Supplier
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="deleteSupplierModal">
+      <div class="modal">
+        <h3>Remove Supplier</h3>
+        <p
+          style="
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+          "
+        >
+          Remove "<span id="deleteSupplierName"></span>" and all its materials?
+        </p>
+        <div class="modal-actions">
+          <button
+            class="btn btn-secondary btn-sm"
+            onclick="closeModal('deleteSupplierModal')"
+          >
+            Cancel
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="deleteSupplier()">
+            Remove
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <script>
+      // ===== DEFAULT DATA =====
+      const DEFAULT_CATEGORIES = ["Lath", "Gray Coat", "Color Coat"];
+      const DEFAULT_SUPPLIERS = [
+        "Pacific Supply",
+        "ABC Supply",
+        "Sherwin Williams",
+      ];
+      const UNITS = [
+        "roll",
+        "box",
+        "piece",
+        "bag",
+        "ton",
+        "pail",
+        "tube",
+        "gal",
+        "lb",
+        "each",
+        "bundle",
+        "bucket",
+        "sheet",
+      ];
+
+      // Coverage values are set for correct ratios:
+      // Wire lath: 1 roll = 450 sqft. Paper: 1 roll = 150 sqft (3 rolls per 1 roll wire).
+      const DEFAULT_MATERIALS_TEMPLATE = [
+        // Lath
+        {
+          name: "Wire Lath 2.5 lb (36\" x 150')",
+          sku: "WL-2536150",
+          unit: "roll",
+          pricePerUnit: 52.0,
+          category: "Lath",
+          coveragePerUnit: 450,
+        },
+        {
+          name: "2-Ply 60min Paper (150 sqft)",
+          sku: "PB-2P60-150",
+          unit: "roll",
+          pricePerUnit: 28.0,
+          category: "Lath",
+          coveragePerUnit: 150,
+        },
+        {
+          name: '7/16" Staples (10,000ct)',
+          sku: "ST-716-10K",
+          unit: "box",
+          pricePerUnit: 45.0,
+          category: "Lath",
+          coveragePerUnit: 2000,
+        },
+        {
+          name: "Weep Screed 26ga (10')",
+          sku: "WS-26-10",
+          unit: "piece",
+          pricePerUnit: 8.5,
+          category: "Lath",
+          coveragePerUnit: 15,
+        },
+        {
+          name: "Corner Aid 26ga (10')",
+          sku: "CA-26-10",
+          unit: "piece",
+          pricePerUnit: 6.75,
+          category: "Lath",
+          coveragePerUnit: 20,
+        },
+        {
+          name: "Casing Bead 26ga (10')",
+          sku: "CB-26-10",
+          unit: "piece",
+          pricePerUnit: 5.5,
+          category: "Lath",
+          coveragePerUnit: 20,
+        },
+        {
+          name: 'Self-Furring Nails 1.5" (25lb)',
+          sku: "SFN-15-25",
+          unit: "box",
+          pricePerUnit: 42.0,
+          category: "Lath",
+          coveragePerUnit: 1500,
+        },
+        // Gray Coat
+        {
+          name: "Portland Cement Type S (94lb)",
+          sku: "PC-TS-94",
+          unit: "bag",
+          pricePerUnit: 14.5,
+          category: "Gray Coat",
+          coveragePerUnit: 25,
+        },
+        {
+          name: "Plaster Sand",
+          sku: "PS-TON",
+          unit: "ton",
+          pricePerUnit: 45.0,
+          category: "Gray Coat",
+          coveragePerUnit: 250,
+        },
+        {
+          name: "Hydrated Lime Type S (50lb)",
+          sku: "HL-TS-50",
+          unit: "bag",
+          pricePerUnit: 12.0,
+          category: "Gray Coat",
+          coveragePerUnit: 75,
+        },
+        {
+          name: "Fiber Mesh (1lb)",
+          sku: "FM-1LB",
+          unit: "bag",
+          pricePerUnit: 8.5,
+          category: "Gray Coat",
+          coveragePerUnit: 300,
+        },
+        {
+          name: "Bonding Agent - Weld-Crete (5 gal)",
+          sku: "BA-WC-5G",
+          unit: "pail",
+          pricePerUnit: 62.0,
+          category: "Gray Coat",
+          coveragePerUnit: 500,
+        },
+        // Color Coat
+        {
+          name: "LaHabra X-Kaliber Finish (65lb)",
+          sku: "LH-XK-65",
+          unit: "bag",
+          pricePerUnit: 28.0,
+          category: "Color Coat",
+          coveragePerUnit: 65,
+        },
+        {
+          name: "Color Pigment (1lb tube)",
+          sku: "LH-PIG-1",
+          unit: "tube",
+          pricePerUnit: 9.5,
+          category: "Color Coat",
+          coveragePerUnit: 200,
+        },
+        {
+          name: "Finish Sand 30-mesh (80lb)",
+          sku: "FS-30-80",
+          unit: "bag",
+          pricePerUnit: 12.0,
+          category: "Color Coat",
+          coveragePerUnit: 100,
+        },
+        {
+          name: "Acrylic Additive (1 gal)",
+          sku: "AA-QR-1G",
+          unit: "gal",
+          pricePerUnit: 18.0,
+          category: "Color Coat",
+          coveragePerUnit: 150,
+        },
+      ];
+
+      // Supplier-specific price variations
+      const SUPPLIER_PRICE_MODS = {
+        "Pacific Supply": 1.0,
+        "ABC Supply": 1.03,
+        "Sherwin Williams": 1.06,
+      };
+
+      // ===== STATE =====
+      let suppliers = [];
+      let categories = [];
+      let materialsBySupplier = {}; // { supplierName: [materials] }
+      let activeSupplier = "";
+      let editingId = null;
+      let currentCalc = null;
+
+      // ===== PERSISTENCE =====
+      function loadData() {
+        try {
+          const s = localStorage.getItem("stucco_suppliers");
+          const c = localStorage.getItem("stucco_categories");
+          const m = localStorage.getItem("stucco_materials_by_supplier");
+          if (s && c && m) {
+            suppliers = JSON.parse(s);
+            categories = JSON.parse(c);
+            materialsBySupplier = JSON.parse(m);
+          } else {
+            resetAllToDefaults(true);
+          }
+        } catch {
+          resetAllToDefaults(true);
+        }
+        if (suppliers.length > 0) activeSupplier = suppliers[0];
+      }
+
+      function saveAll() {
+        localStorage.setItem("stucco_suppliers", JSON.stringify(suppliers));
+        localStorage.setItem("stucco_categories", JSON.stringify(categories));
+        localStorage.setItem(
+          "stucco_materials_by_supplier",
+          JSON.stringify(materialsBySupplier),
+        );
+      }
+
+      function resetAllToDefaults(silent) {
+        suppliers = [...DEFAULT_SUPPLIERS];
+        categories = [...DEFAULT_CATEGORIES];
+        materialsBySupplier = {};
+        suppliers.forEach((sup) => {
+          const mod = SUPPLIER_PRICE_MODS[sup] || 1;
+          materialsBySupplier[sup] = DEFAULT_MATERIALS_TEMPLATE.map((m, i) => ({
+            ...m,
+            id: `${sup.replace(/\s+/g, "-").toLowerCase()}-${i}-${Date.now()}`,
+            pricePerUnit: Math.round(m.pricePerUnit * mod * 100) / 100,
+          }));
+        });
+        activeSupplier = suppliers[0];
+        saveAll();
+        if (!silent) notify("All data reset to defaults", "info");
+      }
+
+      // ===== UTILITIES =====
+      function genId() {
+        return (
+          "mat-" + Date.now() + "-" + Math.random().toString(36).substring(2, 7)
+        );
+      }
+      function fmt(n) {
+        return (
+          "$" +
+          Number(n)
+            .toFixed(2)
+            .replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+        );
+      }
+      function escHtml(s) {
+        const d = document.createElement("div");
+        d.textContent = s;
+        return d.innerHTML;
+      }
+      function escAttr(s) {
+        return s.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+      }
+      function phaseColorIdx(cat) {
+        const i = categories.indexOf(cat);
+        return i >= 0 ? i % 8 : 0;
+      }
+
+      function notify(msg, type) {
+        const el = document.getElementById("notification");
+        el.textContent = msg;
+        el.className = "notification " + (type || "info");
+        setTimeout(() => el.classList.add("show"), 10);
+        setTimeout(() => el.classList.remove("show"), 3000);
+      }
+
+      function openModal(id) {
+        document.getElementById(id).classList.add("open");
+      }
+      function closeModal(id) {
+        document.getElementById(id).classList.remove("open");
+      }
+
+      // ===== TAB NAVIGATION =====
+      function showTab(tabId) {
+        document
+          .querySelectorAll(".tab-content")
+          .forEach((el) => el.classList.remove("active"));
+        document
+          .querySelectorAll(".tab")
+          .forEach((el) => el.classList.remove("active"));
+        const map = {
+          pricing: [0, "pricingTab"],
+          calculator: [1, "calculatorTab"],
+          order: [2, "orderTab"],
+        };
+        document.getElementById(map[tabId][1]).classList.add("active");
+        document
+          .querySelectorAll(".tab")
+          [map[tabId][0]].classList.add("active");
+        if (tabId === "calculator") populateCalcSupplierDropdown();
+      }
+
+      // ===== SUPPLIER TABS =====
+      function renderSupplierTabs() {
+        const wrap = document.getElementById("supplierTabs");
+        wrap.innerHTML =
+          suppliers
+            .map(
+              (s) =>
+                `<button class="supplier-tab${s === activeSupplier ? " active" : ""}" onclick="switchSupplier('${escAttr(s)}')"
+            oncontextmenu="event.preventDefault(); confirmDeleteSupplier('${escAttr(s)}')">${escHtml(s)}</button>`,
+            )
+            .join("") +
+          `<button class="supplier-tab add-supplier" onclick="openAddSupplierModal()">+ Add Supplier</button>`;
+      }
+
+      function switchSupplier(name) {
+        activeSupplier = name;
+        editingId = null;
+        renderSupplierTabs();
+        renderMaterialTable();
+      }
+
+      function openAddSupplierModal() {
+        document.getElementById("newSupplierName").value = "";
+        openModal("addSupplierModal");
+      }
+
+      function addSupplier() {
+        const name = document.getElementById("newSupplierName").value.trim();
+        if (!name) {
+          notify("Enter a supplier name", "error");
+          return;
+        }
+        if (suppliers.includes(name)) {
+          notify("Supplier already exists", "error");
+          return;
+        }
+        const copyDefaults = document.getElementById(
+          "copyDefaultsToSupplier",
+        ).checked;
+        suppliers.push(name);
+        materialsBySupplier[name] = copyDefaults
+          ? DEFAULT_MATERIALS_TEMPLATE.map((m, i) => ({ ...m, id: genId() }))
+          : [];
+        activeSupplier = name;
+        saveAll();
+        renderSupplierTabs();
+        renderMaterialTable();
+        populateCategoryFilter();
+        closeModal("addSupplierModal");
+        notify(`Supplier "${name}" added`, "success");
+      }
+
+      function confirmDeleteSupplier(name) {
+        if (suppliers.length <= 1) {
+          notify("Cannot remove the last supplier", "error");
+          return;
+        }
+        document.getElementById("deleteSupplierName").textContent = name;
+        openModal("deleteSupplierModal");
+        document.getElementById("deleteSupplierModal").dataset.supplier = name;
+      }
+
+      function deleteSupplier() {
+        const name = document.getElementById("deleteSupplierModal").dataset
+          .supplier;
+        suppliers = suppliers.filter((s) => s !== name);
+        delete materialsBySupplier[name];
+        if (activeSupplier === name) activeSupplier = suppliers[0];
+        saveAll();
+        renderSupplierTabs();
+        renderMaterialTable();
+        closeModal("deleteSupplierModal");
+        notify(`Supplier "${name}" removed`, "success");
+      }
+
+      // ===== CATEGORY / PHASE MANAGEMENT =====
+      function populateCategoryFilter() {
+        const sel = document.getElementById("categoryFilter");
+        const current = sel.value;
+        sel.innerHTML =
+          '<option value="All">All Phases</option>' +
+          categories.map((c) => `<option value="${c}">${c}</option>`).join("");
+        if (categories.includes(current) || current === "All")
+          sel.value = current;
+      }
+
+      function openAddCategoryModal() {
+        document.getElementById("newCategoryName").value = "";
+        openModal("addCategoryModal");
+      }
+
+      function addCategory() {
+        const name = document.getElementById("newCategoryName").value.trim();
+        if (!name) {
+          notify("Enter a phase name", "error");
+          return;
+        }
+        if (categories.includes(name)) {
+          notify("Phase already exists", "error");
+          return;
+        }
+        categories.push(name);
+        saveAll();
+        populateCategoryFilter();
+        populateOrderPhaseFilter();
+        closeModal("addCategoryModal");
+        notify(`Phase "${name}" added`, "success");
+      }
+
+      function openDeleteCategoryModal() {
+        const sel = document.getElementById("deleteCategorySelect");
+        sel.innerHTML = categories
+          .map((c) => `<option value="${c}">${c}</option>`)
+          .join("");
+        openModal("deleteCategoryModal");
+      }
+
+      function deleteCategory() {
+        const name = document.getElementById("deleteCategorySelect").value;
+        if (!name) return;
+        categories = categories.filter((c) => c !== name);
+        // Remove materials in this category from all suppliers
+        suppliers.forEach((s) => {
+          materialsBySupplier[s] = (materialsBySupplier[s] || []).filter(
+            (m) => m.category !== name,
+          );
+        });
+        saveAll();
+        populateCategoryFilter();
+        populateOrderPhaseFilter();
+        renderMaterialTable();
+        closeModal("deleteCategoryModal");
+        notify(`Phase "${name}" removed`, "success");
+      }
+
+      // ===== MATERIAL TABLE =====
+      function renderMaterialTable() {
+        const filter = document.getElementById("categoryFilter").value;
+        const mats = materialsBySupplier[activeSupplier] || [];
+        const filtered =
+          filter === "All" ? mats : mats.filter((m) => m.category === filter);
+        const tbody = document.getElementById("materialTableBody");
+
+        if (filtered.length === 0) {
+          tbody.innerHTML =
+            '<tr><td colspan="7" class="text-center" style="padding:36px;color:var(--text-muted)">No materials. Add materials or reset to defaults.</td></tr>';
+          return;
+        }
+
+        // Group by category for display
+        const grouped = {};
+        categories.forEach((c) => {
+          grouped[c] = [];
+        });
+        filtered.forEach((m) => {
+          if (!grouped[m.category]) grouped[m.category] = [];
+          grouped[m.category].push(m);
+        });
+
+        let html = "";
+        categories.forEach((cat, catIdx) => {
+          const items = grouped[cat];
+          if (!items || items.length === 0) return;
+          const ci = catIdx % 8;
+          html += `<tr class="phase-header"><td colspan="7" class="phase-color-${ci}">${escHtml(cat)} Phase</td></tr>`;
+          items.forEach((m) => {
+            if (editingId === m.id) {
+              html += `<tr>
+                    <td><input class="inline-input" id="edit-name" value="${escAttr(m.name)}"></td>
+                    <td><input class="inline-input" id="edit-sku" value="${escAttr(m.sku)}" style="width:110px"></td>
+                    <td><select class="inline-select" id="edit-unit">${UNITS.map((u) => `<option${u === m.unit ? " selected" : ""}>${u}</option>`).join("")}</select></td>
+                    <td><input class="inline-input" id="edit-price" type="number" step="0.01" min="0" value="${m.pricePerUnit}" style="text-align:right;width:80px"></td>
+                    <td><select class="inline-select" id="edit-category">${categories.map((c) => `<option${c === m.category ? " selected" : ""}>${c}</option>`).join("")}</select></td>
+                    <td><input class="inline-input" id="edit-coverage" type="number" step="0.1" min="0.1" value="${m.coveragePerUnit}" style="text-align:right;width:80px"></td>
+                    <td class="text-center" style="white-space:nowrap">
+                        <button class="btn btn-success btn-sm" onclick="saveMaterialEdit('${m.id}')">Save</button>
+                        <button class="btn btn-secondary btn-sm" onclick="cancelEdit()">Cancel</button>
+                    </td>
+                </tr>`;
+            } else {
+              html += `<tr>
+                    <td>${escHtml(m.name)}</td>
+                    <td style="color:var(--text-muted);font-family:monospace;font-size:0.8rem">${escHtml(m.sku)}</td>
+                    <td>${escHtml(m.unit)}</td>
+                    <td class="text-right">${fmt(m.pricePerUnit)}</td>
+                    <td><span class="badge phase-bg-${ci} phase-color-${ci}">${m.category}</span></td>
+                    <td class="text-right">${m.coveragePerUnit} sqft</td>
+                    <td class="text-center" style="white-space:nowrap">
+                        <button class="btn-icon" onclick="editMaterial('${m.id}')" title="Edit">&#9998;</button>
+                        <button class="btn-icon danger" onclick="deleteMaterial('${m.id}')" title="Delete">&#10005;</button>
+                    </td>
+                </tr>`;
+            }
+          });
+        });
+        tbody.innerHTML = html;
+      }
+
+      function editMaterial(id) {
+        editingId = id;
+        renderMaterialTable();
+      }
+      function cancelEdit() {
+        editingId = null;
+        renderMaterialTable();
+      }
+
+      function saveMaterialEdit(id) {
+        const mats = materialsBySupplier[activeSupplier] || [];
+        const mat = mats.find((m) => m.id === id);
+        if (!mat) return;
+        const name = document.getElementById("edit-name").value.trim();
+        const price = parseFloat(document.getElementById("edit-price").value);
+        const coverage = parseFloat(
+          document.getElementById("edit-coverage").value,
+        );
+        if (!name) {
+          notify("Name required", "error");
+          return;
+        }
+        if (isNaN(price) || price < 0) {
+          notify("Invalid price", "error");
+          return;
+        }
+        if (isNaN(coverage) || coverage <= 0) {
+          notify("Coverage must be > 0", "error");
+          return;
+        }
+        mat.name = name;
+        mat.sku = document.getElementById("edit-sku").value.trim();
+        mat.unit = document.getElementById("edit-unit").value;
+        mat.pricePerUnit = price;
+        mat.category = document.getElementById("edit-category").value;
+        mat.coveragePerUnit = coverage;
+        editingId = null;
+        saveAll();
+        renderMaterialTable();
+        notify("Material updated", "success");
+      }
+
+      function addMaterial() {
+        const mats = materialsBySupplier[activeSupplier] || [];
+        const newMat = {
+          id: genId(),
+          name: "New Material",
+          sku: "",
+          unit: "each",
+          pricePerUnit: 0,
+          category: categories[0] || "Lath",
+          coveragePerUnit: 100,
+        };
+        mats.push(newMat);
+        materialsBySupplier[activeSupplier] = mats;
+        saveAll();
+        editingId = newMat.id;
+        document.getElementById("categoryFilter").value = "All";
+        renderMaterialTable();
+        document
+          .getElementById("materialTableBody")
+          .lastElementChild?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+      }
+
+      function deleteMaterial(id) {
+        const mats = materialsBySupplier[activeSupplier] || [];
+        const mat = mats.find((m) => m.id === id);
+        if (!mat || !confirm(`Delete "${mat.name}"?`)) return;
+        materialsBySupplier[activeSupplier] = mats.filter((m) => m.id !== id);
+        saveAll();
+        renderMaterialTable();
+        notify("Material deleted", "success");
+      }
+
+      function resetToDefaults() {
+        if (
+          !confirm(
+            "Reset ALL suppliers, phases, and materials to defaults? This will overwrite everything.",
+          )
+        )
+          return;
+        resetAllToDefaults(false);
+        editingId = null;
+        renderSupplierTabs();
+        populateCategoryFilter();
+        renderMaterialTable();
+        populateOrderPhaseFilter();
+      }
+
+      // ===== CSV =====
+      function parseCSVLine(line) {
+        const result = [];
+        let cur = "";
+        let inQ = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (inQ) {
+            if (ch === '"' && line[i + 1] === '"') {
+              cur += '"';
+              i++;
+            } else if (ch === '"') inQ = false;
+            else cur += ch;
+          } else {
+            if (ch === '"') inQ = true;
+            else if (ch === ",") {
+              result.push(cur.trim());
+              cur = "";
+            } else cur += ch;
+          }
+        }
+        result.push(cur.trim());
+        return result;
+      }
+
+      function handleCSVImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const lines = e.target.result.split(/\r?\n/).filter((l) => l.trim());
+          if (lines.length < 2) {
+            notify("CSV empty or no data rows", "error");
+            return;
+          }
+          const headers = parseCSVLine(lines[0]).map((h) =>
+            h.toLowerCase().replace(/[^a-z]/g, ""),
+          );
+          const nameIdx = headers.findIndex((h) => h === "name");
+          const skuIdx = headers.findIndex((h) => h === "sku");
+          const unitIdx = headers.findIndex((h) => h === "unit");
+          const priceIdx = headers.findIndex((h) => h.includes("price"));
+          const catIdx = headers.findIndex(
+            (h) => h.includes("category") || h.includes("phase"),
+          );
+          const covIdx = headers.findIndex((h) => h.includes("coverage"));
+          if (nameIdx === -1) {
+            notify('CSV must have a "name" column', "error");
+            return;
+          }
+          let imported = 0,
+            skipped = 0;
+          const mats = materialsBySupplier[activeSupplier] || [];
+          for (let i = 1; i < lines.length; i++) {
+            const f = parseCSVLine(lines[i]);
+            const name = f[nameIdx]?.trim();
+            if (!name) {
+              skipped++;
+              continue;
+            }
+            const cat = f[catIdx]?.trim() || categories[0] || "Lath";
+            if (!categories.includes(cat)) {
+              categories.push(cat);
+            }
+            const cov = parseFloat(f[covIdx]) || 100;
+            if (cov <= 0) {
+              skipped++;
+              continue;
+            }
+            mats.push({
+              id: genId(),
+              name,
+              sku: f[skuIdx]?.trim() || "",
+              unit: f[unitIdx]?.trim() || "each",
+              pricePerUnit: parseFloat(f[priceIdx]) || 0,
+              category: cat,
+              coveragePerUnit: cov,
+            });
+            imported++;
+          }
+          materialsBySupplier[activeSupplier] = mats;
+          saveAll();
+          populateCategoryFilter();
+          renderMaterialTable();
+          notify(
+            `Imported ${imported} to ${activeSupplier}` +
+              (skipped ? `, ${skipped} skipped` : ""),
+            imported > 0 ? "success" : "error",
+          );
+        };
+        reader.readAsText(file);
+        event.target.value = "";
+      }
+
+      function exportCSV() {
+        const mats = materialsBySupplier[activeSupplier] || [];
+        const hdr = "name,sku,unit,pricePerUnit,category,coveragePerUnit";
+        const rows = mats.map(
+          (m) =>
+            `"${m.name.replace(/"/g, '""')}","${m.sku}","${m.unit}",${m.pricePerUnit},"${m.category}",${m.coveragePerUnit}`,
+        );
+        const blob = new Blob([[hdr, ...rows].join("\n")], {
+          type: "text/csv",
+        });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `materials-${activeSupplier.replace(/\s+/g, "-").toLowerCase()}.csv`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        notify("CSV exported for " + activeSupplier, "success");
+      }
+
+      // ===== CALCULATOR =====
+      function populateCalcSupplierDropdown() {
+        const sel = document.getElementById("calcSupplier");
+        const prev = sel.value;
+        sel.innerHTML = suppliers
+          .map((s) => `<option value="${s}">${s}</option>`)
+          .join("");
+        if (suppliers.includes(prev)) sel.value = prev;
+      }
+
+      function calculateJob() {
+        const sqft = parseFloat(document.getElementById("calcSqft").value);
+        const waste =
+          parseFloat(document.getElementById("calcWaste").value) || 0;
+        const profitPct =
+          parseFloat(document.getElementById("calcProfit").value) || 0;
+        const supplier = document.getElementById("calcSupplier").value;
+
+        if (!sqft || sqft <= 0) {
+          notify("Enter valid square footage", "error");
+          return;
+        }
+        if (!supplier) {
+          notify("Select a supplier", "error");
+          return;
+        }
+
+        const adjSqft = sqft * (1 + waste / 100);
+        const mats = materialsBySupplier[supplier] || [];
+
+        const results = {
+          sqft,
+          waste,
+          adjSqft,
+          supplier,
+          profitPct,
+          phases: {},
+          items: [],
+          materialTotal: 0,
+        };
+        categories.forEach((c) => {
+          results.phases[c] = { total: 0, count: 0 };
+        });
+
+        mats.forEach((m) => {
+          const qty = Math.ceil(adjSqft / m.coveragePerUnit);
+          const lineTotal = qty * m.pricePerUnit;
+          results.items.push({
+            id: m.id,
+            name: m.name,
+            sku: m.sku,
+            unit: m.unit,
+            pricePerUnit: m.pricePerUnit,
+            category: m.category,
+            coveragePerUnit: m.coveragePerUnit,
+            qty,
+            lineTotal,
+          });
+          if (results.phases[m.category]) {
+            results.phases[m.category].total += lineTotal;
+            results.phases[m.category].count++;
+          }
+          results.materialTotal += lineTotal;
+        });
+
+        results.profitAmount = results.materialTotal * (profitPct / 100);
+        results.sellingPrice = results.materialTotal + results.profitAmount;
+        results.grossMargin =
+          results.sellingPrice > 0
+            ? (results.profitAmount / results.sellingPrice) * 100
+            : 0;
+
+        currentCalc = results;
+        renderCalcResults(results);
+      }
+
+      function renderCalcResults(r) {
+        document.getElementById("calcResults").style.display = "block";
+
+        // Phase cards
+        document.getElementById("phaseCards").innerHTML = categories
+          .map((cat, i) => {
+            const p = r.phases[cat];
+            if (!p || p.count === 0) return "";
+            const ci = i % 8;
+            return `<div class="phase-card phase-bg-${ci}" style="border-left-color:inherit">
+            <h3>${escHtml(cat)}</h3>
+            <div class="amount phase-color-${ci}">${fmt(p.total)}</div>
+            <div class="items">${p.count} items</div>
+        </div>`;
+          })
+          .join("");
+
+        // Breakdown per phase
+        let bhtml = "";
+        categories.forEach((cat, catIdx) => {
+          const items = r.items.filter((i) => i.category === cat);
+          if (items.length === 0) return;
+          const ci = catIdx % 8;
+          bhtml += `<div style="margin-bottom:20px">
+            <h3 class="section-title phase-color-${ci}">${escHtml(cat)} Phase</h3>
+            <div class="table-wrap"><table>
+                <thead><tr><th>Material</th><th>SKU</th><th class="text-right">Coverage</th><th class="text-right">Qty</th><th>Unit</th><th class="text-right">Unit Price</th><th class="text-right">Line Total</th></tr></thead>
+                <tbody>${items
+                  .map(
+                    (i) => `<tr>
+                    <td>${escHtml(i.name)}</td>
+                    <td style="font-family:monospace;font-size:0.8rem;color:var(--text-muted)">${escHtml(i.sku)}</td>
+                    <td class="text-right">${i.coveragePerUnit} sqft</td>
+                    <td class="text-right" style="font-weight:600">${i.qty}</td>
+                    <td>${i.unit}</td>
+                    <td class="text-right">${fmt(i.pricePerUnit)}</td>
+                    <td class="text-right" style="font-weight:600">${fmt(i.lineTotal)}</td>
+                </tr>`,
+                  )
+                  .join("")}
+                <tr class="subtotal-row"><td colspan="6" class="text-right">${escHtml(cat)} Subtotal:</td><td class="text-right">${fmt(r.phases[cat].total)}</td></tr>
+                </tbody></table></div></div>`;
+        });
+        document.getElementById("calcBreakdown").innerHTML = bhtml;
+
+        // Grand total
+        document.getElementById("calcGrandTotal").innerHTML = `
+        <h3>Material Total (${r.sqft.toLocaleString()} sqft + ${r.waste}% waste) &mdash; ${escHtml(r.supplier)}</h3>
+        <div class="amount">${fmt(r.materialTotal)}</div>`;
+
+        // Profit grid
+        document.getElementById("profitGrid").innerHTML = `
+        <div class="profit-card"><h4>Material Cost</h4><div class="val">${fmt(r.materialTotal)}</div></div>
+        <div class="profit-card"><h4>Markup (${r.profitPct}%)</h4><div class="val green">${fmt(r.profitAmount)}</div></div>
+        <div class="profit-card"><h4>Selling Price</h4><div class="val">${fmt(r.sellingPrice)}</div></div>
+        <div class="profit-card"><h4>Gross Margin</h4><div class="val green">${r.grossMargin.toFixed(1)}%</div></div>`;
+      }
+
+      // ===== ORDER FORM =====
+      function populateOrderPhaseFilter() {
+        const sel = document.getElementById("orderPhaseFilter");
+        const prev = sel.value;
+        sel.innerHTML =
+          '<option value="All">All Phases</option>' +
+          categories.map((c) => `<option value="${c}">${c}</option>`).join("");
+        if (categories.includes(prev) || prev === "All") sel.value = prev;
+      }
+
+      function generateOrderForm() {
+        if (!currentCalc) {
+          notify("Run calculation first", "error");
+          return;
+        }
+        document.getElementById("orderProjectName").value =
+          document.getElementById("calcProjectName").value;
+        document.getElementById("orderProjectAddress").value =
+          document.getElementById("calcProjectAddress").value;
+        document.getElementById("orderSupplier").value = currentCalc.supplier;
+        document.getElementById("orderDate").value = new Date()
+          .toISOString()
+          .split("T")[0];
+        populateOrderPhaseFilter();
+        document.getElementById("orderPhaseFilter").value = "All";
+        document.getElementById("orderEmpty").style.display = "none";
+        document.getElementById("orderContent").style.display = "block";
+        renderOrderTable();
+        showTab("order");
+        notify("Order form generated", "success");
+      }
+
+      function renderOrderTable() {
+        if (!currentCalc) return;
+        const phaseFilter = document.getElementById("orderPhaseFilter").value;
+        const tbody = document.getElementById("orderTableBody");
+        let html = "";
+        let filteredTotal = 0;
+
+        categories.forEach((cat, catIdx) => {
+          if (phaseFilter !== "All" && phaseFilter !== cat) return;
+          const items = currentCalc.items.filter((i) => i.category === cat);
+          if (items.length === 0) return;
+          const ci = catIdx % 8;
+
+          html += `<tr class="phase-header"><td colspan="6" class="phase-color-${ci}">${escHtml(cat)} Phase</td></tr>`;
+          let phaseTot = 0;
+          items.forEach((item) => {
+            html += `<tr data-id="${item.id}">
+                <td style="font-family:monospace;font-size:0.8rem">${escHtml(item.sku)}</td>
+                <td>${escHtml(item.name)}</td>
+                <td class="text-center"><input type="number" class="order-qty-input" value="${item.qty}" min="0" onchange="updateOrderQty('${item.id}', this.value)"></td>
+                <td>${item.unit}</td>
+                <td class="text-right">${fmt(item.pricePerUnit)}</td>
+                <td class="text-right line-total">${fmt(item.lineTotal)}</td>
+            </tr>`;
+            phaseTot += item.lineTotal;
+          });
+          html += `<tr class="subtotal-row"><td colspan="5" class="text-right">${escHtml(cat)} Subtotal:</td><td class="text-right">${fmt(phaseTot)}</td></tr>`;
+          filteredTotal += phaseTot;
+        });
+
+        html += `<tr class="grand-total-row"><td colspan="5" class="text-right">${phaseFilter === "All" ? "Grand" : phaseFilter} Total:</td><td class="text-right" id="orderGrandTotal">${fmt(filteredTotal)}</td></tr>`;
+        tbody.innerHTML = html;
+      }
+
+      function updateOrderQty(id, val) {
+        const qty = Math.max(0, parseInt(val) || 0);
+        const item = currentCalc.items.find((i) => i.id === id);
+        if (!item) return;
+        item.qty = qty;
+        item.lineTotal = qty * item.pricePerUnit;
+        const row = document.querySelector(`tr[data-id="${id}"]`);
+        if (row)
+          row.querySelector(".line-total").textContent = fmt(item.lineTotal);
+        // Recalc totals
+        renderOrderTable();
+      }
+
+      function printOrder() {
+        window.print();
+      }
+
+      function exportOrderCSV() {
+        if (!currentCalc) return;
+        const phaseFilter = document.getElementById("orderPhaseFilter").value;
+        const pName = document.getElementById("orderProjectName").value;
+        const pAddr = document.getElementById("orderProjectAddress").value;
+        const sup = document.getElementById("orderSupplier").value;
+        const date = document.getElementById("orderDate").value;
+        const po = document.getElementById("orderPO").value;
+
+        let csv = `"Project","${pName}"\n"Address","${pAddr}"\n"Supplier","${sup}"\n"Date","${date}"\n"PO#","${po}"\n\n`;
+        csv += "SKU,Material,Phase,Qty,Unit,Unit Price,Line Total\n";
+
+        let total = 0;
+        categories.forEach((cat) => {
+          if (phaseFilter !== "All" && phaseFilter !== cat) return;
+          currentCalc.items
+            .filter((i) => i.category === cat)
+            .forEach((item) => {
+              csv += `"${item.sku}","${item.name.replace(/"/g, '""')}","${item.category}",${item.qty},"${item.unit}",${item.pricePerUnit},${item.lineTotal}\n`;
+              total += item.lineTotal;
+            });
+        });
+        csv += `\n,,,,,"Total",${total}\n`;
+
+        const blob = new Blob([csv], { type: "text/csv" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        const slug = pName.replace(/\s+/g, "-").toLowerCase() || "order";
+        const phaseSlug =
+          phaseFilter === "All"
+            ? "all"
+            : phaseFilter.replace(/\s+/g, "-").toLowerCase();
+        a.download = `order-${slug}-${phaseSlug}-${date || "draft"}.csv`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        notify("Order CSV exported", "success");
+      }
+
+      // ===== INIT =====
+      document.addEventListener("DOMContentLoaded", function () {
+        loadData();
+        renderSupplierTabs();
+        populateCategoryFilter();
+        renderMaterialTable();
+        populateOrderPhaseFilter();
+      });
+    </script>
+  </body>
+</html>
