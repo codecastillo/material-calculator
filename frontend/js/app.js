@@ -1,475 +1,3 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="dark">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stucco Material Calculator</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        /* ===== THEME VARIABLES ===== */
-        [data-theme="dark"] {
-            --bg: #1b2433; --surface: #243044; --surface-hover: #2d3d56; --border: #3a4d66;
-            --primary: #3b82f6; --primary-hover: #2563eb; --primary-light: rgba(59,130,246,0.08);
-            --text: #f1f5f9; --text-secondary: #94a3b8; --text-muted: #64748b;
-            --success: #10b981; --danger: #ef4444; --danger-hover: #dc2626; --warning: #f59e0b;
-            --input-bg: #1b2433; --shadow: rgba(0,0,0,0.3);
-        }
-        [data-theme="light"] {
-            --bg: #f1f5f9; --surface: #ffffff; --surface-hover: #f8fafc; --border: #e2e8f0;
-            --primary: #2563eb; --primary-hover: #1d4ed8; --primary-light: rgba(37,99,235,0.06);
-            --text: #1e293b; --text-secondary: #475569; --text-muted: #94a3b8;
-            --success: #059669; --danger: #dc2626; --danger-hover: #b91c1c; --warning: #d97706;
-            --input-bg: #f8fafc; --shadow: rgba(0,0,0,0.08);
-        }
-
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.5; transition: background 0.3s, color 0.3s; }
-        .container { max-width: 1400px; margin: 0 auto; padding: 16px; }
-
-        /* Header */
-        header { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; border-bottom: 2px solid var(--border); margin-bottom: 16px; }
-        .header-left h1 { font-size: 1.6rem; color: var(--primary); margin-bottom: 0; }
-        .header-left p { color: var(--text-muted); font-size: 0.85rem; }
-        .header-actions { display: flex; gap: 8px; align-items: center; }
-
-        /* Theme toggle */
-        .theme-toggle { background: var(--border); border: none; border-radius: 20px; width: 48px; height: 26px; cursor: pointer; position: relative; transition: background 0.3s; }
-        .theme-toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--text); transition: transform 0.3s; }
-        [data-theme="light"] .theme-toggle::after { transform: translateX(22px); }
-        .theme-label { font-size: 0.75rem; color: var(--text-muted); }
-
-        /* Tabs */
-        .tabs { display: flex; gap: 3px; flex-wrap: wrap; }
-        .tab { padding: 10px 20px; background: var(--surface); border: 1px solid var(--border); border-bottom: none; border-radius: 8px 8px 0 0; color: var(--text-secondary); font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: all 0.2s; }
-        .tab.active { color: var(--primary); border-color: var(--primary); border-bottom: 2px solid var(--surface); position: relative; z-index: 1; margin-bottom: -1px; }
-        .tab:hover:not(.active) { color: var(--text); background: var(--surface-hover); }
-        .tab-content { display: none; background: var(--surface); border: 1px solid var(--border); border-radius: 0 8px 8px 8px; padding: 18px; }
-        .tab-content.active { display: block; }
-
-        /* Buttons */
-        .btn { padding: 8px 16px; border: none; border-radius: 6px; font-size: 0.82rem; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
-        .btn-primary { background: var(--primary); color: #fff; }
-        .btn-primary:hover { background: var(--primary-hover); }
-        .btn-secondary { background: var(--border); color: var(--text); }
-        .btn-secondary:hover { background: var(--text-muted); color: #fff; }
-        .btn-success { background: var(--success); color: #fff; }
-        .btn-success:hover { opacity: 0.9; }
-        .btn-danger { background: var(--danger); color: #fff; }
-        .btn-danger:hover { background: var(--danger-hover); }
-        .btn-warning { background: var(--warning); color: #000; }
-        .btn-sm { padding: 4px 10px; font-size: 0.78rem; }
-        .btn-xs { padding: 3px 7px; font-size: 0.72rem; }
-        .btn-icon { padding: 4px 7px; font-size: 0.95rem; background: none; color: var(--text-secondary); border: none; cursor: pointer; border-radius: 4px; }
-        .btn-icon:hover { color: var(--text); background: var(--primary-light); }
-        .btn-icon.danger:hover { color: var(--danger); background: rgba(239,68,68,0.1); }
-        .btn-ghost { background: none; color: var(--primary); border: 1px solid var(--primary); }
-        .btn-ghost:hover { background: var(--primary-light); }
-        .btn[disabled] { opacity: 0.4; cursor: not-allowed; }
-
-        /* Forms */
-        .form-group { margin-bottom: 12px; }
-        .form-group label { display: block; margin-bottom: 2px; color: var(--text-secondary); font-size: 0.78rem; font-weight: 500; }
-        .form-input { width: 100%; padding: 8px 10px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.88rem; transition: border-color 0.2s; }
-        .form-input:focus { outline: none; border-color: var(--primary); }
-        select.form-input { cursor: pointer; }
-        textarea.form-input { resize: vertical; min-height: 60px; font-family: inherit; }
-        .form-row { display: grid; gap: 12px; }
-        .form-row-2 { grid-template-columns: 1fr 1fr; }
-        .form-row-3 { grid-template-columns: 1fr 1fr 1fr; }
-        .form-row-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
-        .form-row-5 { grid-template-columns: 1fr 1fr 1fr 1fr 1fr; }
-        .form-hint { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
-
-        /* Toolbar */
-        .toolbar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
-        .toolbar-spacer { flex: 1; }
-        .toolbar-divider { width: 1px; height: 24px; background: var(--border); margin: 0 2px; }
-
-        /* Search box */
-        .search-box { position: relative; }
-        .search-box input { padding: 5px 10px 5px 28px; font-size: 0.8rem; width: 180px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); }
-        .search-box input:focus { outline: none; border-color: var(--primary); width: 240px; }
-        .search-box::before { content: '\u26B2'; position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.8rem; pointer-events: none; }
-
-        /* Supplier tabs */
-        .supplier-tabs { display: flex; gap: 0; margin-bottom: 14px; border-bottom: 2px solid var(--border); flex-wrap: wrap; }
-        .supplier-tab { padding: 7px 16px; background: none; border: none; color: var(--text-muted); font-size: 0.82rem; font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
-        .supplier-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
-        .supplier-tab:hover:not(.active) { color: var(--text-secondary); }
-        .supplier-tab.add-btn { color: var(--success); font-weight: 600; }
-        .supplier-tab.add-btn:hover { color: #059669; }
-
-        /* Tables */
-        .table-wrap { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-        thead th { background: var(--bg); color: var(--text-secondary); font-weight: 600; text-align: left; padding: 8px 9px; border-bottom: 2px solid var(--border); white-space: nowrap; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
-        tbody td { padding: 7px 9px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-        tbody tr:hover { background: var(--primary-light); }
-        .text-right { text-align: right; }
-        .text-center { text-align: center; }
-
-        .inline-input { width: 100%; padding: 4px 6px; background: var(--input-bg); border: 1px solid var(--primary); border-radius: 4px; color: var(--text); font-size: 0.82rem; }
-        .inline-input:focus { outline: none; }
-        .inline-select { padding: 4px 6px; background: var(--input-bg); border: 1px solid var(--primary); border-radius: 4px; color: var(--text); font-size: 0.82rem; }
-
-        /* Draggable rows */
-        tr.dragging { opacity: 0.4; }
-        tr.drag-over td { border-top: 2px solid var(--primary); }
-
-        /* Phase colors */
-        .phase-color-0 { color: #f59e0b; } .phase-bg-0 { background: rgba(245,158,11,0.1); border-color: #f59e0b; }
-        .phase-color-1 { color: #6b7280; } .phase-bg-1 { background: rgba(107,114,128,0.15); border-color: #6b7280; }
-        .phase-color-2 { color: #8b5cf6; } .phase-bg-2 { background: rgba(139,92,246,0.1); border-color: #8b5cf6; }
-        .phase-color-3 { color: #ec4899; } .phase-bg-3 { background: rgba(236,72,153,0.1); border-color: #ec4899; }
-        .phase-color-4 { color: #14b8a6; } .phase-bg-4 { background: rgba(20,184,166,0.1); border-color: #14b8a6; }
-        .phase-color-5 { color: #f97316; } .phase-bg-5 { background: rgba(249,115,22,0.1); border-color: #f97316; }
-        .phase-color-6 { color: #06b6d4; } .phase-bg-6 { background: rgba(6,182,212,0.1); border-color: #06b6d4; }
-        .phase-color-7 { color: #84cc16; } .phase-bg-7 { background: rgba(132,204,22,0.1); border-color: #84cc16; }
-
-        .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 0.68rem; font-weight: 600; }
-        .badge-calc { font-size: 0.62rem; padding: 1px 6px; margin-left: 4px; background: rgba(59,130,246,0.15); color: var(--primary); border-radius: 4px; }
-
-        /* Phase cards */
-        .phase-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 16px; }
-        .phase-card { padding: 14px; border-radius: 8px; border-left: 4px solid; }
-        .phase-card h3 { font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 1px; text-transform: uppercase; letter-spacing: 0.04em; }
-        .phase-card .amount { font-size: 1.3rem; font-weight: 700; }
-        .phase-card .items { font-size: 0.72rem; color: var(--text-muted); margin-top: 1px; }
-
-        .total-card { border-radius: 8px; padding: 14px; text-align: center; margin-top: 10px; border: 2px solid var(--primary); background: var(--primary-light); }
-        .total-card h3 { color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
-        .total-card .amount { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
-
-        /* Profit/summary grid */
-        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 10px; }
-        .summary-card { padding: 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); text-align: center; }
-        .summary-card h4 { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
-        .summary-card .val { font-size: 1.2rem; font-weight: 700; }
-        .summary-card .val.green { color: var(--success); }
-        .summary-card .val.blue { color: var(--primary); }
-
-        /* Comparison table */
-        .comparison-wrap { margin-top: 16px; padding: 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
-        .comparison-wrap h3 { font-size: 0.9rem; margin-bottom: 10px; }
-        .best-price { background: rgba(16,185,129,0.12); font-weight: 700; }
-
-        /* Phase header rows */
-        .phase-header td { background: var(--bg); font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; padding: 9px; border-bottom: 2px solid var(--border); }
-        .subtotal-row td { font-weight: 600; background: rgba(255,255,255,0.02); border-bottom: 2px solid var(--border); }
-        .grand-total-row td { font-weight: 700; font-size: 0.9rem; background: var(--primary-light); color: var(--primary); border-top: 2px solid var(--primary); }
-        .tax-row td { font-weight: 600; color: var(--warning); }
-
-        /* Order header */
-        .order-header { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; padding: 14px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); }
-        .order-header .form-group { margin-bottom: 5px; }
-        .order-qty-input { width: 60px; padding: 3px 5px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 0.82rem; text-align: center; }
-        .order-qty-input:focus { outline: none; border-color: var(--primary); }
-
-        /* Saved jobs */
-        .saved-jobs-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; margin-top: 12px; }
-        .saved-job-card { padding: 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: all 0.2s; }
-        .saved-job-card:hover { border-color: var(--primary); background: var(--primary-light); }
-        .saved-job-card h4 { font-size: 0.9rem; margin-bottom: 4px; }
-        .saved-job-card .meta { font-size: 0.75rem; color: var(--text-muted); }
-        .saved-job-card .meta span { margin-right: 12px; }
-        .saved-job-card .actions { margin-top: 8px; display: flex; gap: 6px; }
-
-        /* Section title */
-        .section-title { font-size: 0.95rem; font-weight: 600; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px solid var(--border); }
-
-        /* Labor inputs */
-        .labor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 14px; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
-        .labor-grid .form-group { margin-bottom: 0; }
-        .labor-grid label { font-size: 0.72rem; }
-
-        /* Usage note */
-        .usage-note { background: var(--primary-light); border: 1px solid rgba(59,130,246,0.2); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: 0.78rem; color: var(--text-secondary); }
-
-        /* Empty/hidden */
-        .empty-state { text-align: center; padding: 40px 16px; color: var(--text-muted); }
-        .empty-state p { margin-bottom: 10px; }
-        #csvFileInput { display: none; }
-        .hidden { display: none !important; }
-
-        /* Notification */
-        .notification { position: fixed; top: 16px; right: 16px; padding: 9px 16px; border-radius: 8px; color: #fff; font-size: 0.82rem; font-weight: 500; z-index: 1000; transform: translateX(120%); transition: transform 0.3s ease; box-shadow: 0 4px 12px var(--shadow); }
-        .notification.show { transform: translateX(0); }
-        .notification.success { background: var(--success); }
-        .notification.error { background: var(--danger); }
-        .notification.info { background: var(--primary); }
-
-        /* Modal */
-        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 500; align-items: center; justify-content: center; }
-        .modal-overlay.open { display: flex; }
-        .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; min-width: 320px; max-width: 90vw; max-height: 80vh; overflow-y: auto; box-shadow: 0 8px 32px var(--shadow); }
-        .modal h3 { margin-bottom: 14px; font-size: 1rem; }
-        .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
-
-        /* Undo bar */
-        .undo-bar { display: flex; gap: 4px; align-items: center; }
-        .undo-bar button { font-size: 1rem; padding: 3px 6px; }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .container { padding: 8px; }
-            header { flex-direction: column; gap: 8px; text-align: center; }
-            .header-left h1 { font-size: 1.2rem; }
-            .tab { padding: 7px 10px; font-size: 0.78rem; }
-            .tab-content { padding: 10px; }
-            .form-row-2, .form-row-3, .form-row-4, .form-row-5 { grid-template-columns: 1fr; }
-            .toolbar { flex-direction: column; align-items: stretch; }
-            .toolbar .btn { justify-content: center; }
-            .order-header { grid-template-columns: 1fr; }
-            .phase-cards { grid-template-columns: 1fr; }
-            .summary-grid { grid-template-columns: 1fr 1fr; }
-            .search-box input, .search-box input:focus { width: 100%; }
-            .labor-grid { grid-template-columns: 1fr 1fr; }
-        }
-
-        /* Print */
-        @media print {
-            body { background: #fff !important; color: #000 !important; font-size: 10pt; }
-            * { color-adjust: exact; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .container { max-width: 100%; padding: 0; }
-            header, .tabs, #pricingTab, #calculatorTab, #savedJobsTab, .no-print, .btn, .modal-overlay, .notification, .toolbar { display: none !important; }
-            #orderTab { display: block !important; border: none; padding: 0; background: #fff; }
-            .order-header { background: #f9f9f9; border: 1px solid #ccc; color: #000; }
-            .order-header label { color: #555; }
-            .order-header .form-input { background: transparent; border: none; border-bottom: 1px solid #ccc; color: #000; padding: 2px 0; border-radius: 0; }
-            table { font-size: 9pt; }
-            thead th { background: #eee !important; color: #333 !important; border-bottom: 2px solid #333; }
-            tbody td { border-bottom: 1px solid #ddd; color: #000; }
-            .phase-header td { background: #f0f0f0 !important; color: #333 !important; }
-            .subtotal-row td { background: #f9f9f9 !important; color: #000 !important; }
-            .grand-total-row td { background: #e8f0fe !important; color: #1d4ed8 !important; border-top: 2px solid #1d4ed8; }
-            .tax-row td { color: #92400e !important; }
-            .order-qty-input { border: none; background: transparent; color: #000; text-align: center; font-size: 9pt; }
-            .print-header { display: block !important; text-align: center; margin-bottom: 14px; padding-bottom: 6px; border-bottom: 2px solid #333; }
-            .print-header h1 { font-size: 15pt; color: #333; }
-            .print-header p { color: #666; font-size: 9pt; }
-            .order-notes-print { margin-top: 14px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 9pt; color: #333; white-space: pre-wrap; }
-            .order-notes-print h4 { font-size: 10pt; margin-bottom: 4px; }
-        }
-        .print-header { display: none; }
-
-        /* Phase checkboxes */
-        .phase-check { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; font-size: 0.82rem; transition: all 0.2s; user-select: none; }
-        .phase-check:hover { border-color: var(--primary); }
-        .phase-check input { cursor: pointer; }
-        .phase-check.checked { background: var(--primary-light); border-color: var(--primary); }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <header>
-        <div class="header-left">
-            <h1>Stucco Material Calculator</h1>
-            <p>Multi-Supplier Material Estimating &amp; Order Management</p>
-        </div>
-        <div class="header-actions">
-            <div class="undo-bar no-print">
-                <button class="btn-icon" onclick="undo()" title="Undo" id="undoBtn" disabled>&#8630;</button>
-                <button class="btn-icon" onclick="redo()" title="Redo" id="redoBtn" disabled>&#8631;</button>
-            </div>
-            <span class="theme-label no-print">Theme</span>
-            <button class="theme-toggle no-print" onclick="toggleTheme()" title="Toggle light/dark theme"></button>
-        </div>
-    </header>
-
-    <div class="tabs">
-        <button class="tab active" onclick="showTab('pricing')">Material Pricing</button>
-        <button class="tab" onclick="showTab('calculator')">Job Calculator</button>
-        <button class="tab" onclick="showTab('order')">Order Form</button>
-        <button class="tab" onclick="showTab('savedJobs')">Saved Jobs</button>
-    </div>
-
-    <!-- TAB 1: PRICING -->
-    <div id="pricingTab" class="tab-content active">
-        <div class="supplier-tabs" id="supplierTabs"></div>
-        <div class="toolbar">
-            <button class="btn btn-primary btn-sm" onclick="document.getElementById('csvFileInput').click()">Import CSV</button>
-            <button class="btn btn-secondary btn-sm" onclick="exportCSV()">Export CSV</button>
-            <input type="file" id="csvFileInput" accept=".csv" onchange="handleCSVImport(event)">
-            <div class="toolbar-divider"></div>
-            <select class="form-input" style="width:auto;padding:4px 8px;font-size:0.78rem" id="categoryFilter" onchange="renderMaterialTable()">
-                <option value="All">All Phases</option>
-            </select>
-            <button class="btn btn-success btn-sm" onclick="openModal('addCategoryModal')">+ Phase</button>
-            <button class="btn btn-secondary btn-sm" onclick="openDeleteCategoryModal()">- Phase</button>
-            <div class="toolbar-divider"></div>
-            <div class="search-box"><input type="text" id="materialSearch" placeholder="Search materials..." oninput="renderMaterialTable()"></div>
-            <div class="toolbar-spacer"></div>
-            <button class="btn btn-success btn-sm" onclick="addMaterial()">+ Material</button>
-            <button class="btn btn-secondary btn-sm" onclick="resetToDefaults()">Reset</button>
-        </div>
-        <div class="usage-note">
-            <strong>Coverage = sqft (or linear ft) one unit covers.</strong> Set material type to "area" or "linear" for correct calculations.
-            Ratios: wire lath @ 450 sqft/roll &rarr; paper @ 150 sqft/roll = 3 rolls paper per roll wire.
-        </div>
-        <div class="table-wrap">
-            <table id="materialTable">
-                <thead><tr>
-                    <th style="width:24px"></th>
-                    <th>Name</th><th>SKU</th><th>Unit</th>
-                    <th class="text-right">Price/Unit</th><th>Phase</th>
-                    <th>Type</th>
-                    <th class="text-right">Coverage</th>
-                    <th class="text-center">Actions</th>
-                </tr></thead>
-                <tbody id="materialTableBody"></tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- TAB 2: CALCULATOR -->
-    <div id="calculatorTab" class="tab-content">
-        <div class="form-row form-row-2" style="margin-bottom:12px">
-            <div class="form-group"><label>Project Name</label><input type="text" class="form-input" id="calcProjectName" placeholder="e.g. Smith Residence"></div>
-            <div class="form-group"><label>Project Address</label><input type="text" class="form-input" id="calcProjectAddress" placeholder="e.g. 123 Main St, City, ST 00000"></div>
-        </div>
-        <div class="form-row form-row-5" style="margin-bottom:12px">
-            <div class="form-group"><label>Supplier</label><select class="form-input" id="calcSupplier" onchange="renderPhaseCheckboxes()"></select></div>
-            <div class="form-group"><label>Wall Area (sqft)</label><input type="number" class="form-input" id="calcSqft" placeholder="0" min="0" style="font-weight:600;text-align:center"></div>
-            <div class="form-group"><label>Linear Feet (trim)</label><input type="number" class="form-input" id="calcLinearFt" placeholder="0" min="0" style="text-align:center"><div class="form-hint">Weep screed, corner aid, etc.</div></div>
-            <div class="form-group"><label>Waste %</label><input type="number" class="form-input" id="calcWaste" value="10" min="0" max="50" style="text-align:center"></div>
-            <div class="form-group"><label>Markup %</label><input type="number" class="form-input" id="calcProfit" value="20" min="0" max="300" style="text-align:center"></div>
-        </div>
-        <div class="form-row form-row-2" style="margin-bottom:14px">
-            <div class="form-group"><label>Tax Rate %</label><input type="number" class="form-input" id="calcTax" value="0" min="0" max="20" step="0.1" style="text-align:center"><div class="form-hint">Applied to material cost</div></div>
-            <div class="form-group"><label>Labor ($/sqft overall)</label><input type="number" class="form-input" id="calcLabor" value="0" min="0" step="0.25" style="text-align:center"><div class="form-hint">Optional labor estimate</div></div>
-        </div>
-
-        <div id="laborByPhase" class="labor-grid hidden">
-            <div style="grid-column:1/-1;font-weight:600;font-size:0.82rem;color:var(--text-secondary)">Labor Rate by Phase ($/sqft) &mdash; optional override</div>
-        </div>
-
-        <div style="margin-bottom:14px">
-            <label style="display:block;margin-bottom:6px;color:var(--text-secondary);font-size:0.78rem;font-weight:500">Include Phases:</label>
-            <div id="phaseCheckboxes" style="display:flex;gap:14px;flex-wrap:wrap"></div>
-        </div>
-
-        <div style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-primary" onclick="calculateJob()" style="padding:10px 32px;font-size:0.9rem">Calculate</button>
-            <button class="btn btn-ghost btn-sm" onclick="compareSuppliers()">Compare All Suppliers</button>
-        </div>
-
-        <div id="calcResults" class="hidden">
-            <div class="phase-cards" id="phaseCards"></div>
-            <div id="calcBreakdown"></div>
-            <div class="total-card" id="calcGrandTotal"></div>
-            <div class="summary-grid" id="summaryGrid"></div>
-            <div id="comparisonSection" class="hidden"></div>
-            <div style="text-align:center;margin-top:14px" class="no-print">
-                <button class="btn btn-success" onclick="generateOrderForm()">Generate Order Form</button>
-                <button class="btn btn-secondary" onclick="saveJob()" style="margin-left:8px">Save Job</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- TAB 3: ORDER FORM -->
-    <div id="orderTab" class="tab-content">
-        <div class="print-header">
-            <h1>Material Order Form</h1>
-            <p>Generated by Stucco Material Calculator</p>
-        </div>
-        <div id="orderEmpty" class="empty-state">
-            <p>No order generated yet.</p>
-            <button class="btn btn-primary" onclick="showTab('calculator')">Go to Calculator</button>
-        </div>
-        <div id="orderContent" class="hidden">
-            <div class="toolbar no-print">
-                <label style="color:var(--text-secondary);font-size:0.82rem;font-weight:500">Phase:</label>
-                <select class="form-input" style="width:auto;padding:5px 8px;font-size:0.82rem" id="orderPhaseFilter" onchange="renderOrderTable()">
-                    <option value="All">All Phases</option>
-                </select>
-                <div class="toolbar-spacer"></div>
-                <button class="btn btn-primary btn-sm" onclick="printOrder()">Print Order</button>
-                <button class="btn btn-secondary btn-sm" onclick="exportOrderCSV()">Export CSV</button>
-            </div>
-            <div class="order-header">
-                <div>
-                    <div class="form-group"><label>Project Name</label><input type="text" class="form-input" id="orderProjectName" readonly></div>
-                    <div class="form-group"><label>Project Address</label><input type="text" class="form-input" id="orderProjectAddress" readonly></div>
-                </div>
-                <div>
-                    <div class="form-group"><label>Supplier</label><input type="text" class="form-input" id="orderSupplier" readonly></div>
-                    <div class="form-row form-row-2">
-                        <div class="form-group"><label>Date</label><input type="date" class="form-input" id="orderDate"></div>
-                        <div class="form-group"><label>PO Number</label><input type="text" class="form-input" id="orderPO" placeholder="Optional"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="table-wrap">
-                <table id="orderTable"><thead><tr>
-                    <th>SKU</th><th>Material</th><th class="text-center">Qty</th><th>Unit</th><th class="text-right">Unit Price</th><th class="text-right">Line Total</th>
-                </tr></thead><tbody id="orderTableBody"></tbody></table>
-            </div>
-            <div class="form-group no-print" style="margin-top:14px">
-                <label>Order Notes / Special Instructions</label>
-                <textarea class="form-input" id="orderNotes" rows="3" placeholder="Delivery instructions, jobsite access, special requests..."></textarea>
-            </div>
-            <div class="order-notes-print" id="orderNotesPrint" style="display:none"></div>
-        </div>
-    </div>
-
-    <!-- TAB 4: SAVED JOBS -->
-    <div id="savedJobsTab" class="tab-content">
-        <div class="toolbar">
-            <h3 style="font-size:1rem">Saved Jobs</h3>
-            <div class="toolbar-spacer"></div>
-            <button class="btn btn-danger btn-sm" onclick="clearAllJobs()">Clear All</button>
-        </div>
-        <div id="savedJobsList"></div>
-    </div>
-</div>
-
-<!-- Modals -->
-<div class="modal-overlay" id="addCategoryModal"><div class="modal">
-    <h3>Add New Phase</h3>
-    <div class="form-group"><label>Phase Name</label><input type="text" class="form-input" id="newCategoryName" placeholder="e.g. Painting, Trim"></div>
-    <div class="modal-actions"><button class="btn btn-secondary btn-sm" onclick="closeModal('addCategoryModal')">Cancel</button><button class="btn btn-success btn-sm" onclick="addCategory()">Add</button></div>
-</div></div>
-
-<div class="modal-overlay" id="deleteCategoryModal"><div class="modal">
-    <h3>Remove Phase</h3>
-    <div class="form-group"><label>Phase to remove</label><select class="form-input" id="deleteCategorySelect"></select></div>
-    <div class="form-group"><label>Scope</label><select class="form-input" id="deleteCategoryScope">
-        <option value="supplier">This supplier only</option>
-        <option value="all">All suppliers (removes phase entirely)</option>
-    </select></div>
-    <p style="font-size:0.78rem;color:var(--danger);margin-top:6px">"This supplier only" removes materials but keeps the phase. "All suppliers" deletes it everywhere.</p>
-    <div class="modal-actions"><button class="btn btn-secondary btn-sm" onclick="closeModal('deleteCategoryModal')">Cancel</button><button class="btn btn-danger btn-sm" onclick="deleteCategory()">Remove</button></div>
-</div></div>
-
-<div class="modal-overlay" id="addSupplierModal"><div class="modal">
-    <h3>Add Supplier</h3>
-    <div class="form-group"><label>Supplier Name</label><input type="text" class="form-input" id="newSupplierName" placeholder="e.g. Home Depot"></div>
-    <div class="form-group" style="margin-top:8px"><label><input type="checkbox" id="copyDefaultsToSupplier" checked> Pre-fill with default materials</label></div>
-    <div class="modal-actions"><button class="btn btn-secondary btn-sm" onclick="closeModal('addSupplierModal')">Cancel</button><button class="btn btn-success btn-sm" onclick="addSupplier()">Add</button></div>
-</div></div>
-
-<div class="modal-overlay" id="deleteSupplierModal"><div class="modal">
-    <h3>Remove Supplier</h3>
-    <p style="font-size:0.82rem;color:var(--text-secondary)">Remove "<span id="deleteSupplierName"></span>" and all its materials?</p>
-    <div class="modal-actions"><button class="btn btn-secondary btn-sm" onclick="closeModal('deleteSupplierModal')">Cancel</button><button class="btn btn-danger btn-sm" onclick="deleteSupplier()">Remove</button></div>
-</div></div>
-
-<div class="modal-overlay" id="duplicateModal"><div class="modal">
-    <h3>Copy Material to Supplier</h3>
-    <div class="form-group"><label>Target Supplier</label><select class="form-input" id="duplicateTarget"></select></div>
-    <div class="modal-actions"><button class="btn btn-secondary btn-sm" onclick="closeModal('duplicateModal')">Cancel</button><button class="btn btn-primary btn-sm" onclick="doDuplicate()">Copy</button></div>
-</div></div>
-
-<div class="modal-overlay" id="saveJobModal"><div class="modal">
-    <h3>Save Job</h3>
-    <div class="form-group"><label>Job Name</label><input type="text" class="form-input" id="saveJobName" placeholder="e.g. Smith Residence - April 2026"></div>
-    <div class="modal-actions"><button class="btn btn-secondary btn-sm" onclick="closeModal('saveJobModal')">Cancel</button><button class="btn btn-success btn-sm" onclick="doSaveJob()">Save</button></div>
-</div></div>
-
-<div class="notification" id="notification"></div>
-
-<script>
 // ===== DEFAULTS =====
 const DEFAULT_CATEGORIES = ['Lath', 'Gray Coat', 'Color Coat', 'Stone', 'Drywall', 'Painting'];
 const DEFAULT_SUPPLIERS = ['Pacific Supply', 'ABC Supply', 'Sherwin Williams'];
@@ -550,7 +78,6 @@ function loadData() {
             suppliers = JSON.parse(s);
             categories = JSON.parse(c);
             materialsBySupplier = JSON.parse(m);
-            // Migrate: add calcType if missing
             Object.values(materialsBySupplier).forEach(mats => mats.forEach(mat => {
                 if (!mat.calcType) mat.calcType = 'area';
             }));
@@ -705,10 +232,12 @@ function deleteCategory() {
     const scope = document.getElementById('deleteCategoryScope').value;
 
     if (scope === 'supplier') {
+        // Remove materials in this phase from current supplier only
         materialsBySupplier[activeSupplier] = (materialsBySupplier[activeSupplier]||[]).filter(m => m.category !== name);
         saveAll(); renderMaterialTable();
         closeModal('deleteCategoryModal'); notify(`"${name}" removed from ${activeSupplier}`,'success');
     } else {
+        // Remove phase globally and all its materials from every supplier
         categories = categories.filter(c => c !== name);
         suppliers.forEach(s => { materialsBySupplier[s] = (materialsBySupplier[s]||[]).filter(m => m.category !== name); });
         saveAll(); populateCategoryFilter(); populateOrderPhaseFilter(); renderMaterialTable();
@@ -926,13 +455,12 @@ function getSelectedPhases() {
     const boxes = document.querySelectorAll('#phaseCheckboxes input[type="checkbox"]');
     const selected = [];
     boxes.forEach(cb => { if (cb.checked) selected.push(cb.value); });
-    return selected.length > 0 ? selected : categories; // fallback to all if none checked
+    return selected.length > 0 ? selected : categories;
 }
 
 function renderPhaseCheckboxes() {
     const wrap = document.getElementById('phaseCheckboxes');
     const supplier = document.getElementById('calcSupplier').value;
-    // Only show phases that this supplier actually has materials for
     const supplierMats = materialsBySupplier[supplier] || [];
     const supplierPhases = [...new Set(supplierMats.map(m => m.category))];
 
@@ -1006,14 +534,12 @@ function calculateJob() {
 function renderCalcResults(r) {
     document.getElementById('calcResults').classList.remove('hidden');
 
-    // Phase cards
     document.getElementById('phaseCards').innerHTML = categories.map((cat,i) => {
         const p = r.phases[cat]; if (!p||p.count===0) return '';
         const c = i%8;
         return `<div class="phase-card phase-bg-${c}"><h3>${escHtml(cat)}</h3><div class="amount phase-color-${c}">${fmt(p.total)}</div><div class="items">${p.count} items</div></div>`;
     }).join('');
 
-    // Breakdown
     let bh = '';
     categories.forEach((cat,ci) => {
         const items = r.items.filter(i=>i.category===cat); if(!items.length) return;
@@ -1026,13 +552,11 @@ function renderCalcResults(r) {
     });
     document.getElementById('calcBreakdown').innerHTML = bh;
 
-    // Totals
     let sqftLabel = [];
     if (r.sqft > 0) sqftLabel.push(`${r.sqft.toLocaleString()} sqft`);
     if (r.linearFt > 0) sqftLabel.push(`${r.linearFt.toLocaleString()} lf`);
     document.getElementById('calcGrandTotal').innerHTML = `<h3>Material Total (${sqftLabel.join(' + ')} + ${r.waste}% waste) — ${escHtml(r.supplier)}</h3><div class="amount">${fmt(r.materialTotal)}</div>`;
 
-    // Summary grid
     let sg = `<div class="summary-card"><h4>Material Cost</h4><div class="val">${fmt(r.materialTotal)}</div></div>`;
     if (r.taxPct > 0) sg += `<div class="summary-card"><h4>Tax (${r.taxPct}%)</h4><div class="val">${fmt(r.taxAmount)}</div></div>`;
     if (r.laborTotal > 0) sg += `<div class="summary-card"><h4>Labor ($${r.laborRate}/sqft)</h4><div class="val">${fmt(r.laborTotal)}</div></div>`;
@@ -1049,7 +573,6 @@ function compareSuppliers() {
     const waste = parseFloat(document.getElementById('calcWaste').value)||0;
     if (sqft <= 0 && linearFt <= 0) { notify('Enter sqft or linear ft first','error'); return; }
 
-    // Calculate first if not done
     if (!currentCalc) calculateJob();
 
     const selectedPhases = getSelectedPhases();
@@ -1135,7 +658,6 @@ function renderOrderTable() {
     html += `<tr class="grand-total-row"><td colspan="5" class="text-right">${pf==='All'?'Grand':escHtml(pf)} Total:</td><td class="text-right">${fmt(filteredTotal)}</td></tr>`;
     tbody.innerHTML = html;
 
-    // Update print notes
     const notes = document.getElementById('orderNotes').value.trim();
     const notesPrint = document.getElementById('orderNotesPrint');
     if (notes) { notesPrint.innerHTML = `<h4>Notes:</h4>${escHtml(notes)}`; notesPrint.style.display = 'block'; }
@@ -1150,7 +672,6 @@ function updateOrderQty(id, val) {
 }
 
 function printOrder() {
-    // Sync notes for print
     const notes = document.getElementById('orderNotes').value.trim();
     const notesPrint = document.getElementById('orderNotesPrint');
     if (notes) { notesPrint.innerHTML = `<h4>Notes:</h4>${escHtml(notes)}`; notesPrint.style.display = 'block'; }
@@ -1259,12 +780,10 @@ function loadJob(id) {
     document.getElementById('calcTax').value = job.taxPct||0;
     document.getElementById('calcLabor').value = job.laborRate||0;
     showTab('calculator');
-    // Set supplier after dropdown is populated
     setTimeout(() => {
         const sel = document.getElementById('calcSupplier');
         if (suppliers.includes(job.supplier)) sel.value = job.supplier;
         renderPhaseCheckboxes();
-        // Restore selected phases if saved
         if (job.selectedPhases) {
             document.querySelectorAll('#phaseCheckboxes input[type="checkbox"]').forEach(cb => {
                 const checked = job.selectedPhases.includes(cb.value);
@@ -1297,13 +816,9 @@ document.addEventListener('DOMContentLoaded', function() {
     populateOrderPhaseFilter();
     updateUndoButtons();
 
-    // Update print notes when typing
     document.getElementById('orderNotes')?.addEventListener('input', function() {
         const np = document.getElementById('orderNotesPrint');
         if (this.value.trim()) { np.innerHTML = `<h4>Notes:</h4>${escHtml(this.value)}`; np.style.display='block'; }
         else np.style.display='none';
     });
 });
-</script>
-</body>
-</html>

@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stucco Material Calculator</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-left">
+            <h1 class="app-title">Stucco Material Calculator</h1>
+        </div>
+        <div class="header-right">
+            <button class="btn btn-icon" id="undoBtn" onclick="undo()" title="Undo" disabled>
+                <span class="icon">&#x21A9;</span> Undo
+            </button>
+            <button class="btn btn-icon" id="redoBtn" onclick="redo()" title="Redo" disabled>
+                <span class="icon">&#x21AA;</span> Redo
+            </button>
+            <button class="btn btn-icon" id="themeToggle" onclick="toggleTheme()" title="Toggle Theme">
+                <span class="icon" id="themeIcon">&#x1F319;</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Tab Navigation -->
+    <nav class="tab-nav">
+        <button class="tab-btn active" data-tab="pricingTab" onclick="switchTab('pricingTab')">Material Pricing</button>
+        <button class="tab-btn" data-tab="calculatorTab" onclick="switchTab('calculatorTab')">Job Calculator</button>
+        <button class="tab-btn" data-tab="orderTab" onclick="switchTab('orderTab')">Order Form</button>
+        <button class="tab-btn" data-tab="savedJobsTab" onclick="switchTab('savedJobsTab')">Saved Jobs</button>
+    </nav>
+
+    <!-- Tab 1: Material Pricing -->
+    <div id="pricingTab" class="tab-content active">
+        <!-- Supplier Sub-Tabs -->
+        <div class="supplier-tabs" id="supplierTabs">
+            <!-- Dynamically populated -->
+        </div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="toolbar-left">
+                <button class="btn btn-sm" onclick="importCSV()" title="Import CSV">
+                    <span class="icon">&#x1F4E5;</span> Import CSV
+                </button>
+                <button class="btn btn-sm" onclick="exportCSV()" title="Export CSV">
+                    <span class="icon">&#x1F4E4;</span> Export CSV
+                </button>
+                <select id="categoryFilter" onchange="filterByCategory()" class="select-sm">
+                    <option value="">All Categories</option>
+                </select>
+                <input type="text" id="searchBox" class="input-sm" placeholder="Search materials..." oninput="filterMaterials()">
+            </div>
+            <div class="toolbar-right">
+                <button class="btn btn-sm btn-primary" onclick="addMaterial()">
+                    <span class="icon">+</span> Add Material
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="resetMaterials()" title="Reset to defaults">
+                    <span class="icon">&#x21BB;</span> Reset
+                </button>
+            </div>
+        </div>
+
+        <!-- Material Table -->
+        <div class="table-container">
+            <table class="material-table" id="materialTable">
+                <thead>
+                    <tr>
+                        <th class="col-drag"></th>
+                        <th class="col-name">Material Name</th>
+                        <th class="col-sku">SKU</th>
+                        <th class="col-unit">Unit</th>
+                        <th class="col-price">Price</th>
+                        <th class="col-phase">Phase</th>
+                        <th class="col-type">Type</th>
+                        <th class="col-coverage">Coverage</th>
+                        <th class="col-actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="materialTableBody">
+                    <!-- Dynamically populated -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Tab 2: Job Calculator -->
+    <div id="calculatorTab" class="tab-content">
+        <div class="calculator-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="projectName">Project Name</label>
+                    <input type="text" id="projectName" class="input" placeholder="Enter project name">
+                </div>
+                <div class="form-group">
+                    <label for="projectAddress">Project Address</label>
+                    <input type="text" id="projectAddress" class="input" placeholder="Enter project address">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="supplierSelect">Supplier</label>
+                    <select id="supplierSelect" class="select" onchange="renderPhaseCheckboxes()">
+                        <!-- Dynamically populated -->
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="totalSqft">Total Square Feet</label>
+                    <input type="number" id="totalSqft" class="input" placeholder="0" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="linearFt">Linear Feet</label>
+                    <input type="number" id="linearFt" class="input" placeholder="0" min="0">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="wastePercent">Waste %</label>
+                    <input type="number" id="wastePercent" class="input" value="10" min="0" max="100">
+                </div>
+                <div class="form-group">
+                    <label for="markupPercent">Markup %</label>
+                    <input type="number" id="markupPercent" class="input" value="0" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="taxPercent">Tax %</label>
+                    <input type="number" id="taxPercent" class="input" value="0" min="0">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="laborPerSqft">Labor $/sqft</label>
+                    <input type="number" id="laborPerSqft" class="input" value="0" min="0" step="0.01">
+                </div>
+            </div>
+
+            <!-- Labor by Phase Grid -->
+            <div class="labor-phase-grid" id="laborPhaseGrid">
+                <!-- Dynamically populated -->
+            </div>
+
+            <!-- Phase Checkboxes -->
+            <div class="phase-checkboxes" id="phaseCheckboxes">
+                <!-- Dynamically populated -->
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-primary btn-lg" onclick="calculateJob()">Calculate</button>
+                <button class="btn btn-secondary btn-lg" onclick="compareSuppliers()">Compare Suppliers</button>
+            </div>
+        </div>
+
+        <!-- Results Area -->
+        <div class="results-area" id="resultsArea" style="display:none;">
+            <h2 class="results-title">Results</h2>
+
+            <!-- Phase Cards -->
+            <div class="phase-cards" id="phaseCards">
+                <!-- Dynamically populated -->
+            </div>
+
+            <!-- Breakdown -->
+            <div class="breakdown-section" id="breakdownSection">
+                <!-- Dynamically populated -->
+            </div>
+
+            <!-- Totals -->
+            <div class="totals-section" id="totalsSection">
+                <!-- Dynamically populated -->
+            </div>
+
+            <!-- Summary Grid -->
+            <div class="summary-grid" id="summaryGrid">
+                <!-- Dynamically populated -->
+            </div>
+
+            <!-- Comparison Section -->
+            <div class="comparison-section" id="comparisonSection" style="display:none;">
+                <!-- Dynamically populated -->
+            </div>
+
+            <div class="results-actions">
+                <button class="btn btn-primary" onclick="generateOrder()">Generate Order</button>
+                <button class="btn btn-secondary" onclick="openSaveJobModal()">Save Job</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 3: Order Form -->
+    <div id="orderTab" class="tab-content">
+        <!-- Print Header -->
+        <div class="print-header" id="printHeader">
+            <h1>Material Order</h1>
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state" id="orderEmptyState">
+            <p>No order generated yet. Use the Job Calculator to generate an order.</p>
+        </div>
+
+        <!-- Order Content -->
+        <div class="order-content" id="orderContent" style="display:none;">
+            <!-- Phase Filter -->
+            <div class="order-toolbar no-print">
+                <select id="orderPhaseFilter" onchange="filterOrderByPhase()">
+                    <option value="">All Phases</option>
+                </select>
+                <button class="btn btn-sm" onclick="printOrder()">
+                    <span class="icon">&#x1F5A8;</span> Print
+                </button>
+                <button class="btn btn-sm" onclick="exportOrderCSV()">
+                    <span class="icon">&#x1F4E4;</span> Export CSV
+                </button>
+            </div>
+
+            <!-- Order Header -->
+            <div class="order-header" id="orderHeader">
+                <div class="order-detail">
+                    <label>Project Name:</label>
+                    <span id="orderProjectName"></span>
+                </div>
+                <div class="order-detail">
+                    <label>Address:</label>
+                    <span id="orderProjectAddress"></span>
+                </div>
+                <div class="order-detail">
+                    <label>Supplier:</label>
+                    <span id="orderSupplier"></span>
+                </div>
+                <div class="order-detail">
+                    <label>Date:</label>
+                    <span id="orderDate"></span>
+                </div>
+                <div class="order-detail">
+                    <label>PO #:</label>
+                    <input type="text" id="orderPO" class="input-sm" placeholder="Enter PO number">
+                </div>
+            </div>
+
+            <!-- Order Table -->
+            <div class="table-container">
+                <table class="order-table" id="orderTable">
+                    <thead>
+                        <tr>
+                            <th>Phase</th>
+                            <th>Material</th>
+                            <th>SKU</th>
+                            <th>Qty Needed</th>
+                            <th>Unit</th>
+                            <th>Unit Price</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orderTableBody">
+                        <!-- Dynamically populated -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Order Notes -->
+            <div class="order-notes no-print">
+                <label for="orderNotes">Order Notes:</label>
+                <textarea id="orderNotes" class="textarea" rows="4" placeholder="Add any notes for this order..."></textarea>
+            </div>
+            <div class="order-notes-print" id="orderNotesPrint">
+                <!-- Populated on print -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 4: Saved Jobs -->
+    <div id="savedJobsTab" class="tab-content">
+        <div class="saved-jobs-toolbar">
+            <h2 class="section-title">Saved Jobs</h2>
+            <button class="btn btn-sm btn-danger" onclick="clearAllJobs()">Clear All</button>
+        </div>
+        <div class="saved-jobs-list" id="savedJobsList">
+            <!-- Dynamically populated -->
+        </div>
+    </div>
+
+    <!-- Modal: Add Category -->
+    <div class="modal-overlay" id="addCategoryModal" style="display:none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Add Category</h3>
+                <button class="btn btn-icon modal-close" onclick="closeModal('addCategoryModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="newCategoryName">Category Name</label>
+                    <input type="text" id="newCategoryName" class="input" placeholder="Enter category name">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('addCategoryModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="confirmAddCategory()">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Delete Category -->
+    <div class="modal-overlay" id="deleteCategoryModal">
+        <div class="modal">
+            <h3>Remove Phase</h3>
+            <div class="form-group">
+                <label>Phase to remove</label>
+                <select class="form-input" id="deleteCategorySelect"></select>
+            </div>
+            <div class="form-group">
+                <label>Scope</label>
+                <select class="form-input" id="deleteCategoryScope">
+                    <option value="supplier">This supplier only</option>
+                    <option value="all">All suppliers (removes phase entirely)</option>
+                </select>
+            </div>
+            <p style="font-size:0.78rem;color:var(--danger);margin-top:6px">"This supplier only" removes materials but keeps the phase available. "All suppliers" deletes the phase everywhere.</p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary btn-sm" onclick="closeModal('deleteCategoryModal')">Cancel</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteCategory()">Remove</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Add Supplier -->
+    <div class="modal-overlay" id="addSupplierModal" style="display:none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Add Supplier</h3>
+                <button class="btn btn-icon modal-close" onclick="closeModal('addSupplierModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="newSupplierName">Supplier Name</label>
+                    <input type="text" id="newSupplierName" class="input" placeholder="Enter supplier name">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('addSupplierModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="confirmAddSupplier()">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Delete Supplier -->
+    <div class="modal-overlay" id="deleteSupplierModal" style="display:none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Delete Supplier</h3>
+                <button class="btn btn-icon modal-close" onclick="closeModal('deleteSupplierModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Select a supplier to delete:</p>
+                <select id="deleteSupplierSelect" class="select">
+                    <!-- Dynamically populated -->
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('deleteSupplierModal')">Cancel</button>
+                <button class="btn btn-danger" onclick="confirmDeleteSupplier()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Duplicate Material -->
+    <div class="modal-overlay" id="duplicateModal" style="display:none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Duplicate Material</h3>
+                <button class="btn btn-icon modal-close" onclick="closeModal('duplicateModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Select target supplier for the duplicate:</p>
+                <select id="duplicateTargetSupplier" class="select">
+                    <!-- Dynamically populated -->
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('duplicateModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="confirmDuplicate()">Duplicate</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Save Job -->
+    <div class="modal-overlay" id="saveJobModal" style="display:none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Save Job</h3>
+                <button class="btn btn-icon modal-close" onclick="closeModal('saveJobModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="saveJobName">Job Name</label>
+                    <input type="text" id="saveJobName" class="input" placeholder="Enter job name">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('saveJobModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="confirmSaveJob()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification" style="display:none;"></div>
+
+    <!-- Hidden file input for CSV import -->
+    <input type="file" id="csvFileInput" accept=".csv" style="display:none;" onchange="handleCSVImport(event)">
+
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
