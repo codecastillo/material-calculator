@@ -174,21 +174,31 @@ function renderSupplierTabs(){
 }
 function switchSupplier(name){activeSupplier=name;editingId=null;renderSupplierTabs();populateCategoryFilter();renderMaterialTable()}
 function openAddSupplierModal(){document.getElementById('newSupplierName').value='';openModal('addSupplierModal')}
-function addSupplier(){const name=document.getElementById('newSupplierName').value.trim();if(!name){notify('Enter name','error');return}if(suppliers.includes(name)){notify('Already exists','error');return}pushUndo();const copy=document.getElementById('copyDefaultsToSupplier').checked;suppliers.push(name);const now=Date.now();materialsBySupplier[name]=copy?[...STUCCO_LATH,...STUCCO_GRAY,...STUCCO_COLOR].map(m=>({...m,id:genId(),lastUpdated:now})):[];activeSupplier=name;saveAll();renderSupplierTabs();renderMaterialTable();populateCategoryFilter();closeModal('addSupplierModal');notify(`"${name}" added`,'success')}
+async function addSupplier(){const name=document.getElementById('newSupplierName').value.trim();if(!name){notify('Enter name','error');return}if(suppliers.includes(name)){notify('Already exists','error');return}pushUndo();suppliers.push(name);materialsBySupplier[name]=[];activeSupplier=name;
+    if(api.getToken()){try{const r=await api.createSupplier(name);if(r.supplier&&window._supplierIdMap)window._supplierIdMap[name]=r.supplier.id}catch(e){console.warn('API:',e.message)}}
+    saveAll();renderSupplierTabs();renderMaterialTable();populateCategoryFilter();closeModal('addSupplierModal');notify(`"${name}" added`,'success')}
 function confirmDeleteSupplier(name){if(suppliers.length<=1){notify('Need at least one','error');return}document.getElementById('deleteSupplierName').textContent=name;document.getElementById('deleteSupplierModal').dataset.supplier=name;openModal('deleteSupplierModal')}
-function deleteSupplier(){pushUndo();const name=document.getElementById('deleteSupplierModal').dataset.supplier;suppliers=suppliers.filter(s=>s!==name);delete materialsBySupplier[name];if(activeSupplier===name)activeSupplier=suppliers[0];saveAll();renderSupplierTabs();renderMaterialTable();closeModal('deleteSupplierModal');notify(`"${name}" removed`,'success')}
+async function deleteSupplier(){pushUndo();const name=document.getElementById('deleteSupplierModal').dataset.supplier;
+    if(api.getToken()&&window._supplierIdMap?.[name]){try{await api.deleteSupplier(window._supplierIdMap[name]);delete window._supplierIdMap[name]}catch(e){console.warn('API:',e.message)}}
+    suppliers=suppliers.filter(s=>s!==name);delete materialsBySupplier[name];if(activeSupplier===name)activeSupplier=suppliers[0];saveAll();renderSupplierTabs();renderMaterialTable();closeModal('deleteSupplierModal');notify(`"${name}" removed`,'success')}
 
 // ===== CATEGORIES =====
 function getSupplierPhases(supplier){const mats=materialsBySupplier[supplier]||[];return[...new Set(mats.map(m=>m.category))].sort((a,b)=>categories.indexOf(a)-categories.indexOf(b))}
 function populateCategoryFilter(){const sel=document.getElementById('categoryFilter');const v=sel.value;const sp=getSupplierPhases(activeSupplier);sel.innerHTML='<option value="All">All Phases</option>'+sp.map(c=>`<option>${c}</option>`).join('');if(sp.includes(v)||v==='All')sel.value=v;else sel.value='All'}
-function addCategory(){const name=document.getElementById('newCategoryName').value.trim();if(!name){notify('Enter name','error');return}if(categories.includes(name)){notify('Exists','error');return}categories.push(name);saveAll();populateCategoryFilter();populateOrderPhaseFilter();closeModal('addCategoryModal');notify(`Phase "${name}" added`,'success')}
+async function addCategory(){const name=document.getElementById('newCategoryName').value.trim();if(!name){notify('Enter name','error');return}if(categories.includes(name)){notify('Exists','error');return}categories.push(name);
+    if(api.getToken()){try{const r=await api.createCategory(name);if(r.category&&window._categoryIdMap)window._categoryIdMap[name]=r.category.id}catch(e){console.warn('API:',e.message)}}
+    saveAll();populateCategoryFilter();populateOrderPhaseFilter();closeModal('addCategoryModal');notify(`Phase "${name}" added`,'success')}
 function openDeleteCategoryModal(){const sp=getSupplierPhases(activeSupplier);document.getElementById('deleteCategorySelect').innerHTML=sp.map(c=>`<option>${c}</option>`).join('');if(!sp.length){notify('No phases','error');return}openModal('deleteCategoryModal')}
-function deleteCategory(){
+async function deleteCategory(){
     pushUndo();const name=document.getElementById('deleteCategorySelect').value;const scope=document.getElementById('deleteCategoryScope').value;
     if(scope==='supplier'){
+        // Delete materials in this phase from current supplier via API
+        if(api.getToken()){const mats=materialsBySupplier[activeSupplier]||[];for(const m of mats.filter(m=>m.category===name)){try{await api.deleteMaterial(m.id)}catch(e){}}}
         materialsBySupplier[activeSupplier]=(materialsBySupplier[activeSupplier]||[]).filter(m=>m.category!==name);
         saveAll();populateCategoryFilter();renderMaterialTable();closeModal('deleteCategoryModal');notify(`"${name}" removed from ${activeSupplier}`,'success');
     }else{
+        // Delete category globally via API
+        if(api.getToken()&&window._categoryIdMap?.[name]){try{await api.deleteCategory(window._categoryIdMap[name]);delete window._categoryIdMap[name]}catch(e){console.warn('API:',e.message)}}
         categories=categories.filter(c=>c!==name);
         suppliers.forEach(s=>{materialsBySupplier[s]=(materialsBySupplier[s]||[]).filter(m=>m.category!==name)});
         saveAll();populateCategoryFilter();populateOrderPhaseFilter();renderMaterialTable();closeModal('deleteCategoryModal');notify(`Phase "${name}" deleted`,'success');
@@ -247,15 +257,31 @@ function updateStatsBar(){const mats=materialsBySupplier[activeSupplier]||[];con
 
 function editMaterial(id){editingId=id;renderMaterialTable()}
 function cancelEdit(){editingId=null;renderMaterialTable()}
-function saveMaterialEdit(id){const mats=materialsBySupplier[activeSupplier]||[];const mat=mats.find(m=>m.id===id);if(!mat)return;const name=document.getElementById('edit-name').value.trim();const price=parseFloat(document.getElementById('edit-price').value);const coverage=parseFloat(document.getElementById('edit-coverage').value);if(!name){notify('Name required','error');return}if(isNaN(price)||price<0){notify('Invalid price','error');return}if(isNaN(coverage)||coverage<=0){notify('Coverage > 0','error');return}pushUndo();if(mat.pricePerUnit!==price)mat.previousPrice=mat.pricePerUnit;mat.name=name;mat.sku=document.getElementById('edit-sku').value.trim();mat.unit=document.getElementById('edit-unit').value;mat.pricePerUnit=price;mat.category=document.getElementById('edit-category').value;mat.calcType=document.getElementById('edit-calcType').value;mat.coveragePerUnit=coverage;mat.lastUpdated=Date.now();editingId=null;saveAll();renderMaterialTable();notify('Updated','success')}
-function addMaterial(){pushUndo();const mats=materialsBySupplier[activeSupplier]||[];const m={id:genId(),name:'New Material',sku:'',unit:'each',pricePerUnit:0,category:categories[0]||'Lath',coveragePerUnit:100,calcType:'area',lastUpdated:Date.now()};mats.push(m);materialsBySupplier[activeSupplier]=mats;saveAll();editingId=m.id;document.getElementById('categoryFilter').value='All';document.getElementById('materialSearch').value='';renderMaterialTable()}
-function deleteMaterial(id){const mats=materialsBySupplier[activeSupplier]||[];const mat=mats.find(m=>m.id===id);if(!mat||!confirm(`Delete "${mat.name}"?`))return;pushUndo();materialsBySupplier[activeSupplier]=mats.filter(m=>m.id!==id);saveAll();renderMaterialTable();notify('Deleted','success')}
+async function saveMaterialEdit(id){const mats=materialsBySupplier[activeSupplier]||[];const mat=mats.find(m=>m.id===id);if(!mat)return;const name=document.getElementById('edit-name').value.trim();const price=parseFloat(document.getElementById('edit-price').value);const coverage=parseFloat(document.getElementById('edit-coverage').value);if(!name){notify('Name required','error');return}if(isNaN(price)||price<0){notify('Invalid price','error');return}if(isNaN(coverage)||coverage<=0){notify('Coverage > 0','error');return}pushUndo();if(mat.pricePerUnit!==price)mat.previousPrice=mat.pricePerUnit;
+    const newCat=document.getElementById('edit-category').value;const newCalcType=document.getElementById('edit-calcType').value;
+    mat.name=name;mat.sku=document.getElementById('edit-sku').value.trim();mat.unit=document.getElementById('edit-unit').value;mat.pricePerUnit=price;mat.category=newCat;mat.calcType=newCalcType;mat.coveragePerUnit=coverage;mat.lastUpdated=Date.now();
+    if(api.getToken()){try{await api.updateMaterial(id,{name:mat.name,sku:mat.sku,unit:mat.unit,price_per_unit:price,category_id:window._categoryIdMap?.[newCat],coverage_per_unit:coverage,calc_type:newCalcType==='linear'?'linear_ft':'sqft'})}catch(e){console.warn('API:',e.message)}}
+    editingId=null;saveAll();renderMaterialTable();notify('Updated','success')}
+async function addMaterial(){pushUndo();const mats=materialsBySupplier[activeSupplier]||[];
+    const catName=categories[0]||'Lath';
+    let newId=genId();
+    if(api.getToken()&&window._supplierIdMap?.[activeSupplier]){
+        try{const r=await api.createMaterial(window._supplierIdMap[activeSupplier],{name:'New Material',sku:'',unit:'each',price_per_unit:0,category_id:window._categoryIdMap?.[catName],coverage_per_unit:100,calc_type:'sqft'});if(r.material)newId=r.material.id}catch(e){console.warn('API:',e.message)}
+    }
+    const m={id:newId,name:'New Material',sku:'',unit:'each',pricePerUnit:0,category:catName,coveragePerUnit:100,calcType:'area',lastUpdated:Date.now()};
+    mats.push(m);materialsBySupplier[activeSupplier]=mats;saveAll();editingId=m.id;document.getElementById('categoryFilter').value='All';document.getElementById('materialSearch').value='';renderMaterialTable()}
+async function deleteMaterial(id){const mats=materialsBySupplier[activeSupplier]||[];const mat=mats.find(m=>m.id===id);if(!mat||!confirm(`Delete "${mat.name}"?`))return;pushUndo();
+    if(api.getToken()){try{await api.deleteMaterial(id)}catch(e){console.warn('API:',e.message)}}
+    materialsBySupplier[activeSupplier]=mats.filter(m=>m.id!==id);saveAll();renderMaterialTable();notify('Deleted','success')}
 function resetToDefaults(){if(!confirm('Reset ALL data to defaults?'))return;pushUndo();resetAllToDefaults(false);editingId=null;renderSupplierTabs();populateCategoryFilter();renderMaterialTable();populateOrderPhaseFilter()}
 
 // Duplicate
 let duplicateMatId=null;
 function openDuplicate(id){duplicateMatId=id;const sel=document.getElementById('duplicateTarget');sel.innerHTML=suppliers.filter(s=>s!==activeSupplier).map(s=>`<option>${s}</option>`).join('');if(!sel.innerHTML){notify('No other suppliers','error');return}openModal('duplicateModal')}
-function doDuplicate(){const target=document.getElementById('duplicateTarget').value;const src=(materialsBySupplier[activeSupplier]||[]).find(m=>m.id===duplicateMatId);if(!src||!target)return;pushUndo();if(!materialsBySupplier[target])materialsBySupplier[target]=[];materialsBySupplier[target].push({...src,id:genId()});saveAll();closeModal('duplicateModal');notify(`Copied to ${target}`,'success')}
+async function doDuplicate(){const target=document.getElementById('duplicateTarget').value;const src=(materialsBySupplier[activeSupplier]||[]).find(m=>m.id===duplicateMatId);if(!src||!target)return;pushUndo();
+    let newId=genId();
+    if(api.getToken()){try{const r=await api.createMaterial(window._supplierIdMap?.[target],{name:src.name,sku:src.sku,unit:src.unit,price_per_unit:src.pricePerUnit,category_id:window._categoryIdMap?.[src.category],coverage_per_unit:src.coveragePerUnit,calc_type:src.calcType==='linear'?'linear_ft':'sqft'});if(r.material)newId=r.material.id}catch(e){console.warn('API:',e.message)}}
+    if(!materialsBySupplier[target])materialsBySupplier[target]=[];materialsBySupplier[target].push({...src,id:newId});saveAll();closeModal('duplicateModal');notify(`Copied to ${target}`,'success')}
 
 // Drag
 function dragStart(e){dragSrcId=e.currentTarget.dataset.id;e.currentTarget.classList.add('dragging');e.dataTransfer.effectAllowed='move'}
