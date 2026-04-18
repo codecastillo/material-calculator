@@ -151,7 +151,7 @@ function requireLicense(action){
 }
 const FREE_JOB_LIMIT=3;
 function togglePrintWatermark(show){const el=document.getElementById('printWatermark');if(el)el.classList.toggle('active',show)}
-function printBid(){togglePrintWatermark(!isLicensed());window.print();togglePrintWatermark(false)}
+function printBid(){const showWM=!isLicensed();togglePrintWatermark(showWM);setTimeout(()=>{window.print();togglePrintWatermark(false)},100)}
 
 // Utils
 function genId(){return'mat-'+Date.now()+'-'+Math.random().toString(36).substring(2,7)}
@@ -533,7 +533,7 @@ function generateOrderForm(){if(!currentCalc){notify('Calculate first','error');
 function renderOrderTable(){if(!currentCalc)return;const pf=document.getElementById('orderPhaseFilter').value;const tbody=document.getElementById('orderTableBody');let html='',ft=0;categories.forEach((cat,ci)=>{if(pf!=='All'&&pf!==cat)return;const items=currentCalc.items.filter(i=>i.category===cat);if(!items.length)return;const c=ci%8;html+=`<tr class="phase-header"><td colspan="6" class="pc${c}">${escHtml(cat)}</td></tr>`;let pt=0;items.forEach(item=>{html+=`<tr data-id="${item.id}"><td class="mono" style="font-size:.8rem">${escHtml(item.sku)}</td><td>${escHtml(item.name)}</td><td class="text-center"><input type="number" class="order-qty-input" value="${item.qty}" min="0" onchange="updateOrderQty('${item.id}',this.value)"></td><td>${item.unit}</td><td class="text-right mono">${fmt(item.pricePerUnit)}</td><td class="text-right mono">${fmt(item.lineTotal)}</td></tr>`;pt+=item.lineTotal});html+=`<tr class="subtotal-row"><td colspan="5" class="text-right">${escHtml(cat)} Subtotal:</td><td class="text-right mono">${fmt(pt)}</td></tr>`;ft+=pt});if(currentCalc.taxPct>0){const tax=ft*(currentCalc.taxPct/100);html+=`<tr class="tax-row"><td colspan="5" class="text-right">Tax (${currentCalc.taxPct}%):</td><td class="text-right mono">${fmt(tax)}</td></tr>`;ft+=tax}html+=`<tr class="grand-total-row"><td colspan="5" class="text-right">${pf==='All'?'Grand':escHtml(pf)} Total:</td><td class="text-right mono">${fmt(ft)}</td></tr>`;tbody.innerHTML=html;const notes=document.getElementById('orderNotes').value.trim();const np=document.getElementById('orderNotesPrint');if(notes){np.innerHTML=`<h4>Notes:</h4>${escHtml(notes)}`;np.style.display='block'}else np.style.display='none'}
 function updateOrderQty(id,val){const qty=Math.max(0,parseInt(val)||0);const item=currentCalc.items.find(i=>i.id===id);if(!item)return;item.qty=qty;item.lineTotal=qty*item.pricePerUnit;renderOrderTable()}
 function printOrder(){const notes=document.getElementById('orderNotes').value.trim();const np=document.getElementById('orderNotesPrint');if(notes){np.innerHTML=`<h4>Notes:</h4>${escHtml(notes)}`;np.style.display='block'}else np.style.display='none';
-    togglePrintWatermark(!isLicensed());window.print();togglePrintWatermark(false)}
+    const showWM=!isLicensed();togglePrintWatermark(showWM);setTimeout(()=>{window.print();togglePrintWatermark(false)},100)}
 function exportOrderCSV(){if(!requireLicense('export CSV'))return;if(!currentCalc)return;const pf=document.getElementById('orderPhaseFilter').value,pn=document.getElementById('orderProjectName').value,pa=document.getElementById('orderProjectAddress').value,sup=document.getElementById('orderSupplier').value,dt=document.getElementById('orderDate').value,po=document.getElementById('orderPO').value,notes=document.getElementById('orderNotes').value;let csv=`"Project","${pn}"\n"Address","${pa}"\n"Supplier","${sup}"\n"Date","${dt}"\n"PO#","${po}"\n`;if(notes)csv+=`"Notes","${notes.replace(/"/g,'""')}"\n`;csv+='\nSKU,Material,Phase,Qty,Unit,Unit Price,Line Total\n';let total=0;categories.forEach(cat=>{if(pf!=='All'&&pf!==cat)return;currentCalc.items.filter(i=>i.category===cat).forEach(item=>{csv+=`"${item.sku}","${item.name.replace(/"/g,'""')}","${item.category}",${item.qty},"${item.unit}",${item.pricePerUnit},${item.lineTotal}\n`;total+=item.lineTotal})});csv+=`,,,,,"Total",${total.toFixed(2)}\n`;const blob=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`order-${(pn||'order').replace(/\s+/g,'-').toLowerCase()}-${dt||'draft'}.csv`;a.click();URL.revokeObjectURL(a.href);notify('Exported','success')}
 
 // ===== BID SUMMARY =====
@@ -620,14 +620,14 @@ async function updateProfile(){
         currentUser=r.user;
         if(r.token)api.setToken(r.token);
         showAppScreen();renderAccountPage();
-        msg.textContent='Saved!';msg.style.color='var(--ok)';
-    }catch(e){msg.textContent=e.message;msg.style.color='var(--err)'}
+        msg.textContent='Saved!';msg.style.color='var(--ok)';setTimeout(()=>{msg.textContent=''},3000);
+    }catch(e){msg.textContent=e.message;msg.style.color='var(--err)';setTimeout(()=>{msg.textContent=''},5000)}
 }
 
 // Admin view toggle
-let adminViewAsUser=false;
+window.adminViewAsUser=false;
 function toggleAdminView(){
-    adminViewAsUser=!adminViewAsUser;
+    window.adminViewAsUser=!adminViewAsUser;
     const floatingBtn=document.getElementById('adminFloatingBtn');
     if(adminViewAsUser){
         document.getElementById('adminNavLink').style.display='none';
