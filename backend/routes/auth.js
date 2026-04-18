@@ -15,7 +15,7 @@ function generateCode() { return Math.floor(100000 + Math.random() * 900000).toS
 
 async function sendVerificationEmail(email, code) {
   await resend.emails.send({
-    from: 'EstiCount <onboarding@resend.dev>',
+    from: 'EstiCount <noreply@esticount.com>',
     to: email,
     subject: 'EstiCount - Verify your email',
     html: `
