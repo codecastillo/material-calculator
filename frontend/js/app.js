@@ -565,10 +565,6 @@ async function renderAccountPage(){
     document.getElementById('accountNameInput').value=currentUser.name||'';
     document.getElementById('accountEmailInput').value=currentUser.email||'';
     document.getElementById('accountPasswordInput').value='';
-    const roleBadge=document.getElementById('accountRoleBadge');
-    roleBadge.textContent=currentUser.role==='admin'?'ADMIN':'USER';
-    roleBadge.style.background=currentUser.role==='admin'?'var(--pri-soft)':'var(--warn-soft)';
-    roleBadge.style.color=currentUser.role==='admin'?'var(--pri)':'var(--warn)';
     const lt=currentUser.license_type||'trial';
     const hasKey=!!currentUser.license_key;
     const exp=currentUser.license_expires?new Date(currentUser.license_expires):null;
