@@ -572,8 +572,11 @@ async function renderAccountPage(){
     const isActive=hasKey&&!isExpired;
     const expStr=exp?exp.toLocaleDateString():'Never';
     let statusText,statusClass;
-    if(!hasKey){statusText='No key activated';statusClass='warn'}
-    else if(isExpired){statusText='Expired '+expStr;statusClass='err'}
+    if(!hasKey){statusText='Activate a license key below';statusClass='warn';document.getElementById('accountLicense').innerHTML=`
+        <div class="license-status"><span class="dot trial"></span><strong style="font-size:.95rem">NO LICENSE</strong></div>
+        <div class="license-detail">${statusText}</div>
+        <span class="badge" style="background:var(--warn-soft);color:var(--warn)">Inactive</span>`;return}
+    if(isExpired){statusText='Expired '+expStr;statusClass='err'}
     else if(lt==='lifetime'){statusText='Never expires';statusClass='ok'}
     else{statusText='Expires: '+expStr;statusClass='ok'}
     document.getElementById('accountLicense').innerHTML=`

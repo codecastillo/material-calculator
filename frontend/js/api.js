@@ -123,11 +123,13 @@ function showAppScreen() {
         // Show/hide license badge
         const licenseBadge = document.getElementById('licenseBadge');
         if (licenseBadge) {
+            const hasKey = !!currentUser.license_key;
             if (currentUser.role === 'admin' && !window.adminViewAsUser) {
+                licenseBadge.style.display = 'none';
+            } else if (!hasKey) {
                 licenseBadge.style.display = 'none';
             } else {
                 const lt = currentUser.license_type || 'trial';
-                const hasKey = !!currentUser.license_key;
                 const exp = currentUser.license_expires ? new Date(currentUser.license_expires) : null;
                 const isExpired = exp && exp < new Date();
                 const isActive = hasKey && !isExpired;
