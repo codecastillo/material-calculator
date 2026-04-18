@@ -3,417 +3,250 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stucco Material Calculator</title>
+    <title>EstiCount</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <!-- Header -->
-    <header class="app-header">
-        <div class="header-left">
-            <h1 class="app-title">Stucco Material Calculator</h1>
-        </div>
-        <div class="header-right">
-            <button class="btn btn-icon" id="undoBtn" onclick="undo()" title="Undo" disabled>
-                <span class="icon">&#x21A9;</span> Undo
-            </button>
-            <button class="btn btn-icon" id="redoBtn" onclick="redo()" title="Redo" disabled>
-                <span class="icon">&#x21AA;</span> Redo
-            </button>
-            <button class="btn btn-icon" id="themeToggle" onclick="toggleTheme()" title="Toggle Theme">
-                <span class="icon" id="themeIcon">&#x1F319;</span>
-            </button>
-        </div>
-    </header>
 
-    <!-- Tab Navigation -->
-    <nav class="tab-nav">
-        <button class="tab-btn active" data-tab="pricingTab" onclick="switchTab('pricingTab')">Material Pricing</button>
-        <button class="tab-btn" data-tab="calculatorTab" onclick="switchTab('calculatorTab')">Job Calculator</button>
-        <button class="tab-btn" data-tab="orderTab" onclick="switchTab('orderTab')">Order Form</button>
-        <button class="tab-btn" data-tab="savedJobsTab" onclick="switchTab('savedJobsTab')">Saved Jobs</button>
-    </nav>
-
-    <!-- Tab 1: Material Pricing -->
-    <div id="pricingTab" class="tab-content active">
-        <!-- Supplier Sub-Tabs -->
-        <div class="supplier-tabs" id="supplierTabs">
-            <!-- Dynamically populated -->
+<!-- TOP NAV -->
+<nav class="topnav">
+    <div class="topnav-inner">
+        <div class="topnav-left">
+            <a href="#" class="topnav-brand" onclick="showPage('dashboard');return false">
+                <img src="assets/logo.png" alt="EstiCount" class="brand-logo">
+                <span class="brand-name">EstiCount</span>
+            </a>
         </div>
+        <div class="topnav-links" id="topnavLinks">
+            <button class="nav-link active" data-page="dashboard" onclick="showPage('dashboard')">Dashboard</button>
+            <button class="nav-link" data-page="pricing" onclick="showPage('pricing')">Pricing</button>
+            <button class="nav-link" data-page="calculator" onclick="showPage('calculator')">Calculator</button>
+            <button class="nav-link" data-page="order" onclick="showPage('order')">Orders</button>
+            <button class="nav-link" data-page="bid" onclick="showPage('bid')">Bids</button>
+            <button class="nav-link" data-page="savedJobs" onclick="showPage('savedJobs')">Saved Jobs</button>
+        </div>
+        <div class="topnav-right">
+            <button class="btn-icon" onclick="undo()" title="Undo" id="undoBtn" disabled>&#8630;</button>
+            <button class="btn-icon" onclick="redo()" title="Redo" id="redoBtn" disabled>&#8631;</button>
+            <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
+        </div>
+    </div>
+</nav>
 
-        <!-- Toolbar -->
-        <div class="toolbar">
-            <div class="toolbar-left">
-                <button class="btn btn-sm" onclick="importCSV()" title="Import CSV">
-                    <span class="icon">&#x1F4E5;</span> Import CSV
-                </button>
-                <button class="btn btn-sm" onclick="exportCSV()" title="Export CSV">
-                    <span class="icon">&#x1F4E4;</span> Export CSV
-                </button>
-                <select id="categoryFilter" onchange="filterByCategory()" class="select-sm">
-                    <option value="">All Categories</option>
+<!-- PAGE HEADER (back button + title) -->
+<div class="page-header" id="pageHeader" style="display:none">
+    <div class="page-header-inner">
+        <button class="back-btn" onclick="goBack()">&#8592; Back</button>
+        <h2 id="pageTitle"></h2>
+    </div>
+</div>
+
+<main class="main-container">
+
+<!-- ===== DASHBOARD ===== -->
+<div class="page active" id="dashboardPage">
+    <div class="dash-hero">
+        <img src="assets/logo.png" alt="EstiCount" class="dash-logo">
+        <h2>EstiCount</h2>
+        <p>Material Estimating & Order Management</p>
+    </div>
+    <div class="dash-stats" id="dashStats"></div>
+    <div class="dash-actions">
+        <button class="dash-card primary" onclick="showPage('calculator')">
+            <div class="dash-card-icon">&#9998;</div>
+            <div class="dash-card-text"><strong>New Calculation</strong><span>Estimate materials for a job</span></div>
+        </button>
+        <button class="dash-card" onclick="showPage('pricing')">
+            <div class="dash-card-icon">&#9776;</div>
+            <div class="dash-card-text"><strong>Material Pricing</strong><span>Manage materials & suppliers</span></div>
+        </button>
+        <button class="dash-card" onclick="showPage('order')">
+            <div class="dash-card-icon">&#9993;</div>
+            <div class="dash-card-text"><strong>Order Form</strong><span>Generate & print orders</span></div>
+        </button>
+        <button class="dash-card" onclick="showPage('savedJobs')">
+            <div class="dash-card-icon">&#9733;</div>
+            <div class="dash-card-text"><strong>Saved Jobs</strong><span>Load previous estimates</span></div>
+        </button>
+    </div>
+    <div class="dash-section"><h3>Recent Jobs</h3><div id="dashRecentJobs"></div></div>
+    <div class="dash-section"><h3>Suppliers</h3><div id="dashSuppliers" class="dash-suppliers-grid"></div></div>
+</div>
+
+<!-- ===== PRICING ===== -->
+<div class="page" id="pricingPage">
+    <div class="supplier-pills" id="supplierTabs"></div>
+
+    <div class="toolbar">
+        <div class="toolbar-group">
+            <button class="btn btn-sm btn-primary" onclick="document.getElementById('csvFileInput').click()">Import CSV</button>
+            <button class="btn btn-sm btn-secondary" onclick="exportCSV()">Export CSV</button>
+            <input type="file" id="csvFileInput" accept=".csv" onchange="handleCSVImport(event)" style="display:none">
+        </div>
+        <div class="toolbar-group">
+            <select class="toolbar-select" id="categoryFilter" onchange="renderMaterialTable()">
+                <option value="All">All Phases</option>
+            </select>
+        </div>
+        <div class="toolbar-spacer"></div>
+        <div class="toolbar-group">
+            <input type="text" class="toolbar-search" id="materialSearch" placeholder="Search..." oninput="renderMaterialTable()">
+        </div>
+        <div class="toolbar-group">
+            <button class="btn btn-sm btn-success" onclick="addMaterial()">+ Material</button>
+            <button class="btn btn-sm btn-success" onclick="openModal('addCategoryModal')">+ Phase</button>
+            <button class="btn btn-sm btn-secondary" onclick="openDeleteCategoryModal()">- Phase</button>
+            <button class="btn btn-sm btn-secondary" onclick="resetToDefaults()">Reset</button>
+        </div>
+    </div>
+
+    <div class="scope-groups" id="scopeGroups"></div>
+    <div class="stats-bar" id="statsBar"></div>
+</div>
+
+<!-- ===== CALCULATOR ===== -->
+<div class="page" id="calculatorPage">
+    <div class="calc-section">
+        <h3 class="calc-section-title">Project Info</h3>
+        <div class="form-row-2">
+            <div class="field"><label>Project Name</label><input type="text" class="input" id="calcProjectName" placeholder="e.g. Smith Residence"></div>
+            <div class="field"><label>Project Address</label><input type="text" class="input" id="calcProjectAddress" placeholder="e.g. 123 Main St, City, ST"></div>
+        </div>
+    </div>
+
+    <div class="calc-section">
+        <h3 class="calc-section-title">Job Details</h3>
+        <div class="form-row-4">
+            <div class="field"><label>Supplier</label><select class="input" id="calcSupplier" onchange="renderPhaseCheckboxes()"></select></div>
+            <div class="field"><label>Wall Area (sqft)</label><input type="number" class="input input-big" id="calcSqft" placeholder="0" min="0"></div>
+            <div class="field"><label>Waste %</label><input type="number" class="input" id="calcWaste" value="10" min="0" max="50"></div>
+            <div class="field"><label>Markup %</label><input type="number" class="input" id="calcProfit" value="20" min="0" max="300"></div>
+        </div>
+    </div>
+
+    <div class="calc-section">
+        <h3 class="calc-section-title">Phases to Include</h3>
+        <div class="phase-selector" id="phaseCheckboxes"></div>
+    </div>
+
+    <!-- Phase-specific options -->
+    <div class="calc-section hidden" id="phaseOptions">
+        <h3 class="calc-section-title">Phase Options</h3>
+        <div class="form-row-3">
+            <div class="field" id="optLinearFt" style="display:none"><label>Linear Feet (trim/corners)</label><input type="number" class="input" id="calcLinearFt" placeholder="0" min="0"><span class="hint">Weep screed, corner aid, stone corners</span></div>
+            <div class="field" id="optPaintCoats" style="display:none"><label>Paint Coats</label><select class="input" id="calcPaintCoats"><option value="1">1 Coat</option><option value="2" selected>2 Coats</option><option value="3">3 Coats</option></select></div>
+            <div class="field" id="optDrywallSize" style="display:none"><label>Drywall Sheet Size</label><select class="input" id="calcDrywallSize"><option>1/2" 4x8</option><option>1/2" 4x10</option><option>1/2" 4x12</option><option>5/8" 4x8</option><option>5/8" 4x10</option><option>5/8" 4x12</option></select></div>
+        </div>
+    </div>
+
+    <div class="calc-section">
+        <h3 class="calc-section-title">Costs & Fees</h3>
+        <div class="form-row-4">
+            <div class="field">
+                <label>Sales Tax <button class="btn-icon" onclick="addCurrentTaxToFavorites()" title="Add current selection to favorites" style="font-size:.75rem;padding:2px 4px">★</button></label>
+                <select class="input" id="calcTaxState" onchange="applyStateTax()">
+                    <option value="0">No Tax</option>
                 </select>
-                <input type="text" id="searchBox" class="input-sm" placeholder="Search materials..." oninput="filterMaterials()">
+                <input type="number" class="input" id="calcTax" value="0" min="0" max="25" step="0.1" style="display:none;margin-top:6px" placeholder="Tax rate %">
             </div>
-            <div class="toolbar-right">
-                <button class="btn btn-sm btn-primary" onclick="addMaterial()">
-                    <span class="icon">+</span> Add Material
-                </button>
-                <button class="btn btn-sm btn-danger" onclick="resetMaterials()" title="Reset to defaults">
-                    <span class="icon">&#x21BB;</span> Reset
-                </button>
-            </div>
-        </div>
-
-        <!-- Material Table -->
-        <div class="table-container">
-            <table class="material-table" id="materialTable">
-                <thead>
-                    <tr>
-                        <th class="col-drag"></th>
-                        <th class="col-name">Material Name</th>
-                        <th class="col-sku">SKU</th>
-                        <th class="col-unit">Unit</th>
-                        <th class="col-price">Price</th>
-                        <th class="col-phase">Phase</th>
-                        <th class="col-type">Type</th>
-                        <th class="col-coverage">Coverage</th>
-                        <th class="col-actions">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="materialTableBody">
-                    <!-- Dynamically populated -->
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Tab 2: Job Calculator -->
-    <div id="calculatorTab" class="tab-content">
-        <div class="calculator-form">
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="projectName">Project Name</label>
-                    <input type="text" id="projectName" class="input" placeholder="Enter project name">
-                </div>
-                <div class="form-group">
-                    <label for="projectAddress">Project Address</label>
-                    <input type="text" id="projectAddress" class="input" placeholder="Enter project address">
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="supplierSelect">Supplier</label>
-                    <select id="supplierSelect" class="select" onchange="renderPhaseCheckboxes()">
-                        <!-- Dynamically populated -->
-                    </select>
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="totalSqft">Total Square Feet</label>
-                    <input type="number" id="totalSqft" class="input" placeholder="0" min="0">
-                </div>
-                <div class="form-group">
-                    <label for="linearFt">Linear Feet</label>
-                    <input type="number" id="linearFt" class="input" placeholder="0" min="0">
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="wastePercent">Waste %</label>
-                    <input type="number" id="wastePercent" class="input" value="10" min="0" max="100">
-                </div>
-                <div class="form-group">
-                    <label for="markupPercent">Markup %</label>
-                    <input type="number" id="markupPercent" class="input" value="0" min="0">
-                </div>
-                <div class="form-group">
-                    <label for="taxPercent">Tax %</label>
-                    <input type="number" id="taxPercent" class="input" value="0" min="0">
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="laborPerSqft">Labor $/sqft</label>
-                    <input type="number" id="laborPerSqft" class="input" value="0" min="0" step="0.01">
-                </div>
-            </div>
-
-            <!-- Labor by Phase Grid -->
-            <div class="labor-phase-grid" id="laborPhaseGrid">
-                <!-- Dynamically populated -->
-            </div>
-
-            <!-- Phase Checkboxes -->
-            <div class="phase-checkboxes" id="phaseCheckboxes">
-                <!-- Dynamically populated -->
-            </div>
-
-            <div class="form-actions">
-                <button class="btn btn-primary btn-lg" onclick="calculateJob()">Calculate</button>
-                <button class="btn btn-secondary btn-lg" onclick="compareSuppliers()">Compare Suppliers</button>
-            </div>
-        </div>
-
-        <!-- Results Area -->
-        <div class="results-area" id="resultsArea" style="display:none;">
-            <h2 class="results-title">Results</h2>
-
-            <!-- Phase Cards -->
-            <div class="phase-cards" id="phaseCards">
-                <!-- Dynamically populated -->
-            </div>
-
-            <!-- Breakdown -->
-            <div class="breakdown-section" id="breakdownSection">
-                <!-- Dynamically populated -->
-            </div>
-
-            <!-- Totals -->
-            <div class="totals-section" id="totalsSection">
-                <!-- Dynamically populated -->
-            </div>
-
-            <!-- Summary Grid -->
-            <div class="summary-grid" id="summaryGrid">
-                <!-- Dynamically populated -->
-            </div>
-
-            <!-- Comparison Section -->
-            <div class="comparison-section" id="comparisonSection" style="display:none;">
-                <!-- Dynamically populated -->
-            </div>
-
-            <div class="results-actions">
-                <button class="btn btn-primary" onclick="generateOrder()">Generate Order</button>
-                <button class="btn btn-secondary" onclick="openSaveJobModal()">Save Job</button>
+            <div class="field"><label>Labor ($/sqft)</label><input type="number" class="input" id="calcLabor" value="0" min="0" step="0.25"></div>
+            <div class="field"><label>Delivery Fee ($)</label><input type="number" class="input" id="calcDelivery" value="0" min="0" step="1"><span class="hint">Per order</span></div>
+            <div class="field">
+                <label><input type="checkbox" id="calcCCFeeToggle" onchange="document.getElementById('calcCCFee').disabled=!this.checked"> Credit Card Fee %</label>
+                <input type="number" class="input" id="calcCCFee" value="3" min="0" max="10" step="0.1">
+                <span class="hint">Surcharge for card payments</span>
             </div>
         </div>
     </div>
 
-    <!-- Tab 3: Order Form -->
-    <div id="orderTab" class="tab-content">
-        <!-- Print Header -->
-        <div class="print-header" id="printHeader">
-            <h1>Material Order</h1>
-        </div>
-
-        <!-- Empty State -->
-        <div class="empty-state" id="orderEmptyState">
-            <p>No order generated yet. Use the Job Calculator to generate an order.</p>
-        </div>
-
-        <!-- Order Content -->
-        <div class="order-content" id="orderContent" style="display:none;">
-            <!-- Phase Filter -->
-            <div class="order-toolbar no-print">
-                <select id="orderPhaseFilter" onchange="filterOrderByPhase()">
-                    <option value="">All Phases</option>
-                </select>
-                <button class="btn btn-sm" onclick="printOrder()">
-                    <span class="icon">&#x1F5A8;</span> Print
-                </button>
-                <button class="btn btn-sm" onclick="exportOrderCSV()">
-                    <span class="icon">&#x1F4E4;</span> Export CSV
-                </button>
-            </div>
-
-            <!-- Order Header -->
-            <div class="order-header" id="orderHeader">
-                <div class="order-detail">
-                    <label>Project Name:</label>
-                    <span id="orderProjectName"></span>
-                </div>
-                <div class="order-detail">
-                    <label>Address:</label>
-                    <span id="orderProjectAddress"></span>
-                </div>
-                <div class="order-detail">
-                    <label>Supplier:</label>
-                    <span id="orderSupplier"></span>
-                </div>
-                <div class="order-detail">
-                    <label>Date:</label>
-                    <span id="orderDate"></span>
-                </div>
-                <div class="order-detail">
-                    <label>PO #:</label>
-                    <input type="text" id="orderPO" class="input-sm" placeholder="Enter PO number">
-                </div>
-            </div>
-
-            <!-- Order Table -->
-            <div class="table-container">
-                <table class="order-table" id="orderTable">
-                    <thead>
-                        <tr>
-                            <th>Phase</th>
-                            <th>Material</th>
-                            <th>SKU</th>
-                            <th>Qty Needed</th>
-                            <th>Unit</th>
-                            <th>Unit Price</th>
-                            <th>Total</th>
-                        </tr>
-                    </thead>
-                    <tbody id="orderTableBody">
-                        <!-- Dynamically populated -->
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Order Notes -->
-            <div class="order-notes no-print">
-                <label for="orderNotes">Order Notes:</label>
-                <textarea id="orderNotes" class="textarea" rows="4" placeholder="Add any notes for this order..."></textarea>
-            </div>
-            <div class="order-notes-print" id="orderNotesPrint">
-                <!-- Populated on print -->
-            </div>
-        </div>
+    <div class="calc-actions">
+        <button class="btn btn-primary btn-lg" onclick="calculateJob()">Calculate</button>
     </div>
 
-    <!-- Tab 4: Saved Jobs -->
-    <div id="savedJobsTab" class="tab-content">
-        <div class="saved-jobs-toolbar">
-            <h2 class="section-title">Saved Jobs</h2>
-            <button class="btn btn-sm btn-danger" onclick="clearAllJobs()">Clear All</button>
-        </div>
-        <div class="saved-jobs-list" id="savedJobsList">
-            <!-- Dynamically populated -->
+    <div id="calcResults" class="hidden">
+        <div class="phase-cards" id="phaseCards"></div>
+        <div id="calcBreakdown"></div>
+        <div class="total-card" id="calcGrandTotal"></div>
+        <div class="summary-grid" id="summaryGrid"></div>
+        <div id="comparisonSection"></div>
+        <div class="calc-result-actions">
+            <button class="btn btn-success" onclick="generateOrderForm()">Generate Order</button>
+            <button class="btn btn-secondary" onclick="generateBidSummary()">Bid Summary</button>
+            <button class="btn btn-secondary" onclick="saveJob()">Save Job</button>
         </div>
     </div>
+</div>
 
-    <!-- Modal: Add Category -->
-    <div class="modal-overlay" id="addCategoryModal" style="display:none;">
-        <div class="modal">
-            <div class="modal-header">
-                <h3>Add Category</h3>
-                <button class="btn btn-icon modal-close" onclick="closeModal('addCategoryModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="newCategoryName">Category Name</label>
-                    <input type="text" id="newCategoryName" class="input" placeholder="Enter category name">
+<!-- ===== ORDER FORM ===== -->
+<div class="page" id="orderPage">
+    <div class="print-header"><h1>Material Order Form</h1><p>Generated by EstiCount</p></div>
+    <div id="orderEmpty" class="empty-state"><p>No order generated yet.</p><button class="btn btn-primary" onclick="showPage('calculator')">Go to Calculator</button></div>
+    <div id="orderContent" class="hidden">
+        <div class="order-controls no-print">
+            <div class="field" style="width:200px"><label>Phase</label><select class="input" id="orderPhaseFilter" onchange="renderOrderTable()"><option value="All">All Phases</option></select></div>
+            <div class="toolbar-spacer"></div>
+            <button class="btn btn-primary btn-sm" onclick="printOrder()">Print</button>
+            <button class="btn btn-secondary btn-sm" onclick="exportOrderCSV()">Export CSV</button>
+        </div>
+        <div class="order-form-layout">
+            <div class="order-info-grid">
+                <div class="order-info-card">
+                    <div class="field"><label>Project Name</label><input type="text" class="input" id="orderProjectName" readonly></div>
+                    <div class="field"><label>Project Address</label><input type="text" class="input" id="orderProjectAddress" readonly></div>
+                </div>
+                <div class="order-info-card">
+                    <div class="field"><label>Supplier</label><input type="text" class="input" id="orderSupplier" readonly></div>
+                    <div class="order-info-row">
+                        <div class="field"><label>Date</label><input type="date" class="input" id="orderDate"></div>
+                        <div class="field"><label>PO #</label><input type="text" class="input" id="orderPO" placeholder="Optional"></div>
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('addCategoryModal')">Cancel</button>
-                <button class="btn btn-primary" onclick="confirmAddCategory()">Add</button>
-            </div>
+            <div class="table-wrap"><table id="orderTable"><thead><tr><th>SKU</th><th>Material</th><th class="text-center">Qty</th><th>Unit</th><th class="text-right">Price</th><th class="text-right">Total</th></tr></thead><tbody id="orderTableBody"></tbody></table></div>
+            <div class="field no-print" style="margin-top:16px"><label>Notes / Special Instructions</label><textarea class="input" id="orderNotes" rows="3" placeholder="Delivery instructions, jobsite access..."></textarea></div>
+            <div class="order-notes-print" id="orderNotesPrint" style="display:none"></div>
         </div>
     </div>
+</div>
 
-    <!-- Modal: Delete Category -->
-    <div class="modal-overlay" id="deleteCategoryModal">
-        <div class="modal">
-            <h3>Remove Phase</h3>
-            <div class="form-group">
-                <label>Phase to remove</label>
-                <select class="form-input" id="deleteCategorySelect"></select>
-            </div>
-            <div class="form-group">
-                <label>Scope</label>
-                <select class="form-input" id="deleteCategoryScope">
-                    <option value="supplier">This supplier only</option>
-                    <option value="all">All suppliers (removes phase entirely)</option>
-                </select>
-            </div>
-            <p style="font-size:0.78rem;color:var(--danger);margin-top:6px">"This supplier only" removes materials but keeps the phase available. "All suppliers" deletes the phase everywhere.</p>
-            <div class="modal-actions">
-                <button class="btn btn-secondary btn-sm" onclick="closeModal('deleteCategoryModal')">Cancel</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteCategory()">Remove</button>
-            </div>
-        </div>
+<!-- ===== BID SUMMARY ===== -->
+<div class="page" id="bidPage">
+    <div id="bidEmpty" class="empty-state"><p>No calculation yet.</p><button class="btn btn-primary" onclick="showPage('calculator')">Go to Calculator</button></div>
+    <div id="bidContent" class="hidden">
+        <div class="bid-paper" id="bidSummary"></div>
+        <div class="calc-result-actions no-print"><button class="btn btn-primary" onclick="window.print()">Print Bid</button></div>
     </div>
+</div>
 
-    <!-- Modal: Add Supplier -->
-    <div class="modal-overlay" id="addSupplierModal" style="display:none;">
-        <div class="modal">
-            <div class="modal-header">
-                <h3>Add Supplier</h3>
-                <button class="btn btn-icon modal-close" onclick="closeModal('addSupplierModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="newSupplierName">Supplier Name</label>
-                    <input type="text" id="newSupplierName" class="input" placeholder="Enter supplier name">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('addSupplierModal')">Cancel</button>
-                <button class="btn btn-primary" onclick="confirmAddSupplier()">Add</button>
-            </div>
-        </div>
+<!-- ===== SAVED JOBS ===== -->
+<div class="page" id="savedJobsPage">
+    <div class="page-intro">
+        <p>Click a job to load it into the calculator. Save with "as template" to reuse settings for similar jobs.</p>
+        <button class="btn btn-danger btn-sm" onclick="clearAllJobs()">Clear All</button>
     </div>
+    <div id="savedJobsList"></div>
+</div>
 
-    <!-- Modal: Delete Supplier -->
-    <div class="modal-overlay" id="deleteSupplierModal" style="display:none;">
-        <div class="modal">
-            <div class="modal-header">
-                <h3>Delete Supplier</h3>
-                <button class="btn btn-icon modal-close" onclick="closeModal('deleteSupplierModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p>Select a supplier to delete:</p>
-                <select id="deleteSupplierSelect" class="select">
-                    <!-- Dynamically populated -->
-                </select>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('deleteSupplierModal')">Cancel</button>
-                <button class="btn btn-danger" onclick="confirmDeleteSupplier()">Delete</button>
-            </div>
-        </div>
-    </div>
+</main>
 
-    <!-- Modal: Duplicate Material -->
-    <div class="modal-overlay" id="duplicateModal" style="display:none;">
-        <div class="modal">
-            <div class="modal-header">
-                <h3>Duplicate Material</h3>
-                <button class="btn btn-icon modal-close" onclick="closeModal('duplicateModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p>Select target supplier for the duplicate:</p>
-                <select id="duplicateTargetSupplier" class="select">
-                    <!-- Dynamically populated -->
-                </select>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('duplicateModal')">Cancel</button>
-                <button class="btn btn-primary" onclick="confirmDuplicate()">Duplicate</button>
-            </div>
-        </div>
-    </div>
+<!-- MODALS -->
+<div class="modal-overlay" id="addCategoryModal"><div class="modal"><h3>Add New Phase</h3><div class="field"><label>Phase Name</label><input type="text" class="input" id="newCategoryName" placeholder="e.g. Painting, Trim"></div><div class="field" style="margin-top:8px"><label>Scope Group</label><select class="input" id="newCategoryGroup"><option value="">None (standalone)</option><option value="Stucco">Stucco</option><option value="Stone">Stone</option><option value="Drywall">Drywall</option><option value="Painting">Painting</option><option value="custom">New group...</option></select></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('addCategoryModal')">Cancel</button><button class="btn btn-success" onclick="addCategory()">Add</button></div></div></div>
 
-    <!-- Modal: Save Job -->
-    <div class="modal-overlay" id="saveJobModal" style="display:none;">
-        <div class="modal">
-            <div class="modal-header">
-                <h3>Save Job</h3>
-                <button class="btn btn-icon modal-close" onclick="closeModal('saveJobModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="saveJobName">Job Name</label>
-                    <input type="text" id="saveJobName" class="input" placeholder="Enter job name">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('saveJobModal')">Cancel</button>
-                <button class="btn btn-primary" onclick="confirmSaveJob()">Save</button>
-            </div>
-        </div>
-    </div>
+<div class="modal-overlay" id="deleteCategoryModal"><div class="modal"><h3>Delete Phase</h3><div class="field"><label>Phase to delete</label><select class="input" id="deleteCategorySelect"></select></div><div class="field"><label>Scope</label><select class="input" id="deleteCategoryScope"><option value="supplier">Remove from this supplier only</option><option value="all">Delete phase from all suppliers</option></select></div><p class="modal-warning">"Delete from all" permanently removes the phase and its materials everywhere.</p><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('deleteCategoryModal')">Cancel</button><button class="btn btn-danger" onclick="deleteCategory()">Delete</button></div></div></div>
 
-    <!-- Notification -->
-    <div class="notification" id="notification" style="display:none;"></div>
+<div class="modal-overlay" id="addSupplierModal"><div class="modal"><h3>Add Supplier</h3><div class="field"><label>Supplier Name</label><input type="text" class="input" id="newSupplierName" placeholder="e.g. Home Depot"></div><div class="field" style="margin-top:8px"><label><input type="checkbox" id="copyDefaultsToSupplier" checked> Pre-fill with default materials</label></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('addSupplierModal')">Cancel</button><button class="btn btn-success" onclick="addSupplier()">Add</button></div></div></div>
 
-    <!-- Hidden file input for CSV import -->
-    <input type="file" id="csvFileInput" accept=".csv" style="display:none;" onchange="handleCSVImport(event)">
+<div class="modal-overlay" id="deleteSupplierModal"><div class="modal"><h3>Remove Supplier</h3><p>Remove "<span id="deleteSupplierName"></span>" and all its materials?</p><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('deleteSupplierModal')">Cancel</button><button class="btn btn-danger" onclick="deleteSupplier()">Remove</button></div></div></div>
 
-    <script src="js/api.js"></script>
-    <script src="js/app.js"></script>
+<div class="modal-overlay" id="duplicateModal"><div class="modal"><h3>Copy Material to Supplier</h3><div class="field"><label>Target Supplier</label><select class="input" id="duplicateTarget"></select></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('duplicateModal')">Cancel</button><button class="btn btn-primary" onclick="doDuplicate()">Copy</button></div></div></div>
+
+<div class="modal-overlay" id="saveJobModal"><div class="modal"><h3>Save Job</h3><div class="field"><label>Job Name</label><input type="text" class="input" id="saveJobName" placeholder="e.g. Smith Residence - April 2026"></div><div class="field" style="margin-top:8px"><label><input type="checkbox" id="saveAsTemplate"> Save as reusable template (no project details)</label></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('saveJobModal')">Cancel</button><button class="btn btn-success" onclick="doSaveJob()">Save</button></div></div></div>
+
+<div class="notification" id="notification"></div>
+
+<script src="js/app.js"></script>
 </body>
 </html>
