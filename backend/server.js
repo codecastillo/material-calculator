@@ -68,7 +68,13 @@ app.use(express.urlencoded({ extended: true }));
 // Static files — serve frontend
 // ---------------------------------------------------------------------------
 const frontendPath = path.join(__dirname, '..', 'frontend');
-app.use(express.static(frontendPath));
+
+// Landing page at root (before static middleware)
+app.get('/', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'landing.html'));
+});
+
+app.use(express.static(frontendPath, { index: false }));
 
 // ---------------------------------------------------------------------------
 // API Routes
@@ -87,7 +93,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// Fallback: serve frontend index for non-API routes (SPA support)
+// Fallback: serve app for non-API routes
 // ---------------------------------------------------------------------------
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api/')) {

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EstiCount — Material Estimating for Contractors</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{--bg:#0f1419;--surface:#1c2128;--border:#2d333b;--pri:#4493f8;--pri2:#2f81f7;--text:#e6edf3;--text2:#9da5ae;--text3:#636c76;--ok:#3fb950;--warn:#d29922}
+        body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;overflow-x:hidden}
+        a{color:var(--pri);text-decoration:none}
+
+        /* Nav */
+        .nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:16px 0;transition:background .3s}
+        .nav.scrolled{background:rgba(15,20,25,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+        .nav-inner{max-width:1100px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between}
+        .nav-brand{display:flex;align-items:center;gap:10px;font-size:1.15rem;font-weight:700;color:var(--text)}
+        .nav-brand img{width:28px;height:28px}
+        .nav-links{display:flex;gap:8px;align-items:center}
+        .nav-links a{color:var(--text2);font-size:.9rem;font-weight:500;padding:8px 16px;border-radius:8px;transition:all .15s}
+        .nav-links a:hover{color:var(--text);background:rgba(255,255,255,.06)}
+        .nav-links .cta{background:var(--pri);color:#fff;font-weight:600}
+        .nav-links .cta:hover{background:var(--pri2)}
+
+        /* Hero */
+        .hero{padding:140px 24px 80px;text-align:center;position:relative;overflow:hidden}
+        .hero::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:800px;height:800px;background:radial-gradient(circle,rgba(68,147,248,.08) 0%,transparent 70%);pointer-events:none}
+        .hero-inner{max-width:720px;margin:0 auto;position:relative}
+        .hero-badge{display:inline-block;padding:6px 16px;background:rgba(68,147,248,.1);border:1px solid rgba(68,147,248,.2);border-radius:24px;font-size:.82rem;font-weight:500;color:var(--pri);margin-bottom:24px}
+        .hero h1{font-size:3.2rem;font-weight:800;line-height:1.15;letter-spacing:-.03em;margin-bottom:20px}
+        .hero h1 span{background:linear-gradient(135deg,var(--pri),#a371f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+        .hero p{font-size:1.2rem;color:var(--text2);max-width:540px;margin:0 auto 36px;line-height:1.5}
+        .hero-buttons{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+        .btn-hero{padding:14px 32px;border-radius:10px;font-family:inherit;font-size:1rem;font-weight:600;cursor:pointer;transition:all .2s;border:none;display:inline-flex;align-items:center;gap:8px}
+        .btn-hero.primary{background:var(--pri);color:#fff;box-shadow:0 4px 16px rgba(68,147,248,.3)}
+        .btn-hero.primary:hover{background:var(--pri2);transform:translateY(-1px);box-shadow:0 6px 24px rgba(68,147,248,.4)}
+        .btn-hero.secondary{background:rgba(255,255,255,.06);color:var(--text);border:1px solid var(--border)}
+        .btn-hero.secondary:hover{background:rgba(255,255,255,.1);border-color:var(--text3)}
+
+        /* Stats bar */
+        .social-proof{padding:40px 24px;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+        .social-inner{max-width:800px;margin:0 auto;display:flex;justify-content:center;gap:48px;flex-wrap:wrap}
+        .social-stat{text-align:center}
+        .social-stat .num{font-size:1.8rem;font-weight:700;color:var(--pri)}
+        .social-stat .label{font-size:.82rem;color:var(--text3);margin-top:2px}
+
+        /* Features */
+        .features{padding:80px 24px}
+        .features-inner{max-width:1100px;margin:0 auto}
+        .section-label{font-size:.82rem;font-weight:600;color:var(--pri);text-transform:uppercase;letter-spacing:.06em;text-align:center;margin-bottom:12px}
+        .section-title{font-size:2rem;font-weight:700;text-align:center;margin-bottom:12px;letter-spacing:-.02em}
+        .section-desc{text-align:center;color:var(--text2);max-width:520px;margin:0 auto 48px;font-size:1rem}
+        .features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}
+        .feature-card{padding:28px;background:var(--surface);border:1px solid var(--border);border-radius:14px;transition:all .2s}
+        .feature-card:hover{border-color:var(--pri);transform:translateY(-2px)}
+        .feature-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:16px}
+        .feature-card h3{font-size:1.05rem;font-weight:600;margin-bottom:8px}
+        .feature-card p{color:var(--text2);font-size:.9rem;line-height:1.5}
+
+        /* Pricing */
+        .pricing{padding:80px 24px;background:var(--surface)}
+        .pricing-inner{max-width:900px;margin:0 auto}
+        .pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;margin-top:48px}
+        .price-card{padding:32px;background:var(--bg);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column}
+        .price-card.popular{border-color:var(--pri);position:relative;box-shadow:0 4px 24px rgba(68,147,248,.15)}
+        .price-card.popular::before{content:'MOST POPULAR';position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--pri);color:#fff;font-size:.7rem;font-weight:700;padding:4px 14px;border-radius:12px;letter-spacing:.04em}
+        .price-card .plan{font-size:.85rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:12px}
+        .price-card .price{font-size:2.8rem;font-weight:800;letter-spacing:-.03em;margin-bottom:4px}
+        .price-card .price span{font-size:1rem;font-weight:500;color:var(--text3)}
+        .price-card .save{font-size:.82rem;color:var(--ok);font-weight:500;margin-bottom:20px;min-height:20px}
+        .price-card ul{list-style:none;margin-bottom:28px;flex:1}
+        .price-card ul li{padding:8px 0;font-size:.9rem;color:var(--text2);display:flex;align-items:center;gap:10px}
+        .price-card ul li::before{content:'✓';color:var(--ok);font-weight:700;font-size:.85rem}
+        .price-card .btn-price{display:block;padding:14px;border-radius:10px;text-align:center;font-weight:600;font-size:.95rem;transition:all .2s;border:none;cursor:pointer;font-family:inherit}
+        .price-card .btn-price.pri{background:var(--pri);color:#fff}.price-card .btn-price.pri:hover{background:var(--pri2)}
+        .price-card .btn-price.sec{background:rgba(255,255,255,.06);color:var(--text);border:1px solid var(--border)}.price-card .btn-price.sec:hover{background:rgba(255,255,255,.1)}
+
+        /* CTA */
+        .cta-section{padding:80px 24px;text-align:center}
+        .cta-inner{max-width:600px;margin:0 auto}
+        .cta-section h2{font-size:2rem;font-weight:700;margin-bottom:12px;letter-spacing:-.02em}
+        .cta-section p{color:var(--text2);font-size:1.05rem;margin-bottom:32px}
+
+        /* Footer */
+        .footer{padding:32px 24px;border-top:1px solid var(--border);text-align:center}
+        .footer p{color:var(--text3);font-size:.82rem}
+        .footer a{color:var(--text2)}
+
+        /* Responsive */
+        @media(max-width:768px){
+            .hero h1{font-size:2.2rem}
+            .hero p{font-size:1rem}
+            .social-inner{gap:28px}
+            .features-grid{grid-template-columns:1fr}
+            .pricing-grid{grid-template-columns:1fr}
+            .nav-links .hide-mobile{display:none}
+        }
+    </style>
+</head>
+<body>
+
+<nav class="nav" id="nav">
+    <div class="nav-inner">
+        <a href="/" class="nav-brand"><img src="assets/logo.png" alt="EstiCount">EstiCount</a>
+        <div class="nav-links">
+            <a href="#features" class="hide-mobile">Features</a>
+            <a href="#pricing" class="hide-mobile">Pricing</a>
+            <a href="/index.html">Log In</a>
+            <a href="/index.html" class="cta">Start Free</a>
+        </div>
+    </div>
+</nav>
+
+<section class="hero">
+    <div class="hero-inner">
+        <div class="hero-badge">Built for stucco, stone, drywall & painting contractors</div>
+        <h1>Stop guessing.<br><span>Start estimating.</span></h1>
+        <p>EstiCount calculates your material quantities, costs, and profit margins in seconds. Multi-supplier pricing, order forms, and bid summaries — all in one place.</p>
+        <div class="hero-buttons">
+            <a href="/index.html" class="btn-hero primary">Get Started Free</a>
+            <a href="#features" class="btn-hero secondary">See Features</a>
+        </div>
+    </div>
+</section>
+
+<section class="social-proof">
+    <div class="social-inner">
+        <div class="social-stat"><div class="num">6</div><div class="label">Trade Phases</div></div>
+        <div class="social-stat"><div class="num">60+</div><div class="label">Default Materials</div></div>
+        <div class="social-stat"><div class="num">3</div><div class="label">Suppliers Built-in</div></div>
+        <div class="social-stat"><div class="num">&lt;30s</div><div class="label">To Estimate a Job</div></div>
+    </div>
+</section>
+
+<section class="features" id="features">
+    <div class="features-inner">
+        <div class="section-label">Features</div>
+        <h2 class="section-title">Everything you need to bid jobs fast</h2>
+        <p class="section-desc">From material pricing to printed order forms, EstiCount handles the whole workflow.</p>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon" style="background:rgba(68,147,248,.1);color:var(--pri)">&#9776;</div>
+                <h3>Multi-Supplier Pricing</h3>
+                <p>Track prices across Pacific Supply, ABC Supply, Sherwin Williams — or add your own. Each supplier gets their own material list.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:rgba(63,185,80,.1);color:var(--ok)">&#9998;</div>
+                <h3>Instant Calculator</h3>
+                <p>Enter square footage, select phases, hit calculate. Quantities, costs, markup, tax, labor, delivery — all computed instantly.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:rgba(163,113,247,.1);color:#a371f7">&#9993;</div>
+                <h3>Order Forms & Bids</h3>
+                <p>Generate printable order forms per supplier and phase. Clean bid summaries for clients with your branding.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:rgba(210,153,34,.1);color:var(--warn)">&#9733;</div>
+                <h3>Saved Jobs & Templates</h3>
+                <p>Save estimates and reuse them as templates for similar homes. Your subs will love having materials pre-calculated.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:rgba(247,120,186,.1);color:#f778ba">&#9830;</div>
+                <h3>Supplier Comparison</h3>
+                <p>See which supplier is cheapest per phase. EstiCount picks the best price automatically when you select "All Suppliers."</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:rgba(57,210,192,.1);color:#39d2c0">&#10064;</div>
+                <h3>Phase-Based Workflow</h3>
+                <p>Lath, Gray Coat, Color Coat, Stone, Drywall, Painting — each phase calculated separately. Order materials only for the phase you're on.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="pricing" id="pricing">
+    <div class="pricing-inner">
+        <div class="section-label">Pricing</div>
+        <h2 class="section-title">Simple pricing, no surprises</h2>
+        <p class="section-desc">Start free, upgrade when you're ready. Cancel anytime.</p>
+        <div class="pricing-grid">
+            <div class="price-card">
+                <div class="plan">Monthly</div>
+                <div class="price">$8<span>/mo</span></div>
+                <div class="save">&nbsp;</div>
+                <ul>
+                    <li>Unlimited saved jobs</li>
+                    <li>CSV export</li>
+                    <li>Clean prints (no watermark)</li>
+                    <li>Bulk price updates</li>
+                    <li>All suppliers & phases</li>
+                </ul>
+                <a href="/index.html" class="btn-price sec">Get Started</a>
+            </div>
+            <div class="price-card popular">
+                <div class="plan">Yearly</div>
+                <div class="price">$69<span>/yr</span></div>
+                <div class="save">Save 28% vs monthly</div>
+                <ul>
+                    <li>Everything in Monthly</li>
+                    <li>Priority support</li>
+                    <li>Best value</li>
+                    <li>Bulk price updates</li>
+                    <li>All suppliers & phases</li>
+                </ul>
+                <a href="/index.html" class="btn-price pri">Get Started</a>
+            </div>
+            <div class="price-card">
+                <div class="plan">Lifetime</div>
+                <div class="price">$199<span> once</span></div>
+                <div class="save">Pay once, use forever</div>
+                <ul>
+                    <li>Everything in Yearly</li>
+                    <li>Never expires</li>
+                    <li>All future updates</li>
+                    <li>Bulk price updates</li>
+                    <li>All suppliers & phases</li>
+                </ul>
+                <a href="/index.html" class="btn-price sec">Get Started</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="cta-section">
+    <div class="cta-inner">
+        <h2>Ready to estimate smarter?</h2>
+        <p>Join contractors who are done with spreadsheets and guesswork. Start estimating in under 30 seconds.</p>
+        <a href="/index.html" class="btn-hero primary">Create Free Account</a>
+    </div>
+</section>
+
+<footer class="footer">
+    <p>&copy; 2026 EstiCount. Built for contractors. <a href="/index.html">Log In</a></p>
+</footer>
+
+<script>
+window.addEventListener('scroll',()=>{document.getElementById('nav').classList.toggle('scrolled',window.scrollY>40)});
+document.querySelectorAll('a[href^="#"]').forEach(a=>{a.addEventListener('click',e=>{e.preventDefault();document.querySelector(a.getAttribute('href'))?.scrollIntoView({behavior:'smooth'})})});
+</script>
+</body>
+</html>
