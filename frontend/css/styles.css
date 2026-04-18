@@ -327,4 +327,22 @@ tr.drag-over td{border-top:2px solid var(--pri)}
 .user-badge button{background:none;border:none;color:var(--text3);cursor:pointer;font-size:.78rem;margin-left:4px}
 .user-badge button:hover{color:var(--err)}
 
+/* ===== MOBILE MENU ===== */
+.mobile-menu-btn{display:none;background:none;border:none;color:var(--text);font-size:1.4rem;cursor:pointer;padding:4px 8px;border-radius:6px}
+.mobile-menu-btn:hover{background:var(--pri-soft)}
+.mobile-menu-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:90}
+.mobile-menu-overlay.open{display:block}
+
+@media(max-width:900px){
+    .mobile-menu-btn{display:block}
+    .topnav-links{display:none;position:fixed;top:56px;left:0;right:0;background:var(--surface);border-bottom:1px solid var(--border);flex-direction:column;padding:8px;z-index:95;box-shadow:var(--shadow2)}
+    .topnav-links.open{display:flex}
+    .nav-link{text-align:left;padding:12px 16px;border-radius:8px}
+}
+
+/* License badge */
+.license-badge{font-size:.68rem;font-weight:600;padding:3px 10px;border-radius:12px;letter-spacing:.04em}
+.license-badge.trial{background:var(--warn-soft);color:var(--warn)}
+.license-badge.active{background:var(--ok-soft);color:var(--ok)}
+
 .print-header{display:none}

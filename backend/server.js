@@ -16,6 +16,7 @@ const materialRoutes = require('./routes/materials');
 const categoryRoutes = require('./routes/categories');
 const jobRoutes = require('./routes/jobs');
 const pricingRoutes = require('./routes/pricing');
+const adminRoutes = require('./routes/admin');
 
 // Import error handler
 const errorHandler = require('./middleware/errorHandler');
@@ -78,6 +79,7 @@ app.use('/api/materials', materialRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/pricing', pricingRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

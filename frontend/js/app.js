@@ -147,8 +147,12 @@ function closeModal(id){document.getElementById(id).classList.remove('open')}
 function toggleTheme(){const c=document.documentElement.getAttribute('data-theme');const n=c==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);localStorage.setItem('stucco_theme',n)}
 
 // ===== NAVIGATION =====
-const PAGE_TITLES={dashboard:'Dashboard',pricing:'Material Pricing',calculator:'Job Calculator',order:'Order Form',bid:'Bid Summary',savedJobs:'Saved Jobs'};
-const PAGES_WITH_BACK=['pricing','calculator','order','bid','savedJobs'];
+const PAGE_TITLES={dashboard:'Dashboard',pricing:'Material Pricing',calculator:'Job Calculator',order:'Order Form',bid:'Bid Summary',savedJobs:'Saved Jobs',admin:'Admin Panel',account:'Account'};
+const PAGES_WITH_BACK=['pricing','calculator','order','bid','savedJobs','admin','account'];
+
+// Mobile menu
+function toggleMobileMenu(){document.getElementById('topnavLinks').classList.toggle('open');document.getElementById('mobileOverlay').classList.toggle('open')}
+function closeMobileMenu(){document.getElementById('topnavLinks').classList.remove('open');document.getElementById('mobileOverlay').classList.remove('open')}
 
 function showPage(id){
     document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
@@ -165,6 +169,8 @@ function showPage(id){
     if(id==='pricing'){renderSupplierTabs();populateCategoryFilter();renderMaterialTable()}
     if(id==='calculator'){populateCalcSupplierDropdown();renderPhaseCheckboxes()}
     if(id==='savedJobs')renderSavedJobs();
+    if(id==='admin')renderAdminPanel();
+    if(id==='account')renderAccountPage();
 }
 function goBack(){pageHistory.pop();const prev=pageHistory[pageHistory.length-1]||'dashboard';showPage(prev)}
 
@@ -542,6 +548,93 @@ function renderDashboard(){
     const recent=savedJobs.slice(0,4);const recentEl=document.getElementById('dashRecentJobs');
     if(!recent.length){recentEl.innerHTML='<div class="dash-empty">No saved jobs yet.</div>'}else{recentEl.innerHTML='<div class="dash-recent-grid">'+recent.map(j=>{const ds=new Date(j.savedAt).toLocaleDateString();return`<div class="dash-job-card" onclick="loadJob('${j.id}')"><h4>${escHtml(j.name)}${j.isTemplate?'<span class="tmpl-badge">TEMPLATE</span>':''}</h4><div class="meta"><span>${escHtml(j.supplier)}</span><span>${(j.sqft||0).toLocaleString()} sqft</span><span>${ds}</span></div>${!j.isTemplate?`<div class="amounts"><span class="mat">${fmt(j.materialTotal)} cost</span><span class="sell">${fmt(j.sellingPrice)} sell</span></div>`:''}</div>`}).join('')+'</div>'}
     document.getElementById('dashSuppliers').innerHTML=suppliers.map(s=>{const mats=materialsBySupplier[s]||[];const phases=getSupplierPhases(s);return`<div class="dash-supplier-card" onclick="switchSupplier('${escAttr(s)}');showPage('pricing')"><h4>${escHtml(s)}</h4><div class="meta"><span>${mats.length} materials</span><span>${phases.length} phases</span></div><div class="phases">${phases.map(p=>`<span class="badge pb${categories.indexOf(p)%8} pc${categories.indexOf(p)%8}">${p}</span>`).join('')}</div></div>`}).join('');
+}
+
+// ===== ACCOUNT =====
+function renderAccountPage(){
+    if(!currentUser)return;
+    document.getElementById('accountName').textContent=currentUser.name||'';
+    document.getElementById('accountEmail').textContent=currentUser.email||'';
+    const lt=currentUser.license_type||'trial';
+    const exp=currentUser.license_expires?new Date(currentUser.license_expires).toLocaleDateString():'Never';
+    document.getElementById('accountLicense').innerHTML=`<span class="badge" style="background:var(--${lt==='trial'?'warn':'ok'}-soft);color:var(--${lt==='trial'?'warn':'ok'})">${lt.toUpperCase()}</span> ${lt==='lifetime'?'Never expires':'Expires: '+exp}`;
+}
+async function activateLicense(){
+    const key=document.getElementById('licenseKeyInput').value.trim();
+    const msg=document.getElementById('licenseMessage');
+    if(!key){msg.textContent='Enter a key';msg.style.display='';msg.style.background='var(--err-soft)';msg.style.color='var(--err)';return}
+    try{
+        const r=await api.activateLicense(key);
+        currentUser=r.user;
+        msg.textContent=r.message;msg.style.display='';msg.style.background='var(--ok-soft)';msg.style.color='var(--ok)';
+        showAppScreen();renderAccountPage();
+    }catch(e){msg.textContent=e.message;msg.style.display='';msg.style.background='var(--err-soft)';msg.style.color='var(--err)'}
+}
+
+// ===== ADMIN PANEL =====
+async function renderAdminPanel(){
+    if(!currentUser||currentUser.role!=='admin')return;
+    try{
+        const [statsData,keysData,usersData]=await Promise.all([api.getAdminStats(),api.getKeys(),api.getUsers()]);
+
+        // Stats
+        const s=statsData.stats;
+        document.getElementById('adminStats').innerHTML=`<div class="dash-stat"><div class="num">${s.users}</div><div class="label">Users</div></div><div class="dash-stat"><div class="num">${s.active}</div><div class="label">Active</div></div><div class="dash-stat"><div class="num">${s.keys}</div><div class="label">Keys</div></div><div class="dash-stat"><div class="num">${s.jobs}</div><div class="label">Total Jobs</div></div>`;
+
+        // Keys
+        const keys=keysData.keys||[];
+        if(!keys.length){document.getElementById('adminKeysList').innerHTML='<div class="dash-empty">No keys generated yet.</div>'}
+        else{document.getElementById('adminKeysList').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Key</th><th>Type</th><th>Duration</th><th>Uses</th><th>Actions</th></tr></thead><tbody>${keys.map(k=>`<tr><td class="mono" style="font-size:.82rem">${escHtml(k.key)}</td><td>${k.type}</td><td>${k.duration_days}d</td><td>${k.times_used}/${k.max_uses}</td><td><button class="btn btn-danger btn-sm" onclick="deleteKey(${k.id})">Delete</button></td></tr>`).join('')}</tbody></table></div>`}
+
+        // Users
+        const users=usersData.users||[];
+        document.getElementById('adminUsersList').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>License</th><th>Active</th><th>Actions</th></tr></thead><tbody>${users.map(u=>`<tr><td>${escHtml(u.name)}</td><td>${escHtml(u.email)}</td><td><span class="badge" style="background:var(--${u.role==='admin'?'pri':'warn'}-soft);color:var(--${u.role==='admin'?'pri':'warn'})">${u.role}</span></td><td>${u.license_type||'trial'}</td><td>${u.is_active?'Yes':'No'}</td><td style="white-space:nowrap">${u.role!=='admin'?`<button class="btn btn-sm btn-secondary" onclick="toggleUserActive(${u.id},${!u.is_active})">${u.is_active?'Deactivate':'Activate'}</button> <button class="btn btn-sm btn-danger" onclick="adminDeleteUser(${u.id})">Delete</button>`:''}</td></tr>`).join('')}</tbody></table></div>`;
+
+        // Populate bulk supplier dropdown
+        const sel=document.getElementById('bulkSupplier');
+        sel.innerHTML=suppliers.map(s=>`<option value="${window._supplierIdMap?.[s]||''}">${s}</option>`).join('');
+    }catch(e){notify('Admin load failed: '+e.message,'error')}
+}
+
+async function generateKeys(){
+    const type=document.getElementById('genKeyType').value;
+    const max_uses=parseInt(document.getElementById('genKeyMaxUses').value)||1;
+    const count=parseInt(document.getElementById('genKeyCount').value)||1;
+    const durationMap={trial:7,monthly:30,yearly:365,lifetime:36500};
+    try{
+        const r=await api.generateKeys({type,duration_days:durationMap[type]||30,max_uses,count});
+        notify(`${r.keys.length} key(s) generated`,'success');
+        renderAdminPanel();
+    }catch(e){notify(e.message,'error')}
+}
+
+async function deleteKey(id){
+    if(!confirm('Delete this key?'))return;
+    try{await api.deleteKey(id);renderAdminPanel();notify('Key deleted','success')}catch(e){notify(e.message,'error')}
+}
+
+async function toggleUserActive(id,active){
+    try{await api.updateUser(id,{is_active:active});renderAdminPanel();notify(active?'User activated':'User deactivated','success')}catch(e){notify(e.message,'error')}
+}
+
+async function adminDeleteUser(id){
+    if(!confirm('Delete this user and all their data?'))return;
+    try{await api.deleteUser(id);renderAdminPanel();notify('User deleted','success')}catch(e){notify(e.message,'error')}
+}
+
+async function bulkPriceUpdate(){
+    const supplierId=document.getElementById('bulkSupplier').value;
+    const pct=parseFloat(document.getElementById('bulkPercent').value);
+    if(!supplierId){notify('Select a supplier','error');return}
+    if(isNaN(pct)||pct===0){notify('Enter a percentage','error');return}
+    if(!confirm(`Update all material prices for this supplier by ${pct>0?'+':''}${pct}%?`))return;
+    try{
+        const r=await api.bulkPriceUpdate(parseInt(supplierId),pct);
+        notify(r.message,'success');
+        // Reload data to reflect new prices
+        await loadData();
+        renderMaterialTable();
+    }catch(e){notify(e.message,'error')}
 }
 
 // ===== INIT =====

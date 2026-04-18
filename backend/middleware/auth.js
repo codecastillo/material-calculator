@@ -10,7 +10,7 @@ function authenticate(req, res, next) {
 
   try {
     const decoded = jwt.verify(parts[1], JWT_SECRET);
-    req.user = { id: decoded.id, email: decoded.email, name: decoded.name };
+    req.user = { id: decoded.id, email: decoded.email, name: decoded.name, role: decoded.role || 'user' };
     next();
   } catch (err) {
     if (err.name === 'TokenExpiredError') return res.status(401).json({ error: 'Token has expired' });

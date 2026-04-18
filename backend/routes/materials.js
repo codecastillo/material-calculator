@@ -62,4 +62,27 @@ router.post('/duplicate', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// POST /bulk-price-update - increase/decrease all prices for a supplier by percentage
+router.post('/bulk-price-update', async (req, res, next) => {
+  try {
+    const { supplier_id, percentage, category_id } = req.body;
+    if (!supplier_id || percentage === undefined) return res.status(400).json({ error: 'supplier_id and percentage required' });
+
+    let query = supabase.from('materials').select('id, price_per_unit').eq('supplier_id', supplier_id);
+    if (category_id) query = query.eq('category_id', category_id);
+    const { data: materials, error: fetchErr } = await query;
+    if (fetchErr) throw fetchErr;
+
+    let updated = 0;
+    const multiplier = 1 + (percentage / 100);
+    for (const mat of materials || []) {
+      const newPrice = Math.round(mat.price_per_unit * multiplier * 100) / 100;
+      const { error } = await supabase.from('materials').update({ price_per_unit: newPrice, updated_at: new Date().toISOString() }).eq('id', mat.id);
+      if (!error) updated++;
+    }
+
+    res.json({ updated, message: `${updated} materials updated by ${percentage > 0 ? '+' : ''}${percentage}%` });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

@@ -64,6 +64,25 @@ const api = {
     async getJobs() { return api._fetch('/jobs'); },
     async saveJob(job) { return api._fetch('/jobs', { method: 'POST', body: JSON.stringify(job) }); },
     async deleteJob(id) { return api._fetch('/jobs/' + id, { method: 'DELETE' }); },
+
+    // License
+    async activateLicense(key) { return api._fetch('/auth/activate', { method: 'POST', body: JSON.stringify({ key }) }); },
+
+    // Bulk price update
+    async bulkPriceUpdate(supplier_id, percentage, category_id) {
+        const body = { supplier_id, percentage };
+        if (category_id) body.category_id = category_id;
+        return api._fetch('/materials/bulk-price-update', { method: 'POST', body: JSON.stringify(body) });
+    },
+
+    // Admin
+    async getUsers() { return api._fetch('/admin/users'); },
+    async updateUser(id, data) { return api._fetch('/admin/users/' + id, { method: 'PUT', body: JSON.stringify(data) }); },
+    async deleteUser(id) { return api._fetch('/admin/users/' + id, { method: 'DELETE' }); },
+    async getKeys() { return api._fetch('/admin/keys'); },
+    async generateKeys(opts) { return api._fetch('/admin/keys', { method: 'POST', body: JSON.stringify(opts) }); },
+    async deleteKey(id) { return api._fetch('/admin/keys/' + id, { method: 'DELETE' }); },
+    async getAdminStats() { return api._fetch('/admin/stats'); },
 };
 
 // ===== AUTH UI =====
@@ -74,7 +93,22 @@ function showLoginScreen() {
 function showAppScreen() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('appContainer').style.display = '';
-    if (currentUser) document.getElementById('userName').textContent = currentUser.name || currentUser.email;
+    if (currentUser) {
+        document.getElementById('userName').textContent = currentUser.name || currentUser.email;
+        // Show/hide admin nav link
+        const adminLink = document.getElementById('adminNavLink');
+        if (adminLink) adminLink.style.display = currentUser.role === 'admin' ? '' : 'none';
+        // Show/hide license badge
+        const licenseBadge = document.getElementById('licenseBadge');
+        if (licenseBadge) {
+            if (currentUser.role === 'admin') licenseBadge.style.display = 'none';
+            else {
+                licenseBadge.style.display = '';
+                licenseBadge.textContent = (currentUser.license_type || 'trial').toUpperCase();
+                licenseBadge.className = 'license-badge ' + (currentUser.license_type === 'trial' ? 'trial' : 'active');
+            }
+        }
+    }
 }
 function showLogin() {
     document.getElementById('loginForm').style.display = '';
