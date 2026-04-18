@@ -125,12 +125,10 @@ app.listen(PORT, () => {
 // Graceful shutdown
 process.on('SIGINT', () => {
   console.log('\nShutting down...');
-  db.close();
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  db.close();
   process.exit(0);
 });
 

@@ -29,7 +29,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 /* ===== TOP NAV ===== */
 .topnav{background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;box-shadow:var(--shadow)}
 .topnav-inner{max-width:1300px;margin:0 auto;display:flex;align-items:center;padding:0 20px;height:56px;gap:16px}
-.topnav-left{flex-shrink:0}
+.topnav-left{flex-shrink:0;display:flex;align-items:center;gap:8px}
 .topnav-brand{display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text)}
 .brand-logo{width:28px;height:28px;object-fit:contain}
 .brand-name{font-size:1.1rem;font-weight:700;letter-spacing:-.02em}
@@ -282,8 +282,52 @@ tr.drag-over td{border-top:2px solid var(--pri)}
 .modal-warning{font-size:.8rem;color:var(--err);margin-top:6px}
 
 /* ===== RESPONSIVE ===== */
-@media(max-width:900px){.topnav-links{display:none}.form-row-2,.form-row-3,.form-row-4{grid-template-columns:1fr}.order-info-grid{grid-template-columns:1fr}.phase-cards{grid-template-columns:1fr}.summary-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:600px){.main-container{padding:12px}.toolbar{flex-direction:column;align-items:stretch}.toolbar .btn{justify-content:center}.dash-actions{grid-template-columns:1fr}.stats-bar{flex-direction:column;gap:12px}}
+@media(max-width:900px){
+    .topnav-links{display:none}
+    .form-row-2,.form-row-3,.form-row-4{grid-template-columns:1fr}
+    .order-info-grid{grid-template-columns:1fr}
+    .phase-cards{grid-template-columns:1fr 1fr}
+    .summary-grid{grid-template-columns:1fr 1fr}
+    .dash-actions{grid-template-columns:1fr 1fr}
+    .dash-stats{grid-template-columns:1fr 1fr}
+    .dash-suppliers-grid{grid-template-columns:1fr}
+    .saved-jobs-list{grid-template-columns:1fr}
+    .dash-recent-grid{grid-template-columns:1fr}
+    .modal{min-width:auto;width:90vw}
+    .topnav-inner{padding:0 12px}
+    .user-badge{font-size:.75rem;padding:3px 8px}
+    .user-badge button{font-size:.72rem}
+}
+@media(max-width:600px){
+    .main-container{padding:10px}
+    .toolbar{flex-direction:column;align-items:stretch;padding:10px}
+    .toolbar .btn{justify-content:center}
+    .toolbar-group{flex-wrap:wrap;justify-content:stretch}
+    .toolbar-group .btn{flex:1}
+    .toolbar-search{width:100%}
+    .dash-actions{grid-template-columns:1fr}
+    .dash-stats{grid-template-columns:1fr 1fr}
+    .stats-bar{flex-direction:column;gap:10px}
+    .phase-cards{grid-template-columns:1fr}
+    .summary-grid{grid-template-columns:1fr}
+    .phase-selector{gap:6px}
+    .phase-chip{padding:8px 12px;font-size:.82rem}
+    .calc-section{padding:14px}
+    .calc-section-title{font-size:.78rem}
+    .supplier-pills{gap:4px}
+    .supplier-pill{padding:6px 14px;font-size:.82rem}
+    .topnav-inner{height:48px;gap:8px}
+    .brand-name{font-size:.95rem}
+    .brand-logo{width:24px;height:24px}
+    .account-card{flex-direction:column;text-align:center;gap:12px}
+    .account-avatar{width:56px;height:56px;font-size:1.3rem}
+    .order-info-row{grid-template-columns:1fr}
+    .bid-paper{padding:20px}
+    .page-intro{flex-direction:column;align-items:flex-start;gap:8px}
+    .btn{padding:9px 16px;font-size:.84rem}
+    .btn-lg{padding:12px 32px;font-size:.92rem}
+    .login-card{padding:28px 20px}
+}
 
 /* ===== PRINT ===== */
 @media print{
@@ -382,9 +426,14 @@ tr.drag-over td{border-top:2px solid var(--pri)}
 
 @media(max-width:900px){
     .mobile-menu-btn{display:block}
-    .topnav-links{display:none;position:fixed;top:56px;left:0;right:0;background:var(--surface);border-bottom:1px solid var(--border);flex-direction:column;padding:8px;z-index:95;box-shadow:var(--shadow2)}
+    .topnav-links{display:none;position:fixed;top:48px;left:0;right:0;background:var(--surface);border-bottom:1px solid var(--border);flex-direction:column;padding:8px;z-index:95;box-shadow:var(--shadow2);max-height:70vh;overflow-y:auto}
     .topnav-links.open{display:flex}
-    .nav-link{text-align:left;padding:12px 16px;border-radius:8px}
+    .nav-link{text-align:left;padding:14px 16px;border-radius:8px;font-size:.92rem}
+    .nav-link.active{background:var(--pri-soft)}
+    .license-badge{font-size:.65rem;padding:2px 8px}
+    .theme-toggle{width:36px;height:20px}
+    .theme-toggle::after{width:16px;height:16px}
+    [data-theme="light"] .theme-toggle::after{transform:translateX(16px)}
 }
 
 /* License badge */

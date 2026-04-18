@@ -627,9 +627,9 @@ async function updateProfile(){
 // Admin view toggle
 window.adminViewAsUser=false;
 function toggleAdminView(){
-    window.adminViewAsUser=!adminViewAsUser;
+    window.adminViewAsUser=!window.adminViewAsUser;
     const floatingBtn=document.getElementById('adminFloatingBtn');
-    if(adminViewAsUser){
+    if(window.adminViewAsUser){
         document.getElementById('adminNavLink').style.display='none';
         document.getElementById('licenseBadge').style.display='';
         document.getElementById('licenseBadge').textContent='TRIAL';
