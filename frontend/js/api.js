@@ -69,6 +69,18 @@ const api = {
     async verifyEmail(code) { return api._fetch('/auth/verify', { method: 'POST', body: JSON.stringify({ code }) }); },
     async resendCode() { return api._fetch('/auth/resend-code', { method: 'POST' }); },
 
+    // Password reset (no auth needed, use raw fetch)
+    async forgotPassword(email) {
+        const res = await fetch(API_BASE + '/auth/forgot-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+        return res.json();
+    },
+    async resetPassword(email, code, password) {
+        const res = await fetch(API_BASE + '/auth/reset-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, code, password }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        return data;
+    },
+
     // Profile
     async updateProfile(data) { return api._fetch('/auth/profile', { method: 'PUT', body: JSON.stringify(data) }); },
 
@@ -129,6 +141,8 @@ function showAppScreen() {
 function showLogin() {
     document.getElementById('loginForm').style.display = '';
     document.getElementById('registerForm').style.display = 'none';
+    document.getElementById('forgotForm').style.display = 'none';
+    document.getElementById('resetForm').style.display = 'none';
     document.getElementById('loginError').style.display = 'none';
 }
 function showRegister() {
@@ -197,6 +211,51 @@ async function doResendCode() {
     }
 }
 function doLogout() { api.setToken(null); currentUser = null; showLoginScreen(); }
+
+// Forgot password flow
+function showForgotPassword() {
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('registerForm').style.display = 'none';
+    document.getElementById('forgotForm').style.display = '';
+    document.getElementById('resetForm').style.display = 'none';
+    document.getElementById('forgotError').style.display = 'none';
+}
+
+async function doForgotPassword() {
+    const email = document.getElementById('forgotEmail').value.trim();
+    const msgEl = document.getElementById('forgotError');
+    if (!email) { msgEl.textContent = 'Enter your email'; msgEl.style.display = ''; msgEl.style.background = ''; msgEl.style.color = ''; return; }
+    try {
+        await api.forgotPassword(email);
+        msgEl.textContent = 'Code sent! Check your email.';
+        msgEl.style.display = '';
+        msgEl.style.background = 'var(--ok-soft)';
+        msgEl.style.color = 'var(--ok)';
+        // Show reset form
+        document.getElementById('resetEmail').value = email;
+        setTimeout(() => {
+            document.getElementById('forgotForm').style.display = 'none';
+            document.getElementById('resetForm').style.display = '';
+            document.getElementById('resetError').style.display = 'none';
+        }, 1500);
+    } catch (e) { msgEl.textContent = e.message; msgEl.style.display = ''; msgEl.style.background = ''; msgEl.style.color = ''; }
+}
+
+async function doResetPassword() {
+    const email = document.getElementById('resetEmail').value.trim();
+    const code = document.getElementById('resetCode').value.trim();
+    const password = document.getElementById('resetPassword').value;
+    const msgEl = document.getElementById('resetError');
+    if (!code || !password) { msgEl.textContent = 'Enter code and new password'; msgEl.style.display = ''; msgEl.style.background = ''; msgEl.style.color = ''; return; }
+    try {
+        await api.resetPassword(email, code, password);
+        msgEl.textContent = 'Password reset! Redirecting to sign in...';
+        msgEl.style.display = '';
+        msgEl.style.background = 'var(--ok-soft)';
+        msgEl.style.color = 'var(--ok)';
+        setTimeout(() => showLogin(), 2000);
+    } catch (e) { msgEl.textContent = e.message; msgEl.style.display = ''; msgEl.style.background = ''; msgEl.style.color = ''; }
+}
 
 async function checkAuth() {
     if (!authToken) { showLoginScreen(); return false; }

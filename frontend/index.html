@@ -24,6 +24,7 @@
             <div id="loginError" class="login-error" style="display:none"></div>
             <button class="btn btn-primary btn-lg" style="width:100%" onclick="doLogin()">Sign In</button>
             <p class="login-switch">Don't have an account? <a href="#" onclick="showRegister();return false">Create one</a></p>
+            <p class="login-switch"><a href="#" onclick="showForgotPassword();return false">Forgot password?</a></p>
         </div>
 
         <div id="registerForm" style="display:none">
@@ -33,6 +34,22 @@
             <div id="registerError" class="login-error" style="display:none"></div>
             <button class="btn btn-primary btn-lg" style="width:100%" onclick="doRegister()">Create Account</button>
             <p class="login-switch">Already have an account? <a href="#" onclick="showLogin();return false">Sign in</a></p>
+        </div>
+
+        <div id="forgotForm" style="display:none">
+            <div class="field"><label>Email</label><input type="email" class="input" id="forgotEmail" placeholder="Enter your email" onkeydown="if(event.key==='Enter')doForgotPassword()"></div>
+            <div id="forgotError" class="login-error" style="display:none"></div>
+            <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center" onclick="doForgotPassword()">Send Reset Code</button>
+            <p class="login-switch"><a href="#" onclick="showLogin();return false">Back to sign in</a></p>
+        </div>
+
+        <div id="resetForm" style="display:none">
+            <input type="hidden" id="resetEmail">
+            <div class="field"><label>Reset Code</label><input type="text" class="input" id="resetCode" placeholder="000000" maxlength="6" style="text-align:center;font-size:1.3rem;font-family:'JetBrains Mono',monospace;letter-spacing:.2em" onkeydown="if(event.key==='Enter')doResetPassword()"></div>
+            <div class="field"><label>New Password</label><input type="password" class="input" id="resetPassword" placeholder="Min 6 characters" onkeydown="if(event.key==='Enter')doResetPassword()"></div>
+            <div id="resetError" class="login-error" style="display:none"></div>
+            <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center" onclick="doResetPassword()">Reset Password</button>
+            <p class="login-switch"><a href="#" onclick="showLogin();return false">Back to sign in</a></p>
         </div>
     </div>
 </div>

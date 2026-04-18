@@ -200,4 +200,91 @@ router.post('/activate', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// POST /forgot-password — send reset code (no auth required)
+router.post('/forgot-password', async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+    const { data: user } = await supabase.from('users').select('id, email, name').eq('email', email.trim().toLowerCase()).single();
+    // Always return success even if user not found (prevent email enumeration)
+    if (!user) return res.json({ message: 'If that email exists, a reset code has been sent.' });
+
+    // Delete old codes
+    await supabase.from('verification_codes').delete().eq('user_id', user.id);
+
+    // Generate code
+    const code = generateCode();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+    await supabase.from('verification_codes').insert({ user_id: user.id, code, expires_at: expiresAt });
+
+    // Send email
+    await resend.emails.send({
+      from: 'EstiCount <noreply@esticount.com>',
+      to: email,
+      subject: 'Reset your EstiCount password',
+      html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f0f2f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f2f5;padding:40px 20px">
+    <tr><td align="center">
+      <table width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+        <tr><td style="background:#1c2128;padding:28px 32px;text-align:center">
+          <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.5px">EstiCount</h1>
+          <p style="margin:4px 0 0;color:#8b949e;font-size:13px">Material Estimating & Order Management</p>
+        </td></tr>
+        <tr><td style="padding:36px 32px 20px">
+          <h2 style="margin:0 0 8px;color:#1f2328;font-size:20px;font-weight:600">Reset your password</h2>
+          <p style="margin:0 0 24px;color:#59636e;font-size:15px;line-height:1.5">Hi ${user.name || 'there'}, we received a request to reset your password. Enter this code to set a new one:</p>
+          <div style="background:#f6f8fa;border:2px solid #d1d9e0;border-radius:10px;padding:28px;text-align:center;margin:0 0 24px">
+            <span style="font-size:36px;font-weight:700;letter-spacing:10px;color:#1f2328;font-family:'Courier New',monospace">${code}</span>
+          </div>
+          <p style="margin:0 0 6px;color:#59636e;font-size:14px">This code expires in <strong>15 minutes</strong>.</p>
+          <p style="margin:0;color:#8b949e;font-size:13px">If you didn't request a password reset, you can safely ignore this email.</p>
+        </td></tr>
+        <tr><td style="padding:0 32px"><div style="border-top:1px solid #e5e7eb"></div></td></tr>
+        <tr><td style="padding:20px 32px 28px;text-align:center">
+          <p style="margin:0;color:#8b949e;font-size:12px">EstiCount &mdash; Built for contractors</p>
+          <p style="margin:4px 0 0"><a href="https://esticount.com" style="color:#0969da;text-decoration:none;font-size:11px">esticount.com</a></p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+      `
+    });
+
+    res.json({ message: 'If that email exists, a reset code has been sent.' });
+  } catch (err) { next(err); }
+});
+
+// POST /reset-password — verify code and set new password (no auth required)
+router.post('/reset-password', async (req, res, next) => {
+  try {
+    const { email, code, password } = req.body;
+    if (!email || !code || !password) return res.status(400).json({ error: 'Email, code, and new password are required' });
+    if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+
+    const { data: user } = await supabase.from('users').select('id').eq('email', email.trim().toLowerCase()).single();
+    if (!user) return res.status(400).json({ error: 'Invalid email or code' });
+
+    const { data: record } = await supabase.from('verification_codes')
+      .select('*').eq('user_id', user.id).eq('code', code.trim()).order('created_at', { ascending: false }).limit(1).single();
+
+    if (!record) return res.status(400).json({ error: 'Invalid code' });
+    if (new Date(record.expires_at) < new Date()) return res.status(400).json({ error: 'Code has expired. Request a new one.' });
+
+    // Update password
+    const hash = bcrypt.hashSync(password, 10);
+    await supabase.from('users').update({ password_hash: hash }).eq('id', user.id);
+
+    // Clean up codes
+    await supabase.from('verification_codes').delete().eq('user_id', user.id);
+
+    res.json({ message: 'Password reset successfully. You can now sign in.' });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;
