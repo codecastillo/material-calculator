@@ -150,6 +150,8 @@ function showLogin() {
 function showRegister() {
     document.getElementById('loginForm').style.display = 'none';
     document.getElementById('registerForm').style.display = '';
+    document.getElementById('forgotForm').style.display = 'none';
+    document.getElementById('resetForm').style.display = 'none';
     document.getElementById('registerError').style.display = 'none';
 }
 async function doLogin() {
