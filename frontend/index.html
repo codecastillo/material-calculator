@@ -11,6 +11,35 @@
 </head>
 <body>
 
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" class="login-screen">
+    <div class="login-card">
+        <img src="assets/logo.png" alt="EstiCount" class="login-logo">
+        <h1>EstiCount</h1>
+        <p class="login-subtitle">Material Estimating & Order Management</p>
+
+        <div id="loginForm">
+            <div class="field"><label>Email</label><input type="email" class="input" id="loginEmail" placeholder="admin@example.com"></div>
+            <div class="field"><label>Password</label><input type="password" class="input" id="loginPassword" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+            <div id="loginError" class="login-error" style="display:none"></div>
+            <button class="btn btn-primary btn-lg" style="width:100%" onclick="doLogin()">Sign In</button>
+            <p class="login-switch">Don't have an account? <a href="#" onclick="showRegister();return false">Create one</a></p>
+        </div>
+
+        <div id="registerForm" style="display:none">
+            <div class="field"><label>Name</label><input type="text" class="input" id="registerName" placeholder="Your name"></div>
+            <div class="field"><label>Email</label><input type="email" class="input" id="registerEmail" placeholder="you@company.com"></div>
+            <div class="field"><label>Password</label><input type="password" class="input" id="registerPassword" placeholder="Min 6 characters" onkeydown="if(event.key==='Enter')doRegister()"></div>
+            <div id="registerError" class="login-error" style="display:none"></div>
+            <button class="btn btn-primary btn-lg" style="width:100%" onclick="doRegister()">Create Account</button>
+            <p class="login-switch">Already have an account? <a href="#" onclick="showLogin();return false">Sign in</a></p>
+        </div>
+    </div>
+</div>
+
+<!-- APP (hidden until logged in) -->
+<div id="appContainer" style="display:none">
+
 <!-- TOP NAV -->
 <nav class="topnav">
     <div class="topnav-inner">
@@ -32,6 +61,7 @@
             <button class="btn-icon" onclick="undo()" title="Undo" id="undoBtn" disabled>&#8630;</button>
             <button class="btn-icon" onclick="redo()" title="Redo" id="redoBtn" disabled>&#8631;</button>
             <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
+            <div class="user-badge" id="userBadge"><span id="userName"></span><button onclick="doLogout()">Logout</button></div>
         </div>
     </div>
 </nav>
@@ -137,8 +167,8 @@
         <h3 class="calc-section-title">Phase Options</h3>
         <div class="form-row-3">
             <div class="field" id="optLinearFt" style="display:none"><label>Linear Feet (trim/corners)</label><input type="number" class="input" id="calcLinearFt" placeholder="0" min="0"><span class="hint">Weep screed, corner aid, stone corners</span></div>
-            <div class="field" id="optPaintCoats" style="display:none"><label>Paint Coats</label><select class="input" id="calcPaintCoats"><option value="1">1 Coat</option><option value="2" selected>2 Coats</option><option value="3">3 Coats</option></select></div>
-            <div class="field" id="optDrywallSize" style="display:none"><label>Drywall Sheet Size</label><select class="input" id="calcDrywallSize"><option>1/2" 4x8</option><option>1/2" 4x10</option><option>1/2" 4x12</option><option>5/8" 4x8</option><option>5/8" 4x10</option><option>5/8" 4x12</option></select></div>
+            <div class="field" id="optPaintCoats" style="display:none"><label>Paint Coats</label><select class="input" id="calcPaintCoats"><option value="0">N/A</option><option value="1">1 Coat</option><option value="2">2 Coats</option><option value="3">3 Coats</option></select></div>
+            <div class="field" id="optDrywallSize" style="display:none"><label>Drywall Sheet Size</label><select class="input" id="calcDrywallSize"><option value="">N/A</option><option>1/2" 4x8</option><option>1/2" 4x10</option><option>1/2" 4x12</option><option>5/8" 4x8</option><option>5/8" 4x10</option><option>5/8" 4x12</option></select></div>
         </div>
     </div>
 
@@ -247,6 +277,9 @@
 
 <div class="notification" id="notification"></div>
 
+</div><!-- /appContainer -->
+
+<script src="js/api.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

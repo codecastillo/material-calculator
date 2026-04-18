@@ -1,210 +1,112 @@
-// API Client - wraps backend API calls with localStorage fallback
-const API_BASE = ""; // Set to backend URL when ready, e.g. 'http://localhost:3000/api'
-const USE_API = false; // Toggle to true when backend is running
+// ===== API CLIENT =====
+const API_BASE = window.location.origin + '/api';
+let authToken = localStorage.getItem('esticount_token') || null;
+let currentUser = null;
 
 const api = {
-  // ─── Auth ────────────────────────────────────────────────────────
-  async login(email, password) {
-    if (!USE_API) return { success: false, message: "API not connected" };
-    return this._fetch("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    });
-  },
+    setToken(token) {
+        authToken = token;
+        if (token) localStorage.setItem('esticount_token', token);
+        else localStorage.removeItem('esticount_token');
+    },
+    getToken() { return authToken; },
 
-  async register(email, password, name) {
-    if (!USE_API) return { success: false, message: "API not connected" };
-    return this._fetch("/auth/register", {
-      method: "POST",
-      body: JSON.stringify({ email, password, name }),
-    });
-  },
+    async _fetch(endpoint, options = {}) {
+        const headers = { 'Content-Type': 'application/json', ...options.headers };
+        if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+        try {
+            const res = await fetch(API_BASE + endpoint, { ...options, headers });
+            if (res.status === 401) {
+                api.setToken(null); currentUser = null; showLoginScreen();
+                throw new Error('Session expired. Please log in again.');
+            }
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Request failed');
+            return data;
+        } catch (err) {
+            if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+                throw new Error('Cannot connect to server.');
+            }
+            throw err;
+        }
+    },
 
-  // ─── Suppliers ───────────────────────────────────────────────────
-  async getSuppliers() {
-    if (!USE_API) {
-      const data = localStorage.getItem("suppliers");
-      return data ? JSON.parse(data) : [];
-    }
-    return this._fetch("/suppliers");
-  },
+    // Auth
+    async login(email, password) {
+        const data = await api._fetch('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+        api.setToken(data.token); currentUser = data.user; return data;
+    },
+    async register(email, password, name) {
+        const data = await api._fetch('/auth/register', { method: 'POST', body: JSON.stringify({ email, password, name }) });
+        api.setToken(data.token); currentUser = data.user; return data;
+    },
+    async getMe() {
+        const data = await api._fetch('/auth/me'); currentUser = data.user; return data;
+    },
 
-  async createSupplier(name) {
-    if (!USE_API) {
-      const suppliers = await this.getSuppliers();
-      const newSupplier = { id: Date.now().toString(), name };
-      suppliers.push(newSupplier);
-      localStorage.setItem("suppliers", JSON.stringify(suppliers));
-      return newSupplier;
-    }
-    return this._fetch("/suppliers", {
-      method: "POST",
-      body: JSON.stringify({ name }),
-    });
-  },
+    // Suppliers
+    async getSuppliers() { return api._fetch('/suppliers'); },
+    async createSupplier(name) { return api._fetch('/suppliers', { method: 'POST', body: JSON.stringify({ name }) }); },
+    async deleteSupplier(id) { return api._fetch('/suppliers/' + id, { method: 'DELETE' }); },
 
-  async deleteSupplier(id) {
-    if (!USE_API) {
-      let suppliers = await this.getSuppliers();
-      suppliers = suppliers.filter((s) => s.id !== id);
-      localStorage.setItem("suppliers", JSON.stringify(suppliers));
-      return { success: true };
-    }
-    return this._fetch("/suppliers/" + id, { method: "DELETE" });
-  },
+    // Materials
+    async getMaterials(supplierId) { return api._fetch('/materials/supplier/' + supplierId); },
+    async createMaterial(supplierId, material) { return api._fetch('/materials', { method: 'POST', body: JSON.stringify({ supplier_id: supplierId, ...material }) }); },
+    async updateMaterial(id, data) { return api._fetch('/materials/' + id, { method: 'PUT', body: JSON.stringify(data) }); },
+    async deleteMaterial(id) { return api._fetch('/materials/' + id, { method: 'DELETE' }); },
 
-  // ─── Materials ───────────────────────────────────────────────────
-  async getMaterials(supplierId) {
-    if (!USE_API) {
-      const key = supplierId ? "materials_" + supplierId : "materials";
-      const data = localStorage.getItem(key);
-      return data ? JSON.parse(data) : [];
-    }
-    const query = supplierId ? "?supplierId=" + supplierId : "";
-    return this._fetch("/materials" + query);
-  },
+    // Categories
+    async getCategories() { return api._fetch('/categories'); },
+    async createCategory(name) { return api._fetch('/categories', { method: 'POST', body: JSON.stringify({ name }) }); },
+    async deleteCategory(id) { return api._fetch('/categories/' + id, { method: 'DELETE' }); },
 
-  async createMaterial(supplierId, material) {
-    if (!USE_API) {
-      const key = "materials_" + supplierId;
-      const materials = await this.getMaterials(supplierId);
-      const newMaterial = {
-        id: Date.now().toString(),
-        supplierId,
-        ...material,
-      };
-      materials.push(newMaterial);
-      localStorage.setItem(key, JSON.stringify(materials));
-      return newMaterial;
-    }
-    return this._fetch("/materials", {
-      method: "POST",
-      body: JSON.stringify({ supplierId, ...material }),
-    });
-  },
-
-  async updateMaterial(id, data) {
-    if (!USE_API) {
-      // In localStorage mode, updates are handled by the app directly
-      return { success: true, id, ...data };
-    }
-    return this._fetch("/materials/" + id, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
-  },
-
-  async deleteMaterial(id) {
-    if (!USE_API) {
-      // In localStorage mode, deletions are handled by the app directly
-      return { success: true };
-    }
-    return this._fetch("/materials/" + id, { method: "DELETE" });
-  },
-
-  // ─── Categories ──────────────────────────────────────────────────
-  async getCategories() {
-    if (!USE_API) {
-      const data = localStorage.getItem("categories");
-      return data ? JSON.parse(data) : [];
-    }
-    return this._fetch("/categories");
-  },
-
-  async createCategory(name) {
-    if (!USE_API) {
-      const categories = await this.getCategories();
-      const newCategory = { id: Date.now().toString(), name };
-      categories.push(newCategory);
-      localStorage.setItem("categories", JSON.stringify(categories));
-      return newCategory;
-    }
-    return this._fetch("/categories", {
-      method: "POST",
-      body: JSON.stringify({ name }),
-    });
-  },
-
-  async deleteCategory(id) {
-    if (!USE_API) {
-      let categories = await this.getCategories();
-      categories = categories.filter((c) => c.id !== id);
-      localStorage.setItem("categories", JSON.stringify(categories));
-      return { success: true };
-    }
-    return this._fetch("/categories/" + id, { method: "DELETE" });
-  },
-
-  // ─── Jobs ────────────────────────────────────────────────────────
-  async getJobs() {
-    if (!USE_API) {
-      const data = localStorage.getItem("savedJobs");
-      return data ? JSON.parse(data) : [];
-    }
-    return this._fetch("/jobs");
-  },
-
-  async saveJob(job) {
-    if (!USE_API) {
-      const jobs = await this.getJobs();
-      const newJob = {
-        id: Date.now().toString(),
-        savedAt: new Date().toISOString(),
-        ...job,
-      };
-      jobs.push(newJob);
-      localStorage.setItem("savedJobs", JSON.stringify(jobs));
-      return newJob;
-    }
-    return this._fetch("/jobs", {
-      method: "POST",
-      body: JSON.stringify(job),
-    });
-  },
-
-  async deleteJob(id) {
-    if (!USE_API) {
-      let jobs = await this.getJobs();
-      jobs = jobs.filter((j) => j.id !== id);
-      localStorage.setItem("savedJobs", JSON.stringify(jobs));
-      return { success: true };
-    }
-    return this._fetch("/jobs/" + id, { method: "DELETE" });
-  },
-
-  // ─── Supplier Pricing API ────────────────────────────────────────
-  async fetchSupplierPricing(supplierName) {
-    // Future: connect to supplier APIs for live pricing
-    // For now returns null (use local data)
-    if (!USE_API) return null;
-    try {
-      return await this._fetch(
-        "/suppliers/pricing?name=" + encodeURIComponent(supplierName),
-      );
-    } catch (e) {
-      console.warn("Supplier pricing fetch failed:", e.message);
-      return null;
-    }
-  },
-
-  // ─── Helper ──────────────────────────────────────────────────────
-  async _fetch(endpoint, options = {}) {
-    const token = localStorage.getItem("authToken");
-    const headers = {
-      "Content-Type": "application/json",
-      ...options.headers,
-    };
-    if (token) {
-      headers["Authorization"] = "Bearer " + token;
-    }
-    const res = await fetch(API_BASE + endpoint, {
-      ...options,
-      headers,
-    });
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(errorText || "Request failed with status " + res.status);
-    }
-    return res.json();
-  },
+    // Jobs
+    async getJobs() { return api._fetch('/jobs'); },
+    async saveJob(job) { return api._fetch('/jobs', { method: 'POST', body: JSON.stringify(job) }); },
+    async deleteJob(id) { return api._fetch('/jobs/' + id, { method: 'DELETE' }); },
 };
+
+// ===== AUTH UI =====
+function showLoginScreen() {
+    document.getElementById('loginScreen').style.display = '';
+    document.getElementById('appContainer').style.display = 'none';
+}
+function showAppScreen() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appContainer').style.display = '';
+    if (currentUser) document.getElementById('userName').textContent = currentUser.name || currentUser.email;
+}
+function showLogin() {
+    document.getElementById('loginForm').style.display = '';
+    document.getElementById('registerForm').style.display = 'none';
+    document.getElementById('loginError').style.display = 'none';
+}
+function showRegister() {
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('registerForm').style.display = '';
+    document.getElementById('registerError').style.display = 'none';
+}
+async function doLogin() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const errEl = document.getElementById('loginError');
+    if (!email || !password) { errEl.textContent = 'Enter email and password'; errEl.style.display = ''; return; }
+    try { await api.login(email, password); errEl.style.display = 'none'; showAppScreen(); initApp(); }
+    catch (err) { errEl.textContent = err.message; errEl.style.display = ''; }
+}
+async function doRegister() {
+    const name = document.getElementById('registerName').value.trim();
+    const email = document.getElementById('registerEmail').value.trim();
+    const password = document.getElementById('registerPassword').value;
+    const errEl = document.getElementById('registerError');
+    if (!name || !email || !password) { errEl.textContent = 'All fields required'; errEl.style.display = ''; return; }
+    try { await api.register(email, password, name); errEl.style.display = 'none'; showAppScreen(); initApp(); }
+    catch (err) { errEl.textContent = err.message; errEl.style.display = ''; }
+}
+function doLogout() { api.setToken(null); currentUser = null; showLoginScreen(); }
+
+async function checkAuth() {
+    if (!authToken) { showLoginScreen(); return false; }
+    try { await api.getMe(); showAppScreen(); return true; }
+    catch { showLoginScreen(); return false; }
+}

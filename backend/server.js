@@ -6,8 +6,8 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 
-// Initialize database (creates tables on require)
-const db = require('./config/database');
+// Initialize Supabase connection
+const supabase = require('./config/database');
 
 // Import routes
 const authRoutes = require('./routes/auth');

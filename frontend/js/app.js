@@ -19,7 +19,7 @@ const STONE_MATERIALS=[{name:'Manufactured Stone Veneer (flat)',sku:'SV-FLAT-BOX
 const DRYWALL_MATERIALS=[{name:'Drywall Sheet 1/2" 4x8',sku:'DW-12-48',unit:'sheet',pricePerUnit:12.50,category:'Drywall',coveragePerUnit:32,calcType:'area',isDrywallSheet:true},{name:'Drywall Sheet 5/8" 4x8',sku:'DW-58-48',unit:'sheet',pricePerUnit:14.50,category:'Drywall',coveragePerUnit:32,calcType:'area',isDrywallSheet:true},{name:'Red Dot Joint Compound (4.5 gal)',sku:'RD-AP-45G',unit:'bucket',pricePerUnit:18,category:'Drywall',coveragePerUnit:230,calcType:'area'},{name:'TNT Lite Topping (4.5 gal)',sku:'TNT-LT-45G',unit:'bucket',pricePerUnit:22,category:'Drywall',coveragePerUnit:270,calcType:'area'},{name:'Sanding Discs 120 Grit (25pk)',sku:'SD-120-25',unit:'box',pricePerUnit:15,category:'Drywall',coveragePerUnit:1500,calcType:'area'},{name:'Sanding Discs 150 Grit (25pk)',sku:'SD-150-25',unit:'box',pricePerUnit:15,category:'Drywall',coveragePerUnit:1500,calcType:'area'},{name:'Paper Joint Tape (500\')',sku:'PJT-500',unit:'roll',pricePerUnit:4.50,category:'Drywall',coveragePerUnit:200,calcType:'area'},{name:'Mesh Joint Tape (300\')',sku:'MJT-300',unit:'roll',pricePerUnit:7,category:'Drywall',coveragePerUnit:150,calcType:'area'},{name:'Corner Bead Metal 8\'',sku:'CB-MT-8',unit:'piece',pricePerUnit:3.50,category:'Drywall',coveragePerUnit:8,calcType:'linear'}];
 const PAINT_MATERIALS=[{name:'Painters Plastic (9\' x 400\')',sku:'PP-9400',unit:'roll',pricePerUnit:18,category:'Painting',coveragePerUnit:3600,calcType:'area'},{name:'Primer (1 gal)',sku:'SW-PRM-1G',unit:'gal',pricePerUnit:28,category:'Painting',coveragePerUnit:400,calcType:'area',isPaint:true},{name:'Primer (5 gal)',sku:'SW-PRM-5G',unit:'bucket',pricePerUnit:115,category:'Painting',coveragePerUnit:2000,calcType:'area',isPaint:true},{name:'A-100 Exterior Latex (1 gal)',sku:'SW-A100-1G',unit:'gal',pricePerUnit:42,category:'Painting',coveragePerUnit:400,calcType:'area',isPaint:true},{name:'A-100 Exterior Latex (5 gal)',sku:'SW-A100-5G',unit:'bucket',pricePerUnit:185,category:'Painting',coveragePerUnit:2000,calcType:'area',isPaint:true}];
 
-const SUPPLIER_MATERIALS={'Pacific Supply':[...STUCCO_LATH,...STUCCO_GRAY,...STUCCO_COLOR,...STONE_MATERIALS,...DRYWALL_MATERIALS],'ABC Supply':[...STUCCO_LATH,...STUCCO_GRAY,...STUCCO_COLOR,...STONE_MATERIALS,...DRYWALL_MATERIALS],'Sherwin Williams':[...DRYWALL_MATERIALS,...PAINT_MATERIALS]};
+const SUPPLIER_MATERIALS={'Pacific Supply':[...STUCCO_LATH,...STUCCO_GRAY,...STUCCO_COLOR,...STONE_MATERIALS,...DRYWALL_MATERIALS],'ABC Supply':[...STUCCO_LATH,...STUCCO_GRAY,...STUCCO_COLOR,...STONE_MATERIALS,...DRYWALL_MATERIALS],'Sherwin Williams':[...PAINT_MATERIALS]};
 const SUPPLIER_PRICE_MODS={'Pacific Supply':1,'ABC Supply':1.03,'Sherwin Williams':1};
 
 // ===== STATE =====
@@ -27,17 +27,101 @@ let suppliers=[],categories=[],materialsBySupplier={},activeSupplier='',editingI
 let undoStack=[],redoStack=[];const MAX_UNDO=25;let dragSrcId=null;
 let pageHistory=['dashboard'];
 
-// ===== PERSISTENCE =====
-function loadData(){
+// ===== PERSISTENCE (API + localStorage cache) =====
+async function loadData(){
+    const t=localStorage.getItem('stucco_theme');
+    if(t)document.documentElement.setAttribute('data-theme',t);
+
+    if(api.getToken()){
+        try{
+            // Load from API
+            const [supData,catData,jobData]=await Promise.all([
+                api.getSuppliers(),
+                api.getCategories(),
+                api.getJobs()
+            ]);
+
+            // Map API suppliers to our format
+            suppliers=supData.suppliers.map(s=>s.name);
+            const supplierIdMap={};supData.suppliers.forEach(s=>{supplierIdMap[s.name]=s.id});
+            window._supplierIdMap=supplierIdMap; // store for later API calls
+
+            // Map categories
+            categories=catData.categories.map(c=>c.name);
+            const categoryIdMap={};catData.categories.forEach(c=>{categoryIdMap[c.name]=c.id});
+            window._categoryIdMap=categoryIdMap;
+
+            // Load materials for each supplier
+            materialsBySupplier={};
+            await Promise.all(suppliers.map(async name=>{
+                const sid=supplierIdMap[name];
+                if(!sid)return;
+                const matData=await api.getMaterials(sid);
+                materialsBySupplier[name]=(matData.materials||[]).map(m=>({
+                    id:m.id,
+                    name:m.name,
+                    sku:m.sku||'',
+                    unit:m.unit||'each',
+                    pricePerUnit:m.price_per_unit||0,
+                    category:categoryIdMap ? Object.entries(categoryIdMap).find(([n,id])=>id===m.category_id)?.[0]||'Lath' : 'Lath',
+                    coveragePerUnit:m.coverage_per_unit||100,
+                    calcType:m.calc_type==='linear_ft'?'linear':(m.calc_type||'area'),
+                    isPaint:name==='Sherwin Williams'&&(m.name||'').match(/paint|primer|latex/i)?true:false,
+                    lastUpdated:m.updated_at?new Date(m.updated_at).getTime():Date.now(),
+                    previousPrice:null
+                }));
+            }));
+
+            // Load jobs
+            savedJobs=(jobData.jobs||[]).map(j=>({
+                id:j.id,
+                name:j.name,
+                isTemplate:false,
+                projectName:j.project_name||'',
+                projectAddress:j.project_address||'',
+                supplier:suppliers.find(s=>supplierIdMap[s]===j.supplier_id)||suppliers[0],
+                sqft:j.sqft||0,
+                linearFt:j.linear_ft||0,
+                waste:j.waste_pct||10,
+                profitPct:j.profit_pct||20,
+                taxPct:j.tax_pct||0,
+                laborRate:j.labor_rate||0,
+                selectedPhases:j.selected_phases?JSON.parse(j.selected_phases):categories,
+                materialTotal:j.material_total||0,
+                sellingPrice:j.selling_price||0,
+                savedAt:j.created_at||new Date().toISOString()
+            }));
+
+            // Cache locally as fallback
+            localStorage.setItem('stucco_suppliers',JSON.stringify(suppliers));
+            localStorage.setItem('stucco_categories',JSON.stringify(categories));
+            localStorage.setItem('stucco_materials_v2',JSON.stringify(materialsBySupplier));
+            localStorage.setItem('stucco_saved_jobs',JSON.stringify(savedJobs));
+
+            if(suppliers.length>0)activeSupplier=suppliers[0];
+            return;
+        }catch(err){
+            console.warn('API load failed, using localStorage cache:',err.message);
+        }
+    }
+
+    // Fallback: load from localStorage
     try{
-        const s=localStorage.getItem('stucco_suppliers'),c=localStorage.getItem('stucco_categories'),m=localStorage.getItem('stucco_materials_v2'),j=localStorage.getItem('stucco_saved_jobs'),t=localStorage.getItem('stucco_theme');
+        const s=localStorage.getItem('stucco_suppliers'),c=localStorage.getItem('stucco_categories'),m=localStorage.getItem('stucco_materials_v2'),j=localStorage.getItem('stucco_saved_jobs');
         if(s&&c&&m){suppliers=JSON.parse(s);categories=JSON.parse(c);materialsBySupplier=JSON.parse(m);Object.values(materialsBySupplier).forEach(ms=>ms.forEach(mt=>{if(!mt.calcType)mt.calcType='area';if(!mt.lastUpdated)mt.lastUpdated=Date.now()}))}else resetAllToDefaults(true);
-        if(j)savedJobs=JSON.parse(j);if(t)document.documentElement.setAttribute('data-theme',t);
+        if(j)savedJobs=JSON.parse(j);
     }catch{resetAllToDefaults(true)}
     if(suppliers.length>0)activeSupplier=suppliers[0];
 }
-function saveAll(){localStorage.setItem('stucco_suppliers',JSON.stringify(suppliers));localStorage.setItem('stucco_categories',JSON.stringify(categories));localStorage.setItem('stucco_materials_v2',JSON.stringify(materialsBySupplier))}
+
+function saveAll(){
+    // Always save to localStorage as cache
+    localStorage.setItem('stucco_suppliers',JSON.stringify(suppliers));
+    localStorage.setItem('stucco_categories',JSON.stringify(categories));
+    localStorage.setItem('stucco_materials_v2',JSON.stringify(materialsBySupplier));
+}
 function saveSavedJobs(){localStorage.setItem('stucco_saved_jobs',JSON.stringify(savedJobs))}
+
 function resetAllToDefaults(silent){
     localStorage.removeItem('stucco_suppliers');localStorage.removeItem('stucco_categories');localStorage.removeItem('stucco_materials_v2');localStorage.removeItem('stucco_materials_by_supplier');
     suppliers=[...DEFAULT_SUPPLIERS];categories=[...DEFAULT_CATEGORIES];materialsBySupplier={};const now=Date.now();
@@ -289,7 +373,8 @@ function calculateJob(){
     const deliveryFee=parseFloat(document.getElementById('calcDelivery').value)||0;
     const ccFeeEnabled=document.getElementById('calcCCFeeToggle').checked;
     const ccFeePct=ccFeeEnabled?(parseFloat(document.getElementById('calcCCFee').value)||0):0;
-    const paintCoats=parseInt(document.getElementById('calcPaintCoats')?.value)||1;
+    const paintCoatsRaw=parseInt(document.getElementById('calcPaintCoats')?.value);
+    const paintCoats=paintCoatsRaw>0?paintCoatsRaw:1;
     const supplier=document.getElementById('calcSupplier').value;
 
     if(sqft<=0&&linearFt<=0){notify('Enter sqft or linear ft','error');return}
@@ -297,22 +382,42 @@ function calculateJob(){
     const selectedPhases=getSelectedPhases();
     const isAll=supplier==='All Suppliers';
 
-    // If All Suppliers, only consider suppliers that actually carry the selected phases
-    let calcSupplier=supplier;
+    let r;
     if(isAll){
-        let best=null,bestTotal=Infinity;
-        suppliers.forEach(s=>{
-            const supplierPhases=getSupplierPhases(s);
-            const hasAny=selectedPhases.some(p=>supplierPhases.includes(p));
-            if(!hasAny)return; // skip suppliers with no materials for selected phases
-            const r=calcForSupplier(s,sqft,linearFt,waste,selectedPhases,{paintCoats});
-            if(r.materialTotal>0&&r.materialTotal<bestTotal){bestTotal=r.materialTotal;best=s}
+        // COMPOSITE: pick the cheapest supplier FOR EACH PHASE separately
+        // then combine all the best items into one result
+        const phases={};categories.forEach(c=>phases[c]={total:0,count:0});
+        let allItems=[];let materialTotal=0;
+        const bestPerPhase={};
+
+        selectedPhases.forEach(phase=>{
+            let bestSupplier=null,bestTotal=Infinity,bestItems=[];
+            suppliers.forEach(s=>{
+                const sp=getSupplierPhases(s);
+                if(!sp.includes(phase))return; // supplier doesn't carry this phase
+                const result=calcForSupplier(s,sqft,linearFt,waste,[phase],{paintCoats});
+                if(result.materialTotal>0&&result.materialTotal<bestTotal){
+                    bestTotal=result.materialTotal;bestSupplier=s;bestItems=result.items;
+                }
+            });
+            if(bestSupplier){
+                bestPerPhase[phase]=bestSupplier;
+                bestItems.forEach(item=>{allItems.push(item)});
+                phases[phase]={total:bestTotal,count:bestItems.length};
+                materialTotal+=bestTotal;
+            }
         });
-        calcSupplier=best||suppliers[0];
+
+        // Build composite supplier label
+        const uniqueSuppliers=[...new Set(Object.values(bestPerPhase))];
+        const supplierLabel=uniqueSuppliers.length===1?uniqueSuppliers[0]:'Best per phase';
+
+        r={supplier:supplierLabel,phases,items:allItems,materialTotal,sqft,linearFt,waste,profitPct,taxPct,laborRate,deliveryFee,ccFeePct,paintCoats,selectedPhases,bestPerPhase};
+    }else{
+        const base=calcForSupplier(supplier,sqft,linearFt,waste,selectedPhases,{paintCoats});
+        r={...base,sqft,linearFt,waste,profitPct,taxPct,laborRate,deliveryFee,ccFeePct,paintCoats,selectedPhases};
     }
 
-    const base=calcForSupplier(calcSupplier,sqft,linearFt,waste,selectedPhases,{paintCoats});
-    const r={...base,sqft,linearFt,waste,profitPct,taxPct,laborRate,deliveryFee,ccFeePct,paintCoats,selectedPhases};
     r.taxAmount=r.materialTotal*(taxPct/100);r.materialPlusTax=r.materialTotal+r.taxAmount;r.laborTotal=laborRate*sqft;r.deliveryTotal=deliveryFee;
     r.subtotalBeforeProfit=r.materialPlusTax+r.laborTotal+r.deliveryTotal;r.profitAmount=r.subtotalBeforeProfit*(profitPct/100);
     r.sellingBeforeCC=r.subtotalBeforeProfit+r.profitAmount;r.ccFeeAmount=r.sellingBeforeCC*(ccFeePct/100);r.sellingPrice=r.sellingBeforeCC+r.ccFeeAmount;
@@ -325,9 +430,10 @@ function calculateJob(){
 
 function renderCalcResults(r){
     document.getElementById('calcResults').classList.remove('hidden');
-    document.getElementById('phaseCards').innerHTML=categories.map((cat,i)=>{const p=r.phases[cat];if(!p||p.count===0)return'';const c=i%8;return`<div class="phase-card pb${c}"><h3>${escHtml(cat)}</h3><div class="amount pc${c}">${fmt(p.total)}</div><div class="items">${p.count} items</div></div>`}).join('');
+    const bpp=r.bestPerPhase||{}; // best supplier per phase (only set when All Suppliers)
+    document.getElementById('phaseCards').innerHTML=categories.map((cat,i)=>{const p=r.phases[cat];if(!p||p.count===0)return'';const c=i%8;const sup=bpp[cat]?`<span style="font-size:.7rem;font-weight:400;color:var(--text3);display:block;margin-top:2px">via ${escHtml(bpp[cat])}</span>`:'';return`<div class="phase-card pb${c}"><h3>${escHtml(cat)}</h3><div class="amount pc${c}">${fmt(p.total)}</div><div class="items">${p.count} items${sup}</div></div>`}).join('');
 
-    let bh='';categories.forEach((cat,ci)=>{const items=r.items.filter(i=>i.category===cat);if(!items.length)return;const c=ci%8;bh+=`<div style="margin-bottom:20px"><h3 class="section-title pc${c}">${escHtml(cat)} Phase</h3><div class="table-wrap"><table><thead><tr><th>Material</th><th>SKU</th><th>Type</th><th class="text-right">Coverage</th><th class="text-right">Qty</th><th>Unit</th><th class="text-right">Price</th><th class="text-right">Total</th></tr></thead><tbody>${items.map(i=>{const cl=i.calcType==='linear'?'lf':'sqft';return`<tr><td>${escHtml(i.name)}</td><td class="mono" style="font-size:.8rem;color:var(--text3)">${escHtml(i.sku)}</td><td><span class="badge-type">${i.calcType}</span></td><td class="text-right mono">${i.coveragePerUnit} ${cl}</td><td class="text-right mono" style="font-weight:600">${i.qty}</td><td>${i.unit}</td><td class="text-right mono">${fmt(i.pricePerUnit)}</td><td class="text-right mono" style="font-weight:600">${fmt(i.lineTotal)}</td></tr>`}).join('')}<tr class="subtotal-row"><td colspan="7" class="text-right">${escHtml(cat)} Subtotal:</td><td class="text-right mono">${fmt(r.phases[cat].total)}</td></tr></tbody></table></div></div>`});
+    let bh='';categories.forEach((cat,ci)=>{const items=r.items.filter(i=>i.category===cat);if(!items.length)return;const c=ci%8;const supLabel=bpp[cat]?` <span style="font-size:.78rem;font-weight:400;color:var(--text3)">(${escHtml(bpp[cat])})</span>`:'';bh+=`<div style="margin-bottom:20px"><h3 class="section-title pc${c}">${escHtml(cat)} Phase${supLabel}</h3><div class="table-wrap"><table><thead><tr><th>Material</th><th>SKU</th><th>Type</th><th class="text-right">Coverage</th><th class="text-right">Qty</th><th>Unit</th><th class="text-right">Price</th><th class="text-right">Total</th></tr></thead><tbody>${items.map(i=>{const cl=i.calcType==='linear'?'lf':'sqft';return`<tr><td>${escHtml(i.name)}</td><td class="mono" style="font-size:.8rem;color:var(--text3)">${escHtml(i.sku)}</td><td><span class="badge-type">${i.calcType}</span></td><td class="text-right mono">${i.coveragePerUnit} ${cl}</td><td class="text-right mono" style="font-weight:600">${i.qty}</td><td>${i.unit}</td><td class="text-right mono">${fmt(i.pricePerUnit)}</td><td class="text-right mono" style="font-weight:600">${fmt(i.lineTotal)}</td></tr>`}).join('')}<tr class="subtotal-row"><td colspan="7" class="text-right">${escHtml(cat)} Subtotal:</td><td class="text-right mono">${fmt(r.phases[cat].total)}</td></tr></tbody></table></div></div>`});
     document.getElementById('calcBreakdown').innerHTML=bh;
 
     let sqftLabel=[];if(r.sqft>0)sqftLabel.push(`${r.sqft.toLocaleString()} sqft`);if(r.linearFt>0)sqftLabel.push(`${r.linearFt.toLocaleString()} lf`);
@@ -382,13 +488,25 @@ function generateBidSummary(){if(!currentCalc){notify('Calculate first','error')
 
 // ===== SAVED JOBS (merged with templates) =====
 function saveJob(){if(!currentCalc){notify('Calculate first','error');return}const el=document.getElementById('saveJobName');el.value=document.getElementById('calcProjectName').value||'';document.getElementById('saveAsTemplate').checked=false;openModal('saveJobModal');el.focus()}
-function doSaveJob(){const name=document.getElementById('saveJobName').value.trim();if(!name){notify('Enter name','error');return}const isTemplate=document.getElementById('saveAsTemplate').checked;savedJobs.unshift({id:'job-'+Date.now(),name,isTemplate,projectName:isTemplate?'':document.getElementById('calcProjectName').value,projectAddress:isTemplate?'':document.getElementById('calcProjectAddress').value,supplier:currentCalc.supplier,sqft:currentCalc.sqft,linearFt:currentCalc.linearFt,waste:currentCalc.waste,profitPct:currentCalc.profitPct,taxPct:currentCalc.taxPct,laborRate:currentCalc.laborRate,selectedPhases:currentCalc.selectedPhases||categories,materialTotal:currentCalc.materialTotal,sellingPrice:currentCalc.sellingPrice,savedAt:new Date().toISOString()});saveSavedJobs();closeModal('saveJobModal');notify(isTemplate?'Template saved':'Job saved','success')}
+async function doSaveJob(){const name=document.getElementById('saveJobName').value.trim();if(!name){notify('Enter name','error');return}const isTemplate=document.getElementById('saveAsTemplate').checked;
+    const job={id:'job-'+Date.now(),name,isTemplate,projectName:isTemplate?'':document.getElementById('calcProjectName').value,projectAddress:isTemplate?'':document.getElementById('calcProjectAddress').value,supplier:currentCalc.supplier,sqft:currentCalc.sqft,linearFt:currentCalc.linearFt,waste:currentCalc.waste,profitPct:currentCalc.profitPct,taxPct:currentCalc.taxPct,laborRate:currentCalc.laborRate,selectedPhases:currentCalc.selectedPhases||categories,materialTotal:currentCalc.materialTotal,sellingPrice:currentCalc.sellingPrice,savedAt:new Date().toISOString()};
+    savedJobs.unshift(job);saveSavedJobs();
+    // Save to API
+    if(api.getToken()){
+        try{
+            const supId=window._supplierIdMap?.[currentCalc.supplier];
+            await api.saveJob({name:job.name,project_name:job.projectName,project_address:job.projectAddress,supplier_id:supId,sqft:job.sqft,linear_ft:job.linearFt,waste_pct:job.waste,profit_pct:job.profitPct,tax_pct:job.taxPct,labor_rate:job.laborRate,selected_phases:JSON.stringify(job.selectedPhases),material_total:job.materialTotal,selling_price:job.sellingPrice});
+        }catch(err){console.warn('API save failed:',err.message)}
+    }
+    closeModal('saveJobModal');notify(isTemplate?'Template saved':'Job saved','success')}
 
 function renderSavedJobs(){const el=document.getElementById('savedJobsList');if(!savedJobs.length){el.innerHTML='<div class="dash-empty">No saved jobs yet.</div>';return}el.innerHTML='<div class="saved-jobs-list">'+savedJobs.map(j=>{const d=new Date(j.savedAt);const ds=d.toLocaleDateString()+' '+d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});return`<div class="saved-job-card"><h4>${escHtml(j.name)}${j.isTemplate?'<span class="tmpl-badge">TEMPLATE</span>':''}</h4><div class="meta"><span>${escHtml(j.supplier)}</span><span>${(j.sqft||0).toLocaleString()} sqft</span>${j.linearFt?`<span>${j.linearFt.toLocaleString()} lf</span>`:''}</div>${!j.isTemplate?`<div class="meta"><span class="mono">${fmt(j.materialTotal)} cost</span><span class="mono">${fmt(j.sellingPrice)} sell</span></div>`:''}<div class="meta"><span>${ds}</span></div><div class="actions"><button class="btn btn-primary btn-sm" onclick="loadJob('${j.id}')">Load</button><button class="btn btn-secondary btn-sm" onclick="duplicateJob('${j.id}')">Duplicate</button><button class="btn btn-danger btn-sm" onclick="deleteJob('${j.id}')">Delete</button></div></div>`}).join('')+'</div>'}
 
 function loadJob(id){const job=savedJobs.find(j=>j.id===id);if(!job)return;document.getElementById('calcProjectName').value=job.isTemplate?'':job.projectName||'';document.getElementById('calcProjectAddress').value=job.isTemplate?'':job.projectAddress||'';document.getElementById('calcSqft').value=job.sqft||'';if(document.getElementById('calcLinearFt'))document.getElementById('calcLinearFt').value=job.linearFt||'';document.getElementById('calcWaste').value=job.waste||10;document.getElementById('calcProfit').value=job.profitPct||20;document.getElementById('calcTax').value=job.taxPct||0;document.getElementById('calcLabor').value=job.laborRate||0;showPage('calculator');setTimeout(()=>{const sel=document.getElementById('calcSupplier');if(suppliers.includes(job.supplier))sel.value=job.supplier;renderPhaseCheckboxes();if(job.selectedPhases)document.querySelectorAll('#phaseCheckboxes input[type="checkbox"]').forEach(cb=>{const ch=job.selectedPhases.includes(cb.value);cb.checked=ch;cb.closest('.phase-chip').classList.toggle('checked',ch)});if(!job.isTemplate)calculateJob()},50);notify(job.isTemplate?'Template loaded — enter project details':'Job loaded','info')}
 function duplicateJob(id){const job=savedJobs.find(j=>j.id===id);if(!job)return;savedJobs.unshift({...job,id:'job-'+Date.now(),name:job.name+' (copy)',savedAt:new Date().toISOString()});saveSavedJobs();renderSavedJobs();notify('Duplicated','success')}
-function deleteJob(id){if(!confirm('Delete?'))return;savedJobs=savedJobs.filter(j=>j.id!==id);saveSavedJobs();renderSavedJobs();notify('Deleted','success')}
+async function deleteJob(id){if(!confirm('Delete?'))return;
+    if(api.getToken()){try{await api.deleteJob(id)}catch(err){console.warn('API delete failed:',err.message)}}
+    savedJobs=savedJobs.filter(j=>j.id!==id);saveSavedJobs();renderSavedJobs();notify('Deleted','success')}
 function clearAllJobs(){if(!confirm('Delete ALL saved jobs?'))return;savedJobs=[];saveSavedJobs();renderSavedJobs();notify('Cleared','info')}
 
 // ===== DASHBOARD =====
@@ -401,7 +519,14 @@ function renderDashboard(){
 }
 
 // ===== INIT =====
-document.addEventListener('DOMContentLoaded',function(){
-    loadData();renderDashboard();updateUndoButtons();rebuildTaxDropdown();
+async function initApp(){
+    await loadData();
+    renderDashboard();updateUndoButtons();rebuildTaxDropdown();
     document.getElementById('orderNotes')?.addEventListener('input',function(){const np=document.getElementById('orderNotesPrint');if(this.value.trim()){np.innerHTML=`<h4>Notes:</h4>${escHtml(this.value)}`;np.style.display='block'}else np.style.display='none'});
+}
+
+document.addEventListener('DOMContentLoaded', async function(){
+    // Check if user has a valid token — if so, skip login
+    const loggedIn = await checkAuth();
+    if (loggedIn) initApp();
 });

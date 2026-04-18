@@ -1,228 +1,151 @@
-/**
- * Seed script — run with: npm run seed
- *
- * Creates a default user and populates suppliers, categories, and materials
- * matching the frontend defaults.
- */
-
-require('dotenv').config({ path: require('path').resolve(__dirname, '..', '.env') });
-
+require('dotenv').config();
+const supabase = require('./database');
 const bcrypt = require('bcryptjs');
-const path = require('path');
 
-// Set DB_PATH before requiring database so it resolves correctly
-if (!process.env.DB_PATH) {
-  process.env.DB_PATH = './data/calculator.db';
-}
+async function seed() {
+  console.log('Seeding Supabase database...\n');
 
-const db = require('./database');
+  // 1. Create default user
+  const hash = bcrypt.hashSync('password123', 10);
+  const { data: existingUser } = await supabase.from('users').select('id').eq('email', 'admin@example.com').single();
 
-// ---------------------------------------------------------------------------
-// Helper
-// ---------------------------------------------------------------------------
-function getOrCreateUser(email, password, name) {
-  const existing = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
-  if (existing) {
-    console.log(`  User "${email}" already exists (id=${existing.id}), skipping.`);
-    return existing;
+  let userId;
+  if (existingUser) {
+    userId = existingUser.id;
+    console.log(`[Users] User already exists (id=${userId})`);
+  } else {
+    const { data: newUser, error } = await supabase.from('users').insert({ email: 'admin@example.com', password_hash: hash, name: 'Admin' }).select('id').single();
+    if (error) { console.error('User create error:', error.message); return; }
+    userId = newUser.id;
+    console.log(`[Users] Created admin (id=${userId})`);
   }
-  const hash = bcrypt.hashSync(password, 10);
-  const result = db.prepare(
-    'INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)'
-  ).run(email, hash, name);
-  console.log(`  Created user "${email}" (id=${result.lastInsertRowid})`);
-  return { id: result.lastInsertRowid, email, name };
-}
 
-// ---------------------------------------------------------------------------
-// Seed
-// ---------------------------------------------------------------------------
-function seed() {
-  console.log('Seeding database...\n');
-
-  // 1. Default user
-  console.log('[Users]');
-  const user = getOrCreateUser('admin@example.com', 'password123', 'Admin');
-  const userId = user.id;
-
-  // 2. Categories
-  console.log('\n[Categories]');
+  // 2. Create categories
   const categoryNames = ['Lath', 'Gray Coat', 'Color Coat', 'Stone', 'Drywall', 'Painting'];
   const categoryMap = {};
 
-  const insertCat = db.prepare(
-    'INSERT INTO categories (name, user_id, sort_order) VALUES (?, ?, ?)'
-  );
-  const findCat = db.prepare(
-    'SELECT * FROM categories WHERE name = ? AND user_id = ?'
-  );
-
-  categoryNames.forEach((name, idx) => {
-    let cat = findCat.get(name, userId);
-    if (cat) {
-      console.log(`  Category "${name}" already exists (id=${cat.id}), skipping.`);
+  for (let i = 0; i < categoryNames.length; i++) {
+    const name = categoryNames[i];
+    const { data: existing } = await supabase.from('categories').select('id').eq('name', name).eq('user_id', userId).single();
+    if (existing) {
+      categoryMap[name] = existing.id;
+      console.log(`[Categories] "${name}" exists (id=${existing.id})`);
     } else {
-      const result = insertCat.run(name, userId, idx + 1);
-      cat = { id: result.lastInsertRowid, name };
-      console.log(`  Created category "${name}" (id=${cat.id})`);
+      const { data: cat, error } = await supabase.from('categories').insert({ name, user_id: userId, sort_order: i + 1 }).select('id').single();
+      if (error) { console.error(`Category "${name}" error:`, error.message); continue; }
+      categoryMap[name] = cat.id;
+      console.log(`[Categories] Created "${name}" (id=${cat.id})`);
     }
-    categoryMap[name] = cat.id;
-  });
+  }
 
-  // 3. Suppliers
-  console.log('\n[Suppliers]');
-  const supplierDefs = [
+  // 3. Create suppliers
+  const supplierConfigs = [
     { name: 'Pacific Supply', categories: ['Lath', 'Gray Coat', 'Color Coat', 'Stone', 'Drywall'] },
     { name: 'ABC Supply', categories: ['Lath', 'Gray Coat', 'Color Coat', 'Stone', 'Drywall'] },
-    { name: 'Sherwin Williams', categories: ['Drywall', 'Painting'] },
+    { name: 'Sherwin Williams', categories: ['Painting'] },
   ];
-
-  const insertSupplier = db.prepare(
-    'INSERT INTO suppliers (name, user_id) VALUES (?, ?)'
-  );
-  const findSupplier = db.prepare(
-    'SELECT * FROM suppliers WHERE name = ? AND user_id = ?'
-  );
-  const insertSC = db.prepare(
-    'INSERT OR IGNORE INTO supplier_categories (supplier_id, category_id) VALUES (?, ?)'
-  );
-
   const supplierMap = {};
 
-  for (const def of supplierDefs) {
-    let supplier = findSupplier.get(def.name, userId);
-    if (supplier) {
-      console.log(`  Supplier "${def.name}" already exists (id=${supplier.id}), skipping.`);
+  for (const sc of supplierConfigs) {
+    const { data: existing } = await supabase.from('suppliers').select('id').eq('name', sc.name).eq('user_id', userId).single();
+    let supId;
+    if (existing) {
+      supId = existing.id;
+      console.log(`[Suppliers] "${sc.name}" exists (id=${supId})`);
     } else {
-      const result = insertSupplier.run(def.name, userId);
-      supplier = { id: result.lastInsertRowid, name: def.name };
-      console.log(`  Created supplier "${def.name}" (id=${supplier.id})`);
+      const { data: sup, error } = await supabase.from('suppliers').insert({ name: sc.name, user_id: userId }).select('id').single();
+      if (error) { console.error(`Supplier "${sc.name}" error:`, error.message); continue; }
+      supId = sup.id;
+      console.log(`[Suppliers] Created "${sc.name}" (id=${supId})`);
     }
-    supplierMap[def.name] = supplier.id;
+    supplierMap[sc.name] = supId;
 
     // Link categories
-    for (const catName of def.categories) {
-      insertSC.run(supplier.id, categoryMap[catName]);
+    for (const catName of sc.categories) {
+      const catId = categoryMap[catName];
+      if (!catId) continue;
+      await supabase.from('supplier_categories').upsert({ supplier_id: supId, category_id: catId });
     }
   }
 
-  // 4. Materials
-  console.log('\n[Materials]');
-
-  // Base materials for Pacific Supply
-  const baseMaterials = [
-    // Lath
-    { name: '2.5 LB Diamond Lath', sku: 'PS-LATH-001', unit: 'sheet', price: 4.50, category: 'Lath', coverage: 2.5, calc_type: 'sqft', sort: 1 },
-    { name: '3.4 LB Diamond Lath', sku: 'PS-LATH-002', unit: 'sheet', price: 6.75, category: 'Lath', coverage: 2.5, calc_type: 'sqft', sort: 2 },
-    { name: 'Galv Furring Nails (50lb)', sku: 'PS-LATH-003', unit: 'box', price: 85.00, category: 'Lath', coverage: 1000, calc_type: 'sqft', sort: 3 },
-    { name: 'Self-Furring Nails (50lb)', sku: 'PS-LATH-004', unit: 'box', price: 78.00, category: 'Lath', coverage: 1000, calc_type: 'sqft', sort: 4 },
-    { name: 'Weep Screed 10ft', sku: 'PS-LATH-005', unit: 'stick', price: 5.25, category: 'Lath', coverage: 10, calc_type: 'linear_ft', sort: 5 },
-    { name: 'Corner Aid 10ft', sku: 'PS-LATH-006', unit: 'stick', price: 4.50, category: 'Lath', coverage: 10, calc_type: 'linear_ft', sort: 6 },
-    { name: 'Casing Bead 10ft', sku: 'PS-LATH-007', unit: 'stick', price: 3.75, category: 'Lath', coverage: 10, calc_type: 'linear_ft', sort: 7 },
-    { name: '60 Minute Paper (2 roll)', sku: 'PS-LATH-008', unit: 'roll', price: 65.00, category: 'Lath', coverage: 400, calc_type: 'sqft', sort: 8 },
-    { name: '17# Felt Paper', sku: 'PS-LATH-009', unit: 'roll', price: 28.00, category: 'Lath', coverage: 400, calc_type: 'sqft', sort: 9 },
-
-    // Gray Coat
-    { name: 'Portland Cement (94lb)', sku: 'PS-GRAY-001', unit: 'bag', price: 14.50, category: 'Gray Coat', coverage: 35, calc_type: 'sqft', sort: 1 },
-    { name: 'Plaster Sand (ton)', sku: 'PS-GRAY-002', unit: 'ton', price: 45.00, category: 'Gray Coat', coverage: 200, calc_type: 'sqft', sort: 2 },
-    { name: 'Lime Putty (50lb)', sku: 'PS-GRAY-003', unit: 'bag', price: 12.00, category: 'Gray Coat', coverage: 100, calc_type: 'sqft', sort: 3 },
-    { name: 'Fibermesh (1lb bag)', sku: 'PS-GRAY-004', unit: 'bag', price: 8.50, category: 'Gray Coat', coverage: 300, calc_type: 'sqft', sort: 4 },
-
-    // Color Coat
-    { name: 'Omega One Coat Stucco', sku: 'PS-CLR-001', unit: 'bag', price: 22.00, category: 'Color Coat', coverage: 60, calc_type: 'sqft', sort: 1 },
-    { name: 'LaHabra Color Pack', sku: 'PS-CLR-002', unit: 'bag', price: 18.50, category: 'Color Coat', coverage: 55, calc_type: 'sqft', sort: 2 },
-    { name: 'LaHabra Float', sku: 'PS-CLR-003', unit: 'bag', price: 19.00, category: 'Color Coat', coverage: 55, calc_type: 'sqft', sort: 3 },
-
-    // Stone
-    { name: 'Cultured Stone Veneer', sku: 'PS-STN-001', unit: 'sqft', price: 8.50, category: 'Stone', coverage: 1, calc_type: 'sqft', sort: 1 },
-    { name: 'Stone Mortar (80lb)', sku: 'PS-STN-002', unit: 'bag', price: 11.00, category: 'Stone', coverage: 40, calc_type: 'sqft', sort: 2 },
-    { name: 'Stone Grout (50lb)', sku: 'PS-STN-003', unit: 'bag', price: 9.50, category: 'Stone', coverage: 50, calc_type: 'sqft', sort: 3 },
-
-    // Drywall
-    { name: 'USG Sheetrock 4x8 1/2"', sku: 'PS-DW-001', unit: 'sheet', price: 12.50, category: 'Drywall', coverage: 32, calc_type: 'sqft', sort: 1 },
-    { name: 'USG Sheetrock 4x12 1/2"', sku: 'PS-DW-002', unit: 'sheet', price: 18.75, category: 'Drywall', coverage: 48, calc_type: 'sqft', sort: 2 },
-    { name: 'Joint Compound (5 gal)', sku: 'PS-DW-003', unit: 'bucket', price: 16.00, category: 'Drywall', coverage: 300, calc_type: 'sqft', sort: 3 },
-    { name: 'Paper Tape (500ft)', sku: 'PS-DW-004', unit: 'roll', price: 5.50, category: 'Drywall', coverage: 500, calc_type: 'linear_ft', sort: 4 },
-    { name: 'Drywall Screws (1lb)', sku: 'PS-DW-005', unit: 'box', price: 8.00, category: 'Drywall', coverage: 100, calc_type: 'sqft', sort: 5 },
-  ];
-
-  const insertMaterial = db.prepare(`
-    INSERT INTO materials (supplier_id, name, sku, unit, price_per_unit, category_id, coverage_per_unit, calc_type, sort_order)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-  const findMaterial = db.prepare(
-    'SELECT id FROM materials WHERE supplier_id = ? AND name = ?'
-  );
-
-  let created = 0;
-  let skipped = 0;
-
-  // Pacific Supply materials
+  // 4. Seed materials
   const pacificId = supplierMap['Pacific Supply'];
-  for (const mat of baseMaterials) {
-    const existing = findMaterial.get(pacificId, mat.name);
-    if (existing) {
-      skipped++;
-      continue;
-    }
-    insertMaterial.run(pacificId, mat.name, mat.sku, mat.unit, mat.price, categoryMap[mat.category], mat.coverage, mat.calc_type, mat.sort);
-    created++;
-  }
-  console.log(`  Pacific Supply: ${created} created, ${skipped} skipped`);
-
-  // ABC Supply materials (same items, 1.03x price, different SKU prefix)
-  created = 0;
-  skipped = 0;
   const abcId = supplierMap['ABC Supply'];
-  for (const mat of baseMaterials) {
-    const existing = findMaterial.get(abcId, mat.name);
-    if (existing) {
-      skipped++;
-      continue;
-    }
-    const abcSku = mat.sku.replace('PS-', 'ABC-');
-    const abcPrice = +(mat.price * 1.03).toFixed(2);
-    insertMaterial.run(abcId, mat.name, abcSku, mat.unit, abcPrice, categoryMap[mat.category], mat.coverage, mat.calc_type, mat.sort);
-    created++;
-  }
-  console.log(`  ABC Supply: ${created} created, ${skipped} skipped`);
-
-  // Sherwin Williams materials (Drywall + Painting only)
-  created = 0;
-  skipped = 0;
   const swId = supplierMap['Sherwin Williams'];
 
-  const swMaterials = [
-    // Drywall
-    { name: 'USG Sheetrock 4x8 1/2"', sku: 'SW-DW-001', unit: 'sheet', price: 12.50, category: 'Drywall', coverage: 32, calc_type: 'sqft', sort: 1 },
-    { name: 'USG Sheetrock 4x12 1/2"', sku: 'SW-DW-002', unit: 'sheet', price: 18.75, category: 'Drywall', coverage: 48, calc_type: 'sqft', sort: 2 },
-    { name: 'Joint Compound (5 gal)', sku: 'SW-DW-003', unit: 'bucket', price: 16.00, category: 'Drywall', coverage: 300, calc_type: 'sqft', sort: 3 },
-    { name: 'Paper Tape (500ft)', sku: 'SW-DW-004', unit: 'roll', price: 5.50, category: 'Drywall', coverage: 500, calc_type: 'linear_ft', sort: 4 },
-    { name: 'Drywall Screws (1lb)', sku: 'SW-DW-005', unit: 'box', price: 8.00, category: 'Drywall', coverage: 100, calc_type: 'sqft', sort: 5 },
-
-    // Painting
-    { name: 'Duration Exterior Latex', sku: 'SW-PT-001', unit: 'gallon', price: 72.00, category: 'Painting', coverage: 350, calc_type: 'sqft', sort: 1 },
-    { name: 'SuperPaint Interior Latex', sku: 'SW-PT-002', unit: 'gallon', price: 62.00, category: 'Painting', coverage: 400, calc_type: 'sqft', sort: 2 },
-    { name: 'PrimeRx Primer', sku: 'SW-PT-003', unit: 'gallon', price: 48.00, category: 'Painting', coverage: 400, calc_type: 'sqft', sort: 3 },
-    { name: 'Caulk Paintable (10oz)', sku: 'SW-PT-004', unit: 'tube', price: 6.50, category: 'Painting', coverage: 25, calc_type: 'linear_ft', sort: 4 },
-    { name: 'Painters Tape 1.5" (60yd)', sku: 'SW-PT-005', unit: 'roll', price: 7.50, category: 'Painting', coverage: 180, calc_type: 'linear_ft', sort: 5 },
-    { name: 'Drop Cloth 9x12', sku: 'SW-PT-006', unit: 'each', price: 15.00, category: 'Painting', coverage: 0, calc_type: 'fixed', sort: 6 },
-    { name: 'Roller Covers 9" (3pk)', sku: 'SW-PT-007', unit: 'pack', price: 18.00, category: 'Painting', coverage: 0, calc_type: 'fixed', sort: 7 },
+  const allMaterials = [
+    // Pacific Supply + ABC Supply materials
+    ...[
+      { name: 'Wire Lath 2.5 lb (36" x 150\')', sku: 'WL-2536150', unit: 'roll', price: 52, category: 'Lath', coverage: 450, calc_type: 'sqft' },
+      { name: '2-Ply 60min Paper (150 sqft)', sku: 'PB-2P60-150', unit: 'roll', price: 28, category: 'Lath', coverage: 150, calc_type: 'sqft' },
+      { name: '7/16" Staples (10,000ct)', sku: 'ST-716-10K', unit: 'box', price: 45, category: 'Lath', coverage: 2000, calc_type: 'sqft' },
+      { name: 'Weep Screed 26ga (10\')', sku: 'WS-26-10', unit: 'piece', price: 8.50, category: 'Lath', coverage: 10, calc_type: 'linear_ft' },
+      { name: 'Corner Aid 26ga (10\')', sku: 'CA-26-10', unit: 'piece', price: 6.75, category: 'Lath', coverage: 10, calc_type: 'linear_ft' },
+      { name: 'Casing Bead 26ga (10\')', sku: 'CB-26-10', unit: 'piece', price: 5.50, category: 'Lath', coverage: 10, calc_type: 'linear_ft' },
+      { name: 'Self-Furring Nails 1.5" (25lb)', sku: 'SFN-15-25', unit: 'box', price: 42, category: 'Lath', coverage: 1500, calc_type: 'sqft' },
+      { name: 'Portland Cement Type S (94lb)', sku: 'PC-TS-94', unit: 'bag', price: 14.50, category: 'Gray Coat', coverage: 25, calc_type: 'sqft' },
+      { name: 'Plaster Sand', sku: 'PS-TON', unit: 'ton', price: 45, category: 'Gray Coat', coverage: 250, calc_type: 'sqft' },
+      { name: 'Hydrated Lime Type S (50lb)', sku: 'HL-TS-50', unit: 'bag', price: 12, category: 'Gray Coat', coverage: 75, calc_type: 'sqft' },
+      { name: 'Fiber Mesh (1lb)', sku: 'FM-1LB', unit: 'bag', price: 8.50, category: 'Gray Coat', coverage: 300, calc_type: 'sqft' },
+      { name: 'Bonding Agent - Weld-Crete (5 gal)', sku: 'BA-WC-5G', unit: 'pail', price: 62, category: 'Gray Coat', coverage: 500, calc_type: 'sqft' },
+      { name: 'LaHabra X-Kaliber Finish (65lb)', sku: 'LH-XK-65', unit: 'bag', price: 28, category: 'Color Coat', coverage: 65, calc_type: 'sqft' },
+      { name: 'Color Pigment (1lb tube)', sku: 'LH-PIG-1', unit: 'tube', price: 9.50, category: 'Color Coat', coverage: 200, calc_type: 'sqft' },
+      { name: 'Finish Sand 30-mesh (80lb)', sku: 'FS-30-80', unit: 'bag', price: 12, category: 'Color Coat', coverage: 100, calc_type: 'sqft' },
+      { name: 'Acrylic Additive (1 gal)', sku: 'AA-QR-1G', unit: 'gal', price: 18, category: 'Color Coat', coverage: 150, calc_type: 'sqft' },
+      { name: 'Manufactured Stone Veneer (flat)', sku: 'SV-FLAT-BOX', unit: 'box', price: 125, category: 'Stone', coverage: 10, calc_type: 'sqft' },
+      { name: 'Stone Corners (linear)', sku: 'SV-CORN-BOX', unit: 'box', price: 85, category: 'Stone', coverage: 5, calc_type: 'linear_ft' },
+      { name: 'Stone Mortar Mix (80lb)', sku: 'SM-MRT-80', unit: 'bag', price: 12.50, category: 'Stone', coverage: 20, calc_type: 'sqft' },
+      { name: 'Stone Grout Bag (50lb)', sku: 'SM-GRT-50', unit: 'bag', price: 14, category: 'Stone', coverage: 35, calc_type: 'sqft' },
+      { name: 'Metal Lath for Stone (2.5 lb)', sku: 'ML-ST-25', unit: 'roll', price: 52, category: 'Stone', coverage: 450, calc_type: 'sqft' },
+      { name: 'Scratch Coat Cement (94lb)', sku: 'SC-ST-94', unit: 'bag', price: 14.50, category: 'Stone', coverage: 25, calc_type: 'sqft' },
+      { name: 'Drywall Sheet 1/2" 4x8', sku: 'DW-12-48', unit: 'sheet', price: 12.50, category: 'Drywall', coverage: 32, calc_type: 'sqft' },
+      { name: 'Drywall Sheet 5/8" 4x8', sku: 'DW-58-48', unit: 'sheet', price: 14.50, category: 'Drywall', coverage: 32, calc_type: 'sqft' },
+      { name: 'Red Dot Joint Compound (4.5 gal)', sku: 'RD-AP-45G', unit: 'bucket', price: 18, category: 'Drywall', coverage: 230, calc_type: 'sqft' },
+      { name: 'TNT Lite Topping (4.5 gal)', sku: 'TNT-LT-45G', unit: 'bucket', price: 22, category: 'Drywall', coverage: 270, calc_type: 'sqft' },
+      { name: 'Sanding Discs 120 Grit (25pk)', sku: 'SD-120-25', unit: 'box', price: 15, category: 'Drywall', coverage: 1500, calc_type: 'sqft' },
+      { name: 'Sanding Discs 150 Grit (25pk)', sku: 'SD-150-25', unit: 'box', price: 15, category: 'Drywall', coverage: 1500, calc_type: 'sqft' },
+      { name: 'Paper Joint Tape (500\')', sku: 'PJT-500', unit: 'roll', price: 4.50, category: 'Drywall', coverage: 200, calc_type: 'sqft' },
+      { name: 'Mesh Joint Tape (300\')', sku: 'MJT-300', unit: 'roll', price: 7, category: 'Drywall', coverage: 150, calc_type: 'sqft' },
+      { name: 'Corner Bead Metal 8\'', sku: 'CB-MT-8', unit: 'piece', price: 3.50, category: 'Drywall', coverage: 8, calc_type: 'linear_ft' },
+    ].flatMap(m => [
+      { ...m, supplier_id: pacificId, price_mod: 1.0 },
+      { ...m, supplier_id: abcId, price_mod: 1.03 },
+    ]),
+    // Sherwin Williams - Painting only
+    ...[
+      { name: 'Painters Plastic (9\' x 400\')', sku: 'PP-9400', unit: 'roll', price: 18, category: 'Painting', coverage: 3600, calc_type: 'sqft' },
+      { name: 'Primer (1 gal)', sku: 'SW-PRM-1G', unit: 'gal', price: 28, category: 'Painting', coverage: 400, calc_type: 'sqft' },
+      { name: 'Primer (5 gal)', sku: 'SW-PRM-5G', unit: 'bucket', price: 115, category: 'Painting', coverage: 2000, calc_type: 'sqft' },
+      { name: 'A-100 Exterior Latex (1 gal)', sku: 'SW-A100-1G', unit: 'gal', price: 42, category: 'Painting', coverage: 400, calc_type: 'sqft' },
+      { name: 'A-100 Exterior Latex (5 gal)', sku: 'SW-A100-5G', unit: 'bucket', price: 185, category: 'Painting', coverage: 2000, calc_type: 'sqft' },
+    ].map(m => ({ ...m, supplier_id: swId, price_mod: 1.0 })),
   ];
 
-  for (const mat of swMaterials) {
-    const existing = findMaterial.get(swId, mat.name);
-    if (existing) {
-      skipped++;
-      continue;
-    }
-    insertMaterial.run(swId, mat.name, mat.sku, mat.unit, mat.price, categoryMap[mat.category], mat.coverage, mat.calc_type, mat.sort);
-    created++;
-  }
-  console.log(`  Sherwin Williams: ${created} created, ${skipped} skipped`);
+  let created = 0, skipped = 0;
+  for (const mat of allMaterials) {
+    const { data: existing } = await supabase.from('materials')
+      .select('id').eq('supplier_id', mat.supplier_id).eq('name', mat.name).single();
+    if (existing) { skipped++; continue; }
 
+    const finalPrice = Math.round(mat.price * (mat.price_mod || 1) * 100) / 100;
+    const { error } = await supabase.from('materials').insert({
+      supplier_id: mat.supplier_id,
+      name: mat.name,
+      sku: mat.sku,
+      unit: mat.unit,
+      price_per_unit: finalPrice,
+      category_id: categoryMap[mat.category],
+      coverage_per_unit: mat.coverage,
+      calc_type: mat.calc_type,
+      sort_order: created + 1
+    });
+    if (error) { console.error(`Material "${mat.name}" error:`, error.message); }
+    else created++;
+  }
+
+  console.log(`\n[Materials] ${created} created, ${skipped} skipped`);
   console.log('\nSeed complete!');
   console.log('Login with: admin@example.com / password123');
 }
 
-seed();
+seed().catch(err => { console.error('Seed failed:', err); process.exit(1); });
