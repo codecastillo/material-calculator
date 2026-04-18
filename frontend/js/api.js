@@ -140,18 +140,14 @@ function showAppScreen() {
         }
     }
 }
+function hideEl(id){const e=document.getElementById(id);if(e)e.style.display='none'}
+function showEl(id){const e=document.getElementById(id);if(e)e.style.display=''}
+
 function showLogin() {
-    document.getElementById('loginForm').style.display = '';
-    document.getElementById('registerForm').style.display = 'none';
-    document.getElementById('forgotForm').style.display = 'none';
-    document.getElementById('resetForm').style.display = 'none';
-    document.getElementById('loginError').style.display = 'none';
+    showEl('loginForm');hideEl('registerForm');hideEl('forgotForm');hideEl('resetForm');hideEl('loginError');
 }
 function showRegister() {
-    document.getElementById('loginForm').style.display = 'none';
-    document.getElementById('registerForm').style.display = '';
-    document.getElementById('forgotForm').style.display = 'none';
-    document.getElementById('resetForm').style.display = 'none';
+    hideEl('loginForm');showEl('registerForm');hideEl('forgotForm');hideEl('resetForm');hideEl('registerError');
     document.getElementById('registerError').style.display = 'none';
 }
 async function doLogin() {
@@ -218,11 +214,7 @@ function doLogout() { api.setToken(null); currentUser = null; showLoginScreen();
 
 // Forgot password flow
 function showForgotPassword() {
-    document.getElementById('loginForm').style.display = 'none';
-    document.getElementById('registerForm').style.display = 'none';
-    document.getElementById('forgotForm').style.display = '';
-    document.getElementById('resetForm').style.display = 'none';
-    document.getElementById('forgotError').style.display = 'none';
+    hideEl('loginForm');hideEl('registerForm');showEl('forgotForm');hideEl('resetForm');hideEl('forgotError');
 }
 
 async function doForgotPassword() {
