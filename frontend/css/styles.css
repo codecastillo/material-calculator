@@ -341,6 +341,10 @@ tr.drag-over td{border-top:2px solid var(--pri)}
 .account-license-card .license-status .dot.trial{background:var(--warn)}
 .account-license-card .license-detail{font-size:.84rem;color:var(--text3)}
 
+/* Admin floating button */
+.admin-floating-btn{position:fixed;bottom:24px;right:24px;padding:12px 24px;background:var(--pri);color:#fff;border-radius:24px;font-family:inherit;font-size:.88rem;font-weight:600;cursor:pointer;box-shadow:0 4px 16px rgba(68,147,248,.4);z-index:200;transition:all .2s}
+.admin-floating-btn:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(68,147,248,.5)}
+
 /* ===== MOBILE MENU ===== */
 .mobile-menu-btn{display:none;background:none;border:none;color:var(--text);font-size:1.4rem;cursor:pointer;padding:4px 8px;border-radius:6px}
 .mobile-menu-btn:hover{background:var(--pri-soft)}

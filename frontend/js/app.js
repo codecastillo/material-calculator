@@ -598,18 +598,18 @@ async function updateProfile(){
 let adminViewAsUser=false;
 function toggleAdminView(){
     adminViewAsUser=!adminViewAsUser;
-    const btn=document.getElementById('adminViewToggle');
+    const floatingBtn=document.getElementById('adminFloatingBtn');
     if(adminViewAsUser){
-        btn.textContent='Back to Admin View';
         document.getElementById('adminNavLink').style.display='none';
         document.getElementById('licenseBadge').style.display='';
         document.getElementById('licenseBadge').textContent='TRIAL';
         document.getElementById('licenseBadge').className='license-badge trial';
+        if(floatingBtn)floatingBtn.style.display='';
         showPage('dashboard');
     }else{
-        btn.textContent='View as User';
         document.getElementById('adminNavLink').style.display='';
         document.getElementById('licenseBadge').style.display='none';
+        if(floatingBtn)floatingBtn.style.display='none';
         showPage('admin');
     }
 }
@@ -633,11 +633,14 @@ async function renderAdminPanel(){
 
         // Stats
         const s=statsData.stats;
-        document.getElementById('adminStats').innerHTML=`<div class="dash-stat"><div class="num">${s.users}</div><div class="label">Users</div></div><div class="dash-stat"><div class="num">${s.active}</div><div class="label">Active</div></div><div class="dash-stat"><div class="num">${s.keys}</div><div class="label">Keys</div></div><div class="dash-stat"><div class="num">${s.jobs}</div><div class="label">Total Jobs</div></div>`;
+        const allUsers=usersData.users||[];
+        const licensedCount=allUsers.filter(u=>u.license_type&&u.license_type!=='trial').length;
+        const trialCount=allUsers.filter(u=>!u.license_type||u.license_type==='trial').length;
+        document.getElementById('adminStats').innerHTML=`<div class="dash-stat"><div class="num">${s.users}</div><div class="label">Total Users</div></div><div class="dash-stat"><div class="num">${licensedCount}</div><div class="label">Licensed</div></div><div class="dash-stat"><div class="num">${trialCount}</div><div class="label">Trial</div></div><div class="dash-stat"><div class="num">${s.keys}</div><div class="label">Keys Generated</div></div><div class="dash-stat"><div class="num">${s.jobs}</div><div class="label">Total Jobs</div></div>`;
 
         // Keys — match keys to users who activated them
         const keys=keysData.keys||[];
-        const users=usersData.users||[];
+        const users=allUsers;
         const keyUserMap={};users.forEach(u=>{if(u.license_key)keyUserMap[u.license_key]=u});
 
         if(!keys.length){document.getElementById('adminKeysList').innerHTML='<div class="dash-empty">No keys generated yet.</div>'}
