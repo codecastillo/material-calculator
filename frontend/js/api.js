@@ -65,6 +65,10 @@ const api = {
     async saveJob(job) { return api._fetch('/jobs', { method: 'POST', body: JSON.stringify(job) }); },
     async deleteJob(id) { return api._fetch('/jobs/' + id, { method: 'DELETE' }); },
 
+    // Verification
+    async verifyEmail(code) { return api._fetch('/auth/verify', { method: 'POST', body: JSON.stringify({ code }) }); },
+    async resendCode() { return api._fetch('/auth/resend-code', { method: 'POST' }); },
+
     // Profile
     async updateProfile(data) { return api._fetch('/auth/profile', { method: 'PUT', body: JSON.stringify(data) }); },
 
@@ -137,8 +141,12 @@ async function doLogin() {
     const password = document.getElementById('loginPassword').value;
     const errEl = document.getElementById('loginError');
     if (!email || !password) { errEl.textContent = 'Enter email and password'; errEl.style.display = ''; return; }
-    try { await api.login(email, password); errEl.style.display = 'none'; showAppScreen(); initApp(); }
-    catch (err) { errEl.textContent = err.message; errEl.style.display = ''; }
+    try {
+        const r = await api.login(email, password);
+        errEl.style.display = 'none';
+        if (r.needsVerification) { showVerifyScreen(); return; }
+        showAppScreen(); initApp();
+    } catch (err) { errEl.textContent = err.message; errEl.style.display = ''; }
 }
 async function doRegister() {
     const name = document.getElementById('registerName').value.trim();
@@ -146,13 +154,55 @@ async function doRegister() {
     const password = document.getElementById('registerPassword').value;
     const errEl = document.getElementById('registerError');
     if (!name || !email || !password) { errEl.textContent = 'All fields required'; errEl.style.display = ''; return; }
-    try { await api.register(email, password, name); errEl.style.display = 'none'; showAppScreen(); initApp(); }
-    catch (err) { errEl.textContent = err.message; errEl.style.display = ''; }
+    try {
+        const r = await api.register(email, password, name);
+        errEl.style.display = 'none';
+        showVerifyScreen();
+    } catch (err) { errEl.textContent = err.message; errEl.style.display = ''; }
+}
+
+function showVerifyScreen() {
+    hideLoadingScreen();
+    document.getElementById('loginScreen').classList.remove('visible');
+    document.getElementById('appContainer').style.display = 'none';
+    document.getElementById('verifyScreen').classList.add('visible');
+    document.getElementById('verifyEmail').textContent = currentUser?.email || '';
+}
+
+async function doVerify() {
+    const code = document.getElementById('verifyCodeInput').value.trim();
+    const errEl = document.getElementById('verifyError');
+    if (!code || code.length !== 6) { errEl.textContent = 'Enter the 6-digit code'; errEl.style.display = ''; return; }
+    try {
+        const r = await api.verifyEmail(code);
+        currentUser = r.user;
+        errEl.style.display = 'none';
+        document.getElementById('verifyScreen').classList.remove('visible');
+        showAppScreen(); initApp();
+    } catch (err) { errEl.textContent = err.message; errEl.style.display = ''; }
+}
+
+async function doResendCode() {
+    try {
+        await api.resendCode();
+        document.getElementById('verifyError').textContent = 'New code sent! Check your email.';
+        document.getElementById('verifyError').style.display = '';
+        document.getElementById('verifyError').style.background = 'var(--ok-soft)';
+        document.getElementById('verifyError').style.color = 'var(--ok)';
+    } catch (err) {
+        document.getElementById('verifyError').textContent = err.message;
+        document.getElementById('verifyError').style.display = '';
+        document.getElementById('verifyError').style.background = '';
+        document.getElementById('verifyError').style.color = '';
+    }
 }
 function doLogout() { api.setToken(null); currentUser = null; showLoginScreen(); }
 
 async function checkAuth() {
     if (!authToken) { showLoginScreen(); return false; }
-    try { await api.getMe(); return true; }
-    catch { showLoginScreen(); return false; }
+    try {
+        await api.getMe();
+        if (currentUser && currentUser.email_verified === false) { showVerifyScreen(); return false; }
+        return true;
+    } catch { showLoginScreen(); return false; }
 }

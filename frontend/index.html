@@ -38,6 +38,25 @@
 </div>
 
 <!-- APP (hidden until logged in) -->
+<!-- VERIFY EMAIL SCREEN -->
+<div id="verifyScreen" class="login-screen">
+    <div class="login-card">
+        <img src="assets/logo.png" alt="EstiCount" class="login-logo">
+        <h1>Check your email</h1>
+        <p class="login-subtitle">We sent a 6-digit code to <strong id="verifyEmail"></strong></p>
+        <div class="field" style="text-align:left">
+            <label>Verification Code</label>
+            <input type="text" class="input" id="verifyCodeInput" placeholder="000000" maxlength="6"
+                style="text-align:center;font-size:1.5rem;font-family:'JetBrains Mono',monospace;letter-spacing:.3em"
+                onkeydown="if(event.key==='Enter')doVerify()">
+        </div>
+        <div id="verifyError" class="login-error" style="display:none"></div>
+        <button class="btn btn-primary btn-lg" style="width:100%" onclick="doVerify()">Verify</button>
+        <p class="login-switch">Didn't get the code? <a href="#" onclick="doResendCode();return false">Resend</a></p>
+        <p class="login-switch"><a href="#" onclick="doLogout();return false">Use a different email</a></p>
+    </div>
+</div>
+
 <div id="loadingScreen" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg)"><img src="assets/logo.png" alt="" style="width:48px;height:48px;opacity:.5;animation:pulse 1.5s infinite"></div>
 <div id="appContainer" style="display:none">
 
