@@ -42,6 +42,27 @@ router.get('/me', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// PUT /profile - update name, email, password
+router.put('/profile', authenticate, async (req, res, next) => {
+  try {
+    const updates = {};
+    if (req.body.name) updates.name = req.body.name;
+    if (req.body.email) {
+      const { data: existing } = await supabase.from('users').select('id').eq('email', req.body.email).neq('id', req.user.id).single();
+      if (existing) return res.status(409).json({ error: 'Email already in use' });
+      updates.email = req.body.email;
+    }
+    if (req.body.password) {
+      if (req.body.password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+      updates.password_hash = require('bcryptjs').hashSync(req.body.password, 10);
+    }
+    if (!Object.keys(updates).length) return res.status(400).json({ error: 'Nothing to update' });
+    const { data: user, error } = await supabase.from('users').update(updates).eq('id', req.user.id).select('id, email, name, role, license_type, license_expires, is_active').single();
+    if (error) throw error;
+    res.json({ user, token: generateToken(user) });
+  } catch (err) { next(err); }
+});
+
 // POST /activate - user enters a license key
 router.post('/activate', authenticate, async (req, res, next) => {
   try {

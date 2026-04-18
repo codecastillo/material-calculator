@@ -65,6 +65,9 @@ const api = {
     async saveJob(job) { return api._fetch('/jobs', { method: 'POST', body: JSON.stringify(job) }); },
     async deleteJob(id) { return api._fetch('/jobs/' + id, { method: 'DELETE' }); },
 
+    // Profile
+    async updateProfile(data) { return api._fetch('/auth/profile', { method: 'PUT', body: JSON.stringify(data) }); },
+
     // License
     async activateLicense(key) { return api._fetch('/auth/activate', { method: 'POST', body: JSON.stringify({ key }) }); },
 

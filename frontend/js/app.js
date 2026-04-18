@@ -553,9 +553,16 @@ function renderDashboard(){
 // ===== ACCOUNT =====
 function renderAccountPage(){
     if(!currentUser)return;
-    document.getElementById('accountName').textContent=currentUser.name||'';
-    document.getElementById('accountEmail').textContent=currentUser.email||'';
+    document.getElementById('accountNameDisplay').textContent=currentUser.name||'No name set';
+    document.getElementById('accountEmailDisplay').textContent=currentUser.email||'';
     document.getElementById('accountAvatar').textContent=(currentUser.name||'U')[0].toUpperCase();
+    document.getElementById('accountNameInput').value=currentUser.name||'';
+    document.getElementById('accountEmailInput').value=currentUser.email||'';
+    document.getElementById('accountPasswordInput').value='';
+    const roleBadge=document.getElementById('accountRoleBadge');
+    roleBadge.textContent=currentUser.role==='admin'?'ADMIN':'USER';
+    roleBadge.style.background=currentUser.role==='admin'?'var(--pri-soft)':'var(--warn-soft)';
+    roleBadge.style.color=currentUser.role==='admin'?'var(--pri)':'var(--warn)';
     const lt=currentUser.license_type||'trial';
     const isActive=lt!=='trial';
     const exp=currentUser.license_expires?new Date(currentUser.license_expires).toLocaleDateString():'Never';
@@ -563,6 +570,45 @@ function renderAccountPage(){
         <div class="license-status"><span class="dot ${isActive?'active':'trial'}"></span><strong style="font-size:.95rem">${lt.toUpperCase()}</strong></div>
         <div class="license-detail">${lt==='lifetime'?'Never expires':lt==='trial'?'Activate a license key below':'Expires: '+exp}</div>
         <span class="badge" style="background:var(--${isActive?'ok':'warn'}-soft);color:var(--${isActive?'ok':'warn'})">${isActive?'Active':'Inactive'}</span>`;
+}
+
+async function updateProfile(){
+    const name=document.getElementById('accountNameInput').value.trim();
+    const email=document.getElementById('accountEmailInput').value.trim();
+    const password=document.getElementById('accountPasswordInput').value;
+    const msg=document.getElementById('profileMessage');
+    const data={};
+    if(name&&name!==currentUser.name)data.name=name;
+    if(email&&email!==currentUser.email)data.email=email;
+    if(password)data.password=password;
+    if(!Object.keys(data).length){msg.textContent='No changes';msg.style.color='var(--text3)';return}
+    try{
+        const r=await api.updateProfile(data);
+        currentUser=r.user;
+        if(r.token)api.setToken(r.token);
+        showAppScreen();renderAccountPage();
+        msg.textContent='Saved!';msg.style.color='var(--ok)';
+    }catch(e){msg.textContent=e.message;msg.style.color='var(--err)'}
+}
+
+// Admin view toggle
+let adminViewAsUser=false;
+function toggleAdminView(){
+    adminViewAsUser=!adminViewAsUser;
+    const btn=document.getElementById('adminViewToggle');
+    if(adminViewAsUser){
+        btn.textContent='Back to Admin View';
+        document.getElementById('adminNavLink').style.display='none';
+        document.getElementById('licenseBadge').style.display='';
+        document.getElementById('licenseBadge').textContent='TRIAL';
+        document.getElementById('licenseBadge').className='license-badge trial';
+        showPage('dashboard');
+    }else{
+        btn.textContent='View as User';
+        document.getElementById('adminNavLink').style.display='';
+        document.getElementById('licenseBadge').style.display='none';
+        showPage('admin');
+    }
 }
 async function activateLicense(){
     const key=document.getElementById('licenseKeyInput').value.trim();

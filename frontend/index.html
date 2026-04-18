@@ -271,9 +271,21 @@
         <div class="account-card">
             <div class="account-avatar" id="accountAvatar">A</div>
             <div class="account-info">
-                <h2 id="accountName"></h2>
-                <p id="accountEmail" style="color:var(--text3)"></p>
+                <h2 id="accountNameDisplay"></h2>
+                <p id="accountEmailDisplay" style="color:var(--text3)"></p>
+                <span class="badge" id="accountRoleBadge" style="margin-top:6px"></span>
             </div>
+        </div>
+
+        <div class="calc-section">
+            <h3 class="calc-section-title">Profile</h3>
+            <div class="form-row-2">
+                <div class="field"><label>Name</label><input type="text" class="input" id="accountNameInput"></div>
+                <div class="field"><label>Email</label><input type="email" class="input" id="accountEmailInput"></div>
+            </div>
+            <div class="field"><label>New Password (leave blank to keep current)</label><input type="password" class="input" id="accountPasswordInput" placeholder="Min 6 characters"></div>
+            <button class="btn btn-primary" onclick="updateProfile()">Save Changes</button>
+            <span id="profileMessage" style="margin-left:12px;font-size:.88rem"></span>
         </div>
 
         <div class="calc-section">
@@ -295,16 +307,21 @@
 
 <!-- ===== ADMIN PANEL ===== -->
 <div class="page" id="adminPage">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+        <div></div>
+        <button class="btn btn-ghost btn-sm" id="adminViewToggle" onclick="toggleAdminView()">View as User</button>
+    </div>
+
     <div class="dash-stats" id="adminStats"></div>
 
     <div class="calc-section">
         <h3 class="calc-section-title">Generate License Keys</h3>
-        <div class="form-row-4">
+        <div class="form-row-3" style="margin-bottom:12px">
             <div class="field"><label>Type</label><select class="input" id="genKeyType"><option value="trial">Trial (7 days)</option><option value="monthly">Monthly (30 days)</option><option value="yearly">Yearly (365 days)</option><option value="lifetime">Lifetime</option></select></div>
             <div class="field"><label>Max Uses</label><input type="number" class="input" id="genKeyMaxUses" value="1" min="1"></div>
             <div class="field"><label>Quantity</label><input type="number" class="input" id="genKeyCount" value="1" min="1" max="50"></div>
-            <div class="field"><label>&nbsp;</label><button class="btn btn-success" onclick="generateKeys()">Generate Keys</button></div>
         </div>
+        <button class="btn btn-success" onclick="generateKeys()">Generate Keys</button>
     </div>
 
     <div class="calc-section">
@@ -319,12 +336,12 @@
 
     <div class="calc-section">
         <h3 class="calc-section-title">Bulk Price Update</h3>
-        <div class="form-row-3">
+        <div class="form-row-2" style="margin-bottom:12px">
             <div class="field"><label>Supplier</label><select class="input" id="bulkSupplier"></select></div>
             <div class="field"><label>Adjust by %</label><input type="number" class="input" id="bulkPercent" value="5" step="0.5" placeholder="+5 or -3"></div>
-            <div class="field"><label>&nbsp;</label><button class="btn btn-primary" onclick="bulkPriceUpdate()">Update Prices</button></div>
         </div>
-        <span class="hint">Positive = increase, negative = decrease. Applies to all materials for the selected supplier.</span>
+        <button class="btn btn-primary" onclick="bulkPriceUpdate()">Update Prices</button>
+        <span class="hint" style="margin-left:12px">Positive = increase, negative = decrease</span>
     </div>
 </div>
 
