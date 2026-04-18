@@ -89,11 +89,14 @@ const api = {
 };
 
 // ===== AUTH UI =====
+function hideLoadingScreen(){const el=document.getElementById('loadingScreen');if(el)el.style.display='none'}
 function showLoginScreen() {
+    hideLoadingScreen();
     document.getElementById('loginScreen').classList.add('visible');
     document.getElementById('appContainer').style.display = 'none';
 }
 function showAppScreen() {
+    hideLoadingScreen();
     document.getElementById('loginScreen').classList.remove('visible');
     document.getElementById('appContainer').style.display = '';
     if (currentUser) {
@@ -104,11 +107,14 @@ function showAppScreen() {
         // Show/hide license badge
         const licenseBadge = document.getElementById('licenseBadge');
         if (licenseBadge) {
-            if (currentUser.role === 'admin') licenseBadge.style.display = 'none';
-            else {
+            if (currentUser.role === 'admin' && !window.adminViewAsUser) {
+                licenseBadge.style.display = 'none';
+            } else {
+                const lt = currentUser.license_type || 'trial';
+                const isActive = lt !== 'trial';
                 licenseBadge.style.display = '';
-                licenseBadge.textContent = (currentUser.license_type || 'trial').toUpperCase();
-                licenseBadge.className = 'license-badge ' + (currentUser.license_type === 'trial' ? 'trial' : 'active');
+                licenseBadge.textContent = lt.toUpperCase();
+                licenseBadge.className = 'license-badge ' + (isActive ? 'active' : 'trial');
             }
         }
     }

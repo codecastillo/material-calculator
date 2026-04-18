@@ -149,12 +149,15 @@ function toggleTheme(){const c=document.documentElement.getAttribute('data-theme
 // ===== NAVIGATION =====
 const PAGE_TITLES={dashboard:'Dashboard',pricing:'Material Pricing',calculator:'Job Calculator',order:'Order Form',bid:'Bid Summary',savedJobs:'Saved Jobs',admin:'Admin Panel',account:'Account'};
 const PAGES_WITH_BACK=['pricing','calculator','order','bid','savedJobs','admin','account'];
+let currentPageId='dashboard';
 
 // Mobile menu
 function toggleMobileMenu(){document.getElementById('topnavLinks').classList.toggle('open');document.getElementById('mobileOverlay').classList.toggle('open')}
 function closeMobileMenu(){document.getElementById('topnavLinks').classList.remove('open');document.getElementById('mobileOverlay').classList.remove('open')}
 
 function showPage(id){
+    currentPageId=id;
+    localStorage.setItem('esticount_page',id);
     document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
     document.querySelectorAll('.nav-link').forEach(el=>el.classList.remove('active'));
     document.getElementById(id+'Page').classList.add('active');
@@ -710,7 +713,10 @@ async function bulkPriceUpdate(){
 // ===== INIT =====
 async function initApp(){
     await loadData();
-    renderDashboard();updateUndoButtons();rebuildTaxDropdown();
+    // Restore last page
+    const savedPage=localStorage.getItem('esticount_page');
+    if(savedPage&&document.getElementById(savedPage+'Page')){showPage(savedPage)}else{renderDashboard()}
+    updateUndoButtons();rebuildTaxDropdown();
     document.getElementById('orderNotes')?.addEventListener('input',function(){const np=document.getElementById('orderNotesPrint');if(this.value.trim()){np.innerHTML=`<h4>Notes:</h4>${escHtml(this.value)}`;np.style.display='block'}else np.style.display='none'});
 }
 

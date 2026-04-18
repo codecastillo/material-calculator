@@ -56,6 +56,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 .page{display:none;animation:fadeIn .2s ease}
 .page.active{display:block}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:.7}}
 
 /* ===== BUTTONS ===== */
 .btn{padding:10px 20px;border:1px solid transparent;border-radius:8px;font-family:inherit;font-size:.88rem;font-weight:500;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
