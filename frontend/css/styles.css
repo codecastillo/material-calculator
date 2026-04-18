@@ -320,7 +320,7 @@ tr.drag-over td{border-top:2px solid var(--pri)}
 .login-card h1{font-size:1.5rem;font-weight:700;margin-bottom:4px;letter-spacing:-.02em}
 .login-subtitle{color:var(--text3);font-size:.88rem;margin-bottom:28px}
 .login-card .field{text-align:left;margin-bottom:16px}
-.login-card .btn-lg{margin-top:8px}
+.login-card .btn-lg{margin-top:8px;justify-content:center}
 .login-card .field{text-align:left}
 .login-switch{text-align:center}
 .login-error{background:var(--err-soft);color:var(--err);padding:10px 14px;border-radius:8px;font-size:.84rem;margin-bottom:12px}
