@@ -312,13 +312,16 @@ tr.drag-over td{border-top:2px solid var(--pri)}
     .bid-header{border-bottom:2px solid #333}.bid-row{border-color:#ddd;color:#000}.bid-row .label{color:#555}.bid-row.total{color:#1d4ed8;border-top:2px solid #1d4ed8}
 }
 /* ===== LOGIN SCREEN ===== */
-.login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:20px}
+.login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:20px;display:none}
+.login-screen.visible{display:flex}
 .login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px;width:100%;max-width:400px;text-align:center;box-shadow:var(--shadow2)}
 .login-logo{width:64px;height:64px;object-fit:contain;margin-bottom:12px}
 .login-card h1{font-size:1.5rem;font-weight:700;margin-bottom:4px;letter-spacing:-.02em}
 .login-subtitle{color:var(--text3);font-size:.88rem;margin-bottom:28px}
 .login-card .field{text-align:left;margin-bottom:16px}
 .login-card .btn-lg{margin-top:8px}
+.login-card .field{text-align:left}
+.login-switch{text-align:center}
 .login-error{background:var(--err-soft);color:var(--err);padding:10px 14px;border-radius:8px;font-size:.84rem;margin-bottom:12px}
 .login-switch{margin-top:16px;font-size:.84rem;color:var(--text3)}
 .login-switch a{color:var(--pri);text-decoration:none;font-weight:500}

@@ -551,8 +551,11 @@ function renderDashboard(){
 }
 
 // ===== ACCOUNT =====
-function renderAccountPage(){
+async function renderAccountPage(){
     if(!currentUser)return;
+    // Re-fetch latest user data from API
+    if(api.getToken()){try{const r=await api.getMe();currentUser=r.user}catch(e){}}
+
     document.getElementById('accountNameDisplay').textContent=currentUser.name||'No name set';
     document.getElementById('accountEmailDisplay').textContent=currentUser.email||'';
     document.getElementById('accountAvatar').textContent=(currentUser.name||'U')[0].toUpperCase();
@@ -632,14 +635,19 @@ async function renderAdminPanel(){
         const s=statsData.stats;
         document.getElementById('adminStats').innerHTML=`<div class="dash-stat"><div class="num">${s.users}</div><div class="label">Users</div></div><div class="dash-stat"><div class="num">${s.active}</div><div class="label">Active</div></div><div class="dash-stat"><div class="num">${s.keys}</div><div class="label">Keys</div></div><div class="dash-stat"><div class="num">${s.jobs}</div><div class="label">Total Jobs</div></div>`;
 
-        // Keys
+        // Keys — match keys to users who activated them
         const keys=keysData.keys||[];
+        const users=usersData.users||[];
+        const keyUserMap={};users.forEach(u=>{if(u.license_key)keyUserMap[u.license_key]=u});
+
         if(!keys.length){document.getElementById('adminKeysList').innerHTML='<div class="dash-empty">No keys generated yet.</div>'}
-        else{document.getElementById('adminKeysList').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Key</th><th>Type</th><th>Duration</th><th>Uses</th><th>Actions</th></tr></thead><tbody>${keys.map(k=>`<tr><td class="mono" style="font-size:.82rem">${escHtml(k.key)}</td><td>${k.type}</td><td>${k.duration_days}d</td><td>${k.times_used}/${k.max_uses}</td><td><button class="btn btn-danger btn-sm" onclick="deleteKey(${k.id})">Delete</button></td></tr>`).join('')}</tbody></table></div>`}
+        else{document.getElementById('adminKeysList').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Key</th><th>Type</th><th>Duration</th><th>Uses</th><th>Activated By</th><th>Actions</th></tr></thead><tbody>${keys.map(k=>{
+            const activatedBy=keyUserMap[k.key];
+            return`<tr><td class="mono" style="font-size:.8rem;user-select:all">${escHtml(k.key)}</td><td>${k.type}</td><td>${k.duration_days}d</td><td>${k.times_used}/${k.max_uses}</td><td>${activatedBy?escHtml(activatedBy.name)+' ('+escHtml(activatedBy.email)+')':'<span style="color:var(--text3)">Unused</span>'}</td><td><button class="btn btn-danger btn-sm" onclick="deleteKey(${k.id})">Delete</button></td></tr>`;
+        }).join('')}</tbody></table></div>`}
 
         // Users
-        const users=usersData.users||[];
-        document.getElementById('adminUsersList').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>License</th><th>Active</th><th>Actions</th></tr></thead><tbody>${users.map(u=>`<tr><td>${escHtml(u.name)}</td><td>${escHtml(u.email)}</td><td><span class="badge" style="background:var(--${u.role==='admin'?'pri':'warn'}-soft);color:var(--${u.role==='admin'?'pri':'warn'})">${u.role}</span></td><td>${u.license_type||'trial'}</td><td>${u.is_active?'Yes':'No'}</td><td style="white-space:nowrap">${u.role!=='admin'?`<button class="btn btn-sm btn-secondary" onclick="toggleUserActive(${u.id},${!u.is_active})">${u.is_active?'Deactivate':'Activate'}</button> <button class="btn btn-sm btn-danger" onclick="adminDeleteUser(${u.id})">Delete</button>`:''}</td></tr>`).join('')}</tbody></table></div>`;
+        document.getElementById('adminUsersList').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>License</th><th>Key</th><th>Active</th><th>Actions</th></tr></thead><tbody>${users.map(u=>`<tr><td>${escHtml(u.name)}</td><td>${escHtml(u.email)}</td><td><span class="badge" style="background:var(--${u.role==='admin'?'pri':'warn'}-soft);color:var(--${u.role==='admin'?'pri':'warn'})">${u.role}</span></td><td>${u.license_type||'trial'}</td><td class="mono" style="font-size:.75rem;color:var(--text3)">${u.license_key||'—'}</td><td>${u.is_active?'<span style="color:var(--ok)">Yes</span>':'<span style="color:var(--err)">No</span>'}</td><td style="white-space:nowrap">${u.role!=='admin'?`<button class="btn btn-sm btn-secondary" onclick="toggleUserActive(${u.id},${!u.is_active})">${u.is_active?'Deactivate':'Activate'}</button> <button class="btn btn-sm btn-danger" onclick="adminDeleteUser(${u.id})">Delete</button>`:''}</td></tr>`).join('')}</tbody></table></div>`;
 
         // Populate bulk supplier dropdown from API data
         const sel=document.getElementById('bulkSupplier');

@@ -90,11 +90,11 @@ const api = {
 
 // ===== AUTH UI =====
 function showLoginScreen() {
-    document.getElementById('loginScreen').style.display = '';
+    document.getElementById('loginScreen').classList.add('visible');
     document.getElementById('appContainer').style.display = 'none';
 }
 function showAppScreen() {
-    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('loginScreen').classList.remove('visible');
     document.getElementById('appContainer').style.display = '';
     if (currentUser) {
         document.getElementById('userName').textContent = currentUser.name || currentUser.email;
