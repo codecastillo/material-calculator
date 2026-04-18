@@ -289,7 +289,7 @@
     <div id="bidEmpty" class="empty-state"><p>No calculation yet.</p><button class="btn btn-primary" onclick="showPage('calculator')">Go to Calculator</button></div>
     <div id="bidContent" class="hidden">
         <div class="bid-paper" id="bidSummary"></div>
-        <div class="calc-result-actions no-print"><button class="btn btn-primary" onclick="window.print()">Print Bid</button></div>
+        <div class="calc-result-actions no-print"><button class="btn btn-primary" onclick="printBid()">Print Bid</button></div>
     </div>
 </div>
 
@@ -397,6 +397,7 @@
 <div class="modal-overlay" id="saveJobModal"><div class="modal"><h3>Save Job</h3><div class="field"><label>Job Name</label><input type="text" class="input" id="saveJobName" placeholder="e.g. Smith Residence - April 2026"></div><div class="field" style="margin-top:8px"><label><input type="checkbox" id="saveAsTemplate"> Save as reusable template (no project details)</label></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('saveJobModal')">Cancel</button><button class="btn btn-success" onclick="doSaveJob()">Save</button></div></div></div>
 
 <div class="admin-floating-btn" id="adminFloatingBtn" style="display:none" onclick="toggleAdminView()">Back to Admin</div>
+<div class="print-watermark" id="printWatermark" style="display:none">EstiCount Trial &mdash; esticount.com</div>
 <div class="notification" id="notification"></div>
 
 </div><!-- /appContainer -->

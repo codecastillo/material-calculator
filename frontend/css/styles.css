@@ -364,4 +364,8 @@ tr.drag-over td{border-top:2px solid var(--pri)}
 .license-badge.trial{background:var(--warn-soft);color:var(--warn)}
 .license-badge.active{background:var(--ok-soft);color:var(--ok)}
 
+/* Print watermark for unlicensed users */
+.print-watermark{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:60px;font-weight:700;color:rgba(200,200,200,0.3);white-space:nowrap;pointer-events:none;z-index:9999;letter-spacing:4px}
+@media print{.print-watermark.active{display:block!important}}
+
 .print-header{display:none}
