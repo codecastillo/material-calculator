@@ -555,9 +555,14 @@ function renderAccountPage(){
     if(!currentUser)return;
     document.getElementById('accountName').textContent=currentUser.name||'';
     document.getElementById('accountEmail').textContent=currentUser.email||'';
+    document.getElementById('accountAvatar').textContent=(currentUser.name||'U')[0].toUpperCase();
     const lt=currentUser.license_type||'trial';
+    const isActive=lt!=='trial';
     const exp=currentUser.license_expires?new Date(currentUser.license_expires).toLocaleDateString():'Never';
-    document.getElementById('accountLicense').innerHTML=`<span class="badge" style="background:var(--${lt==='trial'?'warn':'ok'}-soft);color:var(--${lt==='trial'?'warn':'ok'})">${lt.toUpperCase()}</span> ${lt==='lifetime'?'Never expires':'Expires: '+exp}`;
+    document.getElementById('accountLicense').innerHTML=`
+        <div class="license-status"><span class="dot ${isActive?'active':'trial'}"></span><strong style="font-size:.95rem">${lt.toUpperCase()}</strong></div>
+        <div class="license-detail">${lt==='lifetime'?'Never expires':lt==='trial'?'Activate a license key below':'Expires: '+exp}</div>
+        <span class="badge" style="background:var(--${isActive?'ok':'warn'}-soft);color:var(--${isActive?'ok':'warn'})">${isActive?'Active':'Inactive'}</span>`;
 }
 async function activateLicense(){
     const key=document.getElementById('licenseKeyInput').value.trim();
@@ -590,9 +595,17 @@ async function renderAdminPanel(){
         const users=usersData.users||[];
         document.getElementById('adminUsersList').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>License</th><th>Active</th><th>Actions</th></tr></thead><tbody>${users.map(u=>`<tr><td>${escHtml(u.name)}</td><td>${escHtml(u.email)}</td><td><span class="badge" style="background:var(--${u.role==='admin'?'pri':'warn'}-soft);color:var(--${u.role==='admin'?'pri':'warn'})">${u.role}</span></td><td>${u.license_type||'trial'}</td><td>${u.is_active?'Yes':'No'}</td><td style="white-space:nowrap">${u.role!=='admin'?`<button class="btn btn-sm btn-secondary" onclick="toggleUserActive(${u.id},${!u.is_active})">${u.is_active?'Deactivate':'Activate'}</button> <button class="btn btn-sm btn-danger" onclick="adminDeleteUser(${u.id})">Delete</button>`:''}</td></tr>`).join('')}</tbody></table></div>`;
 
-        // Populate bulk supplier dropdown
+        // Populate bulk supplier dropdown from API data
         const sel=document.getElementById('bulkSupplier');
-        sel.innerHTML=suppliers.map(s=>`<option value="${window._supplierIdMap?.[s]||''}">${s}</option>`).join('');
+        if(sel){
+            const supMap=window._supplierIdMap||{};
+            sel.innerHTML=suppliers.map(s=>`<option value="${supMap[s]||''}">${s}</option>`).join('');
+            // If map is empty, try fetching supplier IDs
+            if(!Object.keys(supMap).length){
+                try{const sd=await api.getSuppliers();sd.suppliers.forEach(s=>{supMap[s.name]=s.id});window._supplierIdMap=supMap;
+                sel.innerHTML=suppliers.map(s=>`<option value="${supMap[s]||''}">${s}</option>`).join('')}catch(e){}
+            }
+        }
     }catch(e){notify('Admin load failed: '+e.message,'error')}
 }
 
