@@ -570,11 +570,19 @@ async function renderAccountPage(){
     roleBadge.style.background=currentUser.role==='admin'?'var(--pri-soft)':'var(--warn-soft)';
     roleBadge.style.color=currentUser.role==='admin'?'var(--pri)':'var(--warn)';
     const lt=currentUser.license_type||'trial';
-    const isActive=lt!=='trial';
-    const exp=currentUser.license_expires?new Date(currentUser.license_expires).toLocaleDateString():'Never';
+    const hasKey=!!currentUser.license_key;
+    const exp=currentUser.license_expires?new Date(currentUser.license_expires):null;
+    const isExpired=exp&&exp<new Date();
+    const isActive=hasKey&&!isExpired;
+    const expStr=exp?exp.toLocaleDateString():'Never';
+    let statusText,statusClass;
+    if(!hasKey){statusText='No key activated';statusClass='warn'}
+    else if(isExpired){statusText='Expired '+expStr;statusClass='err'}
+    else if(lt==='lifetime'){statusText='Never expires';statusClass='ok'}
+    else{statusText='Expires: '+expStr;statusClass='ok'}
     document.getElementById('accountLicense').innerHTML=`
         <div class="license-status"><span class="dot ${isActive?'active':'trial'}"></span><strong style="font-size:.95rem">${lt.toUpperCase()}</strong></div>
-        <div class="license-detail">${lt==='lifetime'?'Never expires':lt==='trial'?'Activate a license key below':'Expires: '+exp}</div>
+        <div class="license-detail">${statusText}</div>
         <span class="badge" style="background:var(--${isActive?'ok':'warn'}-soft);color:var(--${isActive?'ok':'warn'})">${isActive?'Active':'Inactive'}</span>`;
 }
 
@@ -713,9 +721,20 @@ async function bulkPriceUpdate(){
 // ===== INIT =====
 async function initApp(){
     await loadData();
-    // Restore last page
+    // Restore last page BEFORE showing app (prevents flash to dashboard)
     const savedPage=localStorage.getItem('esticount_page');
-    if(savedPage&&document.getElementById(savedPage+'Page')){showPage(savedPage)}else{renderDashboard()}
+    if(savedPage&&document.getElementById(savedPage+'Page')){
+        // Pre-activate the page without triggering render yet
+        document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+        document.getElementById(savedPage+'Page').classList.add('active');
+        document.querySelectorAll('.nav-link').forEach(el=>el.classList.remove('active'));
+        const link=document.querySelector(`.nav-link[data-page="${savedPage}"]`);if(link)link.classList.add('active');
+        currentPageId=savedPage;
+    }
+    // NOW show app (no flash since correct page is already set)
+    showAppScreen();
+    // Then trigger page-specific renders
+    if(savedPage&&document.getElementById(savedPage+'Page')){showPage(savedPage)}else{showPage('dashboard')}
     updateUndoButtons();rebuildTaxDropdown();
     document.getElementById('orderNotes')?.addEventListener('input',function(){const np=document.getElementById('orderNotesPrint');if(this.value.trim()){np.innerHTML=`<h4>Notes:</h4>${escHtml(this.value)}`;np.style.display='block'}else np.style.display='none'});
 }

@@ -150,6 +150,6 @@ function doLogout() { api.setToken(null); currentUser = null; showLoginScreen();
 
 async function checkAuth() {
     if (!authToken) { showLoginScreen(); return false; }
-    try { await api.getMe(); showAppScreen(); return true; }
+    try { await api.getMe(); return true; }
     catch { showLoginScreen(); return false; }
 }

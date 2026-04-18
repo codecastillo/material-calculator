@@ -30,13 +30,13 @@ router.post('/login', async (req, res, next) => {
     if (!user) return res.status(401).json({ error: 'Invalid email or password' });
     if (!bcrypt.compareSync(password, user.password_hash)) return res.status(401).json({ error: 'Invalid email or password' });
     if (!user.is_active) return res.status(403).json({ error: 'Account is deactivated. Contact support.' });
-    res.json({ token: generateToken(user), user: { id: user.id, email: user.email, name: user.name, role: user.role, license_type: user.license_type, license_expires: user.license_expires, is_active: user.is_active } });
+    res.json({ token: generateToken(user), user: { id: user.id, email: user.email, name: user.name, role: user.role, license_type: user.license_type, license_key: user.license_key, license_expires: user.license_expires, is_active: user.is_active } });
   } catch (err) { next(err); }
 });
 
 router.get('/me', authenticate, async (req, res, next) => {
   try {
-    const { data: user } = await supabase.from('users').select('id, email, name, role, license_type, license_expires, is_active').eq('id', req.user.id).single();
+    const { data: user } = await supabase.from('users').select('id, email, name, role, license_type, license_key, license_expires, is_active').eq('id', req.user.id).single();
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({ user });
   } catch (err) { next(err); }
