@@ -13,6 +13,13 @@ function generateToken(user) { return jwt.sign({ id: user.id, email: user.email,
 
 function generateCode() { return Math.floor(100000 + Math.random() * 900000).toString(); }
 
+function generateReferralCode() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = 'REF-';
+  for (let i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+  return code;
+}
+
 async function sendVerificationEmail(email, code) {
   await resend.emails.send({
     from: 'EstiCount <noreply@esticount.com>',
@@ -68,10 +75,24 @@ router.post('/register', async (req, res, next) => {
     if (existing) return res.status(409).json({ error: 'Email already registered' });
 
     const hash = bcrypt.hashSync(password, 10);
-    const { data: user, error } = await supabase.from('users').insert({
-      email, password_hash: hash, name, email_verified: false
-    }).select('id, email, name, role, license_type, license_key, license_expires, is_active, email_verified').single();
+
+    // Referral support: look up referrer if referral_code provided
+    let referred_by = null;
+    if (req.body.referral_code) {
+      const { data: referrer } = await supabase.from('users').select('id').eq('referral_code', req.body.referral_code).single();
+      if (referrer) referred_by = referrer.id;
+    }
+
+    const insertData = { email, password_hash: hash, name, email_verified: false };
+    if (referred_by) insertData.referred_by = referred_by;
+
+    const { data: user, error } = await supabase.from('users').insert(insertData)
+      .select('id, email, name, role, license_type, license_key, license_expires, is_active, email_verified').single();
     if (error) throw error;
+
+    // Generate unique referral code for the new user
+    const referralCode = generateReferralCode();
+    await supabase.from('users').update({ referral_code: referralCode }).eq('id', user.id);
 
     // Generate and send verification code
     const code = generateCode();
@@ -284,6 +305,19 @@ router.post('/reset-password', async (req, res, next) => {
     await supabase.from('verification_codes').delete().eq('user_id', user.id);
 
     res.json({ message: 'Password reset successfully. You can now sign in.' });
+  } catch (err) { next(err); }
+});
+
+// GET /referral-stats — get user's referral code and count of referred users
+router.get('/referral-stats', authenticate, async (req, res, next) => {
+  try {
+    const { data: user } = await supabase.from('users').select('referral_code').eq('id', req.user.id).single();
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const { count, error } = await supabase.from('users').select('id', { count: 'exact', head: true }).eq('referred_by', req.user.id);
+    if (error) throw error;
+
+    res.json({ referral_code: user.referral_code, referral_count: count || 0 });
   } catch (err) { next(err); }
 });
 

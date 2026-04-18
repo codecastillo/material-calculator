@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EstiCount</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4493f8">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -176,6 +178,7 @@
     </div>
 
     <div class="scope-groups" id="scopeGroups"></div>
+    <div id="recentMaterials" style="margin-top:14px"></div>
     <div class="stats-bar" id="statsBar"></div>
 </div>
 
@@ -404,5 +407,6 @@
 
 <script src="js/api.js"></script>
 <script src="js/app.js"></script>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}</script>
 </body>
 </html>

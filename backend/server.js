@@ -17,6 +17,10 @@ const categoryRoutes = require('./routes/categories');
 const jobRoutes = require('./routes/jobs');
 const pricingRoutes = require('./routes/pricing');
 const adminRoutes = require('./routes/admin');
+const clientRoutes = require('./routes/clients');
+const invoiceRoutes = require('./routes/invoices');
+const activityRoutes = require('./routes/activity');
+const priceHistoryRoutes = require('./routes/priceHistory');
 
 // Import error handler
 const errorHandler = require('./middleware/errorHandler');
@@ -86,6 +90,10 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/pricing', pricingRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/clients', clientRoutes);
+app.use('/api/invoices', invoiceRoutes);
+app.use('/api/activity', activityRoutes);
+app.use('/api/price-history', priceHistoryRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

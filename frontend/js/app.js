@@ -186,7 +186,7 @@ function showPage(id){
     if(pageHistory[pageHistory.length-1]!==id)pageHistory.push(id);
     // Init page
     if(id==='dashboard')renderDashboard();
-    if(id==='pricing'){renderSupplierTabs();populateCategoryFilter();renderMaterialTable()}
+    if(id==='pricing'){renderSupplierTabs();populateCategoryFilter();renderMaterialTable();trackRecentMaterials()}
     if(id==='calculator'){populateCalcSupplierDropdown();renderPhaseCheckboxes()}
     if(id==='savedJobs')renderSavedJobs();
     if(id==='admin')renderAdminPanel();
@@ -265,11 +265,11 @@ function renderMaterialTable(){
             html+=`<tr class="phase-header"><td colspan="9" class="pc${ci}">${escHtml(cat)}</td></tr>`;
             items.forEach(m=>{
                 if(editingId===m.id){
-                    html+=`<tr><td></td><td><input class="inline-input" id="edit-name" value="${escAttr(m.name)}"></td><td><input class="inline-input" id="edit-sku" value="${escAttr(m.sku)}" style="width:100px"></td><td><select class="inline-select" id="edit-unit">${UNITS.map(u=>`<option${u===m.unit?' selected':''}>${u}</option>`).join('')}</select></td><td><input class="inline-input" id="edit-price" type="number" step="0.01" min="0" value="${m.pricePerUnit}" style="text-align:right;width:80px"></td><td><select class="inline-select" id="edit-category">${categories.map(cc=>`<option${cc===m.category?' selected':''}>${cc}</option>`).join('')}</select></td><td><select class="inline-select" id="edit-calcType">${CALC_TYPES.map(t=>`<option${t===m.calcType?' selected':''}>${t}</option>`).join('')}</select></td><td><input class="inline-input" id="edit-coverage" type="number" step="0.1" min="0.1" value="${m.coveragePerUnit}" style="text-align:right;width:74px"></td><td class="text-center" style="white-space:nowrap"><button class="btn btn-success btn-sm" onclick="saveMaterialEdit('${m.id}')">Save</button> <button class="btn btn-secondary btn-sm" onclick="cancelEdit()">Cancel</button></td></tr>`;
+                    html+=`<tr><td></td><td><input class="inline-input" id="edit-name" value="${escAttr(m.name)}"><input class="inline-input" id="edit-notes" value="${escAttr(m.notes||'')}" placeholder="Notes..." style="margin-top:4px;font-size:.78rem;color:var(--text3)"></td><td><input class="inline-input" id="edit-sku" value="${escAttr(m.sku)}" style="width:100px"></td><td><select class="inline-select" id="edit-unit">${UNITS.map(u=>`<option${u===m.unit?' selected':''}>${u}</option>`).join('')}</select></td><td><input class="inline-input" id="edit-price" type="number" step="0.01" min="0" value="${m.pricePerUnit}" style="text-align:right;width:80px"></td><td><select class="inline-select" id="edit-category">${categories.map(cc=>`<option${cc===m.category?' selected':''}>${cc}</option>`).join('')}</select></td><td><select class="inline-select" id="edit-calcType">${CALC_TYPES.map(t=>`<option${t===m.calcType?' selected':''}>${t}</option>`).join('')}</select></td><td><input class="inline-input" id="edit-coverage" type="number" step="0.1" min="0.1" value="${m.coveragePerUnit}" style="text-align:right;width:74px"></td><td class="text-center" style="white-space:nowrap"><button class="btn btn-success btn-sm" onclick="saveMaterialEdit('${m.id}')">Save</button> <button class="btn btn-secondary btn-sm" onclick="cancelEdit()">Cancel</button></td></tr>`;
                 }else{
                     const stale=isStale(m);const covLabel=m.calcType==='linear'?'lf':'sqft';
                     const priceHist=m.previousPrice!=null?(m.previousPrice<m.pricePerUnit?'<span class="price-up">&uarr;</span>':'<span class="price-down">&darr;</span>'):'';
-                    html+=`<tr draggable="true" data-id="${m.id}" ondragstart="dragStart(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropRow(event)"><td style="cursor:grab;color:var(--text3)">&#9776;</td><td>${escHtml(m.name)}${stale?'<span class="badge-stale">stale</span>':''}</td><td class="mono" style="color:var(--text3);font-size:.8rem">${escHtml(m.sku)}</td><td>${m.unit}</td><td class="text-right mono">${fmt(m.pricePerUnit)}${priceHist}</td><td><span class="badge pb${ci} pc${ci}">${m.category}</span></td><td><span class="badge-type">${m.calcType}</span></td><td class="text-right mono">${m.coveragePerUnit} ${covLabel}</td><td class="text-center" style="white-space:nowrap"><button class="btn-icon" onclick="editMaterial('${m.id}')" title="Edit">&#9998;</button><button class="btn-icon" onclick="openDuplicate('${m.id}')" title="Copy">&#10697;</button><button class="btn-icon danger" onclick="deleteMaterial('${m.id}')" title="Delete">&#10005;</button></td></tr>`;
+                    html+=`<tr draggable="true" data-id="${m.id}" ondragstart="dragStart(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropRow(event)"><td style="cursor:grab;color:var(--text3)">&#9776;</td><td>${escHtml(m.name)}${stale?'<span class="badge-stale">stale</span>':''}${m.notes?`<div style="font-size:.75rem;color:var(--text3);margin-top:2px">${escHtml(m.notes)}</div>`:''}</td><td class="mono" style="color:var(--text3);font-size:.8rem">${escHtml(m.sku)}</td><td>${m.unit}</td><td class="text-right mono">${fmt(m.pricePerUnit)}${priceHist}</td><td><span class="badge pb${ci} pc${ci}">${m.category}</span></td><td><span class="badge-type">${m.calcType}</span></td><td class="text-right mono">${m.coveragePerUnit} ${covLabel}</td><td class="text-center" style="white-space:nowrap"><button class="btn-icon" onclick="editMaterial('${m.id}')" title="Edit">&#9998;</button><button class="btn-icon" onclick="openDuplicate('${m.id}')" title="Copy">&#10697;</button><button class="btn-icon danger" onclick="deleteMaterial('${m.id}')" title="Delete">&#10005;</button></td></tr>`;
                 }
             });
         });
@@ -285,8 +285,10 @@ function editMaterial(id){editingId=id;renderMaterialTable()}
 function cancelEdit(){editingId=null;renderMaterialTable()}
 async function saveMaterialEdit(id){const mats=materialsBySupplier[activeSupplier]||[];const mat=mats.find(m=>m.id===id);if(!mat)return;const name=document.getElementById('edit-name').value.trim();const price=parseFloat(document.getElementById('edit-price').value);const coverage=parseFloat(document.getElementById('edit-coverage').value);if(!name){notify('Name required','error');return}if(isNaN(price)||price<0){notify('Invalid price','error');return}if(isNaN(coverage)||coverage<=0){notify('Coverage > 0','error');return}pushUndo();if(mat.pricePerUnit!==price)mat.previousPrice=mat.pricePerUnit;
     const newCat=document.getElementById('edit-category').value;const newCalcType=document.getElementById('edit-calcType').value;
-    mat.name=name;mat.sku=document.getElementById('edit-sku').value.trim();mat.unit=document.getElementById('edit-unit').value;mat.pricePerUnit=price;mat.category=newCat;mat.calcType=newCalcType;mat.coveragePerUnit=coverage;mat.lastUpdated=Date.now();
-    if(api.getToken()){try{await api.updateMaterial(id,{name:mat.name,sku:mat.sku,unit:mat.unit,price_per_unit:price,category_id:window._categoryIdMap?.[newCat],coverage_per_unit:coverage,calc_type:newCalcType==='linear'?'linear_ft':'sqft'})}catch(e){console.warn('API:',e.message)}}
+    const notes=(document.getElementById('edit-notes')?.value||'').trim();
+    mat.name=name;mat.sku=document.getElementById('edit-sku').value.trim();mat.unit=document.getElementById('edit-unit').value;mat.pricePerUnit=price;mat.category=newCat;mat.calcType=newCalcType;mat.coveragePerUnit=coverage;mat.notes=notes;mat.lastUpdated=Date.now();
+    if(api.getToken()){try{await api.updateMaterial(id,{name:mat.name,sku:mat.sku,unit:mat.unit,price_per_unit:price,category_id:window._categoryIdMap?.[newCat],coverage_per_unit:coverage,calc_type:newCalcType==='linear'?'linear_ft':'sqft',notes})}catch(e){console.warn('API:',e.message)}}
+    addToRecent(id,mat.name,activeSupplier);
     editingId=null;saveAll();renderMaterialTable();notify('Updated','success')}
 async function addMaterial(){pushUndo();const mats=materialsBySupplier[activeSupplier]||[];
     const catName=categories[0]||'Lath';
@@ -485,7 +487,7 @@ function renderCalcResults(r){
     const bpp=r.bestPerPhase||{}; // best supplier per phase (only set when All Suppliers)
     document.getElementById('phaseCards').innerHTML=categories.map((cat,i)=>{const p=r.phases[cat];if(!p||p.count===0)return'';const c=i%8;const sup=bpp[cat]?`<span style="font-size:.7rem;font-weight:400;color:var(--text3);display:block;margin-top:2px">via ${escHtml(bpp[cat])}</span>`:'';return`<div class="phase-card pb${c}"><h3>${escHtml(cat)}</h3><div class="amount pc${c}">${fmt(p.total)}</div><div class="items">${p.count} items${sup}</div></div>`}).join('');
 
-    let bh='';categories.forEach((cat,ci)=>{const items=r.items.filter(i=>i.category===cat);if(!items.length)return;const c=ci%8;const supLabel=bpp[cat]?` <span style="font-size:.78rem;font-weight:400;color:var(--text3)">(${escHtml(bpp[cat])})</span>`:'';bh+=`<div style="margin-bottom:20px"><h3 class="section-title pc${c}">${escHtml(cat)} Phase${supLabel}</h3><div class="table-wrap"><table><thead><tr><th>Material</th><th>SKU</th><th>Type</th><th class="text-right">Coverage</th><th class="text-right">Qty</th><th>Unit</th><th class="text-right">Price</th><th class="text-right">Total</th></tr></thead><tbody>${items.map(i=>{const cl=i.calcType==='linear'?'lf':'sqft';return`<tr><td>${escHtml(i.name)}</td><td class="mono" style="font-size:.8rem;color:var(--text3)">${escHtml(i.sku)}</td><td><span class="badge-type">${i.calcType}</span></td><td class="text-right mono">${i.coveragePerUnit} ${cl}</td><td class="text-right mono" style="font-weight:600">${i.qty}</td><td>${i.unit}</td><td class="text-right mono">${fmt(i.pricePerUnit)}</td><td class="text-right mono" style="font-weight:600">${fmt(i.lineTotal)}</td></tr>`}).join('')}<tr class="subtotal-row"><td colspan="7" class="text-right">${escHtml(cat)} Subtotal:</td><td class="text-right mono">${fmt(r.phases[cat].total)}</td></tr></tbody></table></div></div>`});
+    let bh='';categories.forEach((cat,ci)=>{const items=r.items.filter(i=>i.category===cat);if(!items.length)return;const c=ci%8;const supLabel=bpp[cat]?` <span style="font-size:.78rem;font-weight:400;color:var(--text3)">(${escHtml(bpp[cat])})</span>`:'';bh+=`<div style="margin-bottom:20px"><h3 class="section-title pc${c}">${escHtml(cat)} Phase${supLabel}</h3><div class="table-wrap"><table><thead><tr><th>Material</th><th>SKU</th><th>Type</th><th class="text-right">Coverage</th><th class="text-right">Qty</th><th>Unit</th><th class="text-right">Price</th><th class="text-right">Total</th></tr></thead><tbody>${items.map(i=>{const cl=i.calcType==='linear'?'lf':'sqft';return`<tr><td>${escHtml(i.name)}</td><td class="mono" style="font-size:.8rem;color:var(--text3)">${escHtml(i.sku)}</td><td><span class="badge-type">${i.calcType}</span></td><td class="text-right mono">${i.coveragePerUnit} ${cl}</td><td class="text-center"><input type="number" class="order-qty-input" value="${i.qty}" min="0" onchange="overrideCalcQty('${i.id}',this.value)"></td><td>${i.unit}</td><td class="text-right mono">${fmt(i.pricePerUnit)}</td><td class="text-right mono calc-line-total" data-id="${i.id}" style="font-weight:600">${fmt(i.lineTotal)}</td></tr>`}).join('')}<tr class="subtotal-row"><td colspan="7" class="text-right">${escHtml(cat)} Subtotal:</td><td class="text-right mono">${fmt(r.phases[cat].total)}</td></tr></tbody></table></div></div>`});
     document.getElementById('calcBreakdown').innerHTML=bh;
 
     let sqftLabel=[];if(r.sqft>0)sqftLabel.push(`${r.sqft.toLocaleString()} sqft`);if(r.linearFt>0)sqftLabel.push(`${r.linearFt.toLocaleString()} lf`);
@@ -737,6 +739,54 @@ async function bulkPriceUpdate(){if(!requireLicense('use bulk price update'))ret
     }catch(e){notify(e.message,'error')}
 }
 
+// ===== CALC QTY OVERRIDE =====
+function overrideCalcQty(id,val){
+    if(!currentCalc)return;
+    const qty=Math.max(0,parseInt(val)||0);
+    const item=currentCalc.items.find(i=>String(i.id)===String(id));if(!item)return;
+    item.qty=qty;item.lineTotal=qty*item.pricePerUnit;
+    // Update line total display
+    const el=document.querySelector(`.calc-line-total[data-id="${id}"]`);if(el)el.textContent=fmt(item.lineTotal);
+    // Recalculate phase totals and grand total
+    let materialTotal=0;
+    categories.forEach(cat=>{const phaseItems=currentCalc.items.filter(i=>i.category===cat);const total=phaseItems.reduce((s,i)=>s+i.lineTotal,0);if(currentCalc.phases[cat])currentCalc.phases[cat].total=total;materialTotal+=total});
+    currentCalc.materialTotal=materialTotal;
+    // Recalc financials
+    const r=currentCalc;
+    r.taxAmount=r.materialTotal*(r.taxPct/100);r.materialPlusTax=r.materialTotal+r.taxAmount;r.laborTotal=r.laborRate*(r.sqft||0);r.deliveryTotal=r.deliveryFee||0;
+    r.subtotalBeforeProfit=r.materialPlusTax+r.laborTotal+r.deliveryTotal;r.profitAmount=r.subtotalBeforeProfit*(r.profitPct/100);
+    r.sellingBeforeCC=r.subtotalBeforeProfit+r.profitAmount;r.ccFeeAmount=r.sellingBeforeCC*(r.ccFeePct/100);r.sellingPrice=r.sellingBeforeCC+r.ccFeeAmount;
+    r.grossMargin=r.sellingPrice>0?(r.profitAmount/r.sellingPrice*100):0;
+    // Update summary displays
+    document.getElementById('calcGrandTotal').querySelector('.amount').textContent=fmt(r.materialTotal);
+    const sg=document.getElementById('summaryGrid');if(sg)renderCalcResults(r);
+}
+
+// ===== RECENTLY USED MATERIALS =====
+function trackRecentMaterials(){
+    // Render recently used materials on pricing page
+    const el=document.getElementById('recentMaterials');if(!el)return;
+    const recent=getRecentMaterials();
+    if(!recent.length){el.innerHTML='';return}
+    el.innerHTML=`<div style="font-size:.78rem;color:var(--text3);margin-bottom:6px;font-weight:500">Recently Edited</div><div style="display:flex;gap:6px;flex-wrap:wrap">${recent.map(r=>`<button class="btn btn-sm btn-secondary" onclick="jumpToMaterial('${r.id}')" style="font-size:.78rem">${escHtml(r.name)} <span style="color:var(--text3);font-size:.7rem">${escHtml(r.supplier)}</span></button>`).join('')}</div>`;
+}
+function jumpToMaterial(id){
+    // Find which supplier has this material and switch to it
+    for(const[sup,mats]of Object.entries(materialsBySupplier)){
+        const mat=mats.find(m=>String(m.id)===String(id));
+        if(mat){switchSupplier(sup);editMaterial(id);return}
+    }
+    notify('Material not found','error');
+}
+function addToRecent(matId,matName,supplierName){
+    let recent=JSON.parse(localStorage.getItem('esticount_recent_mats')||'[]');
+    recent=recent.filter(r=>r.id!==matId);
+    recent.unshift({id:matId,name:matName,supplier:supplierName,time:Date.now()});
+    if(recent.length>10)recent=recent.slice(0,10);
+    localStorage.setItem('esticount_recent_mats',JSON.stringify(recent));
+}
+function getRecentMaterials(){return JSON.parse(localStorage.getItem('esticount_recent_mats')||'[]')}
+
 // ===== INIT =====
 async function initApp(){
     await loadData();
@@ -756,6 +806,16 @@ async function initApp(){
     if(savedPage&&document.getElementById(savedPage+'Page')){showPage(savedPage)}else{showPage('dashboard')}
     updateUndoButtons();rebuildTaxDropdown();
     document.getElementById('orderNotes')?.addEventListener('input',function(){const np=document.getElementById('orderNotesPrint');if(this.value.trim()){np.innerHTML=`<h4>Notes:</h4>${escHtml(this.value)}`;np.style.display='block'}else np.style.display='none'});
+
+    // Auto-recalculate: debounced recalc on any calculator input change
+    let recalcTimer=null;
+    function autoRecalc(){clearTimeout(recalcTimer);recalcTimer=setTimeout(()=>{if(currentCalc&&currentPageId==='calculator')calculateJob()},500)}
+    ['calcSqft','calcWaste','calcProfit','calcTax','calcLabor','calcDelivery','calcCCFee','calcLinearFt'].forEach(id=>{
+        const el=document.getElementById(id);if(el)el.addEventListener('input',autoRecalc);
+    });
+
+    // Track recently used materials
+    trackRecentMaterials();
 }
 
 document.addEventListener('DOMContentLoaded', async function(){

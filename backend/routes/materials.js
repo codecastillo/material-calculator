@@ -16,12 +16,12 @@ router.get('/supplier/:supplierId', async (req, res, next) => {
 
 router.post('/', async (req, res, next) => {
   try {
-    const { supplier_id, name, sku, unit, price_per_unit, category_id, coverage_per_unit, calc_type, sort_order } = req.body;
+    const { supplier_id, name, sku, unit, price_per_unit, category_id, coverage_per_unit, calc_type, sort_order, notes } = req.body;
     if (!supplier_id || !name) return res.status(400).json({ error: 'supplier_id and name required' });
     const { data: material, error } = await supabase.from('materials').insert({
       supplier_id, name, sku: sku || '', unit: unit || 'each',
       price_per_unit: price_per_unit || 0, category_id, coverage_per_unit: coverage_per_unit || 100,
-      calc_type: calc_type || 'sqft', sort_order: sort_order || 0
+      calc_type: calc_type || 'sqft', sort_order: sort_order || 0, notes: notes || null
     }).select().single();
     if (error) throw error;
     res.status(201).json({ material });
@@ -31,12 +31,32 @@ router.post('/', async (req, res, next) => {
 router.put('/:id', async (req, res, next) => {
   try {
     const updates = {};
-    ['name', 'sku', 'unit', 'price_per_unit', 'category_id', 'coverage_per_unit', 'calc_type', 'sort_order'].forEach(f => {
+    ['name', 'sku', 'unit', 'price_per_unit', 'category_id', 'coverage_per_unit', 'calc_type', 'sort_order', 'notes'].forEach(f => {
       if (req.body[f] !== undefined) updates[f] = req.body[f];
     });
     updates.updated_at = new Date().toISOString();
+
+    // Fetch old price before update if price is changing
+    let oldPrice = null;
+    if (updates.price_per_unit !== undefined) {
+      const { data: existing } = await supabase.from('materials').select('price_per_unit').eq('id', req.params.id).single();
+      if (existing) oldPrice = existing.price_per_unit;
+    }
+
     const { data: material, error } = await supabase.from('materials').update(updates).eq('id', req.params.id).select().single();
     if (error) throw error;
+
+    // Insert price history record if price changed
+    if (updates.price_per_unit !== undefined && oldPrice !== null && oldPrice !== updates.price_per_unit) {
+      await supabase.from('price_history').insert({
+        material_id: req.params.id,
+        old_price: oldPrice,
+        new_price: updates.price_per_unit,
+        changed_by: req.user?.id || null,
+        changed_at: new Date().toISOString()
+      });
+    }
+
     res.json({ material });
   } catch (err) { next(err); }
 });
