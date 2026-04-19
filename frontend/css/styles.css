@@ -24,10 +24,11 @@
     --shadow:0 1px 3px rgba(0,0,0,.06);--shadow2:0 4px 14px rgba(0,0,0,.08);
 }
 
-body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;line-height:1.6;transition:background .2s,color .2s}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;line-height:1.6;transition:background .2s,color .2s;overflow-x:hidden}
+html{overflow-x:hidden}
 
 /* ===== TOP NAV ===== */
-.topnav{background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;box-shadow:var(--shadow)}
+.topnav{background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;box-shadow:var(--shadow);overflow:hidden}
 .topnav-inner{max-width:1300px;margin:0 auto;display:flex;align-items:center;padding:0 20px;height:56px;gap:16px}
 .topnav-left{flex-shrink:0;display:flex;align-items:center;gap:8px}
 .topnav-brand{display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text)}
@@ -52,7 +53,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 [data-theme="light"] .theme-toggle::after{transform:translateX(18px)}
 
 /* Main */
-.main-container{max-width:1300px;margin:0 auto;padding:20px}
+.main-container{max-width:1300px;margin:0 auto;padding:20px;width:100%}
 .page{display:none;animation:fadeIn .2s ease}
 .page.active{display:block}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
@@ -103,7 +104,7 @@ textarea.input{resize:vertical;min-height:70px}
 .supplier-pill.add{color:var(--ok);border-style:dashed}.supplier-pill.add:hover{border-color:var(--ok);background:var(--ok-soft)}
 
 /* ===== SCOPE GROUPS ===== */
-.scope-group{margin-bottom:20px;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.scope-group{margin-bottom:20px;border:1px solid var(--border);border-radius:10px;overflow:hidden;max-width:100%}
 .scope-group-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg2);border-bottom:1px solid var(--border);cursor:pointer;user-select:none}
 .scope-group-header h3{font-size:.9rem;font-weight:600;display:flex;align-items:center;gap:8px}
 .scope-group-header .arrow{transition:transform .2s;font-size:.8rem;color:var(--text3)}
@@ -114,7 +115,7 @@ textarea.input{resize:vertical;min-height:70px}
 .scope-group-body .table-wrap{border:none;border-radius:0}
 
 /* ===== TABLES ===== */
-.table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+.table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border);max-width:100%}
 table{width:100%;border-collapse:collapse;font-size:.88rem}
 thead th{background:var(--bg);color:var(--text3);font-weight:600;text-align:left;padding:11px 14px;border-bottom:1px solid var(--border);font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
 tbody td{padding:11px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
@@ -294,32 +295,41 @@ tr.drag-over td{border-top:2px solid var(--pri)}
     .saved-jobs-list{grid-template-columns:1fr}
     .dash-recent-grid{grid-template-columns:1fr}
     .modal{min-width:auto;width:90vw}
-    .topnav-inner{padding:0 12px}
-    .user-badge{font-size:.75rem;padding:3px 8px}
-    .user-badge button{font-size:.72rem}
+    .topnav-inner{padding:0 10px}
+    .user-badge{font-size:.72rem;padding:2px 6px}
+    .user-badge button{font-size:.68rem}
+    /* Hide undo/redo on mobile - not needed */
+    .topnav-right .btn-icon{display:none}
+    .topnav-right{gap:6px}
 }
 @media(max-width:600px){
-    .main-container{padding:10px}
-    .toolbar{flex-direction:column;align-items:stretch;padding:10px}
+    .main-container{padding:8px}
+    .toolbar{flex-direction:column;align-items:stretch;padding:8px;gap:6px}
     .toolbar .btn{justify-content:center}
-    .toolbar-group{flex-wrap:wrap;justify-content:stretch}
-    .toolbar-group .btn{flex:1}
+    .toolbar-group{flex-wrap:wrap;justify-content:stretch;gap:4px}
+    .toolbar-group .btn{flex:1;font-size:.76rem;padding:6px 8px}
     .toolbar-search{width:100%}
+    .dash-hero{padding:30px 16px 24px}
+    .dash-logo{width:60px;height:60px}
+    .dash-hero h2{font-size:1.5rem}
+    .dash-hero p{font-size:.85rem}
     .dash-actions{grid-template-columns:1fr}
     .dash-stats{grid-template-columns:1fr 1fr}
-    .stats-bar{flex-direction:column;gap:10px}
+    .dash-stat{padding:14px}
+    .dash-stat .num{font-size:1.4rem}
+    .stats-bar{flex-direction:column;gap:8px;padding:12px}
     .phase-cards{grid-template-columns:1fr}
     .summary-grid{grid-template-columns:1fr}
-    .phase-selector{gap:6px}
-    .phase-chip{padding:8px 12px;font-size:.82rem}
-    .calc-section{padding:14px}
-    .calc-section-title{font-size:.78rem}
+    .phase-selector{gap:4px}
+    .phase-chip{padding:7px 10px;font-size:.78rem}
+    .calc-section{padding:12px}
+    .calc-section-title{font-size:.76rem}
     .supplier-pills{gap:4px}
-    .supplier-pill{padding:6px 14px;font-size:.82rem}
-    .topnav-inner{height:48px;gap:8px}
-    .brand-name{font-size:.95rem}
-    .brand-logo{width:24px;height:24px}
-    .account-card{flex-direction:column;text-align:center;gap:12px}
+    .supplier-pill{padding:5px 12px;font-size:.78rem}
+    .topnav-inner{height:44px;gap:6px}
+    .brand-name{font-size:.88rem}
+    .brand-logo{width:22px;height:22px}
+    .account-card{flex-direction:column;text-align:center;gap:12px;padding:20px}
     .account-avatar{width:56px;height:56px;font-size:1.3rem}
     .order-info-row{grid-template-columns:1fr}
     .bid-paper{padding:20px}
