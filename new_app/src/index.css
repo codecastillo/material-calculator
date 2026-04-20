@@ -1,0 +1,115 @@
+/* ── Akira Expanded font face ──────────────── */
+/* Place your .woff2/.woff/.ttf files in /public/fonts/ */
+@font-face {
+  font-family: 'Akira Expanded';
+  src: url('/fonts/akira-expanded-bold.woff2') format('woff2'),
+       url('/fonts/akira-expanded-bold.woff') format('woff'),
+       url('/fonts/akira-expanded-bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Akira Expanded';
+  src: url('/fonts/akira-expanded-medium.woff2') format('woff2'),
+       url('/fonts/akira-expanded-medium.woff') format('woff'),
+       url('/fonts/akira-expanded-medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --bg-void: #050509;
+  --bg-deep: #08090f;
+  --bg-surface: #0c0d16;
+  --bg-raised: #12131e;
+  --bg-glass: rgba(12, 13, 22, 0.8);
+  --border-subtle: rgba(255, 255, 255, 0.035);
+  --border-medium: rgba(255, 255, 255, 0.07);
+  --border-bright: rgba(255, 255, 255, 0.13);
+  --text-primary: #eaebf2;
+  --text-secondary: #7d8098;
+  --text-tertiary: #454860;
+  --text-ghost: #22253a;
+  --gold: #d4a843;
+  --gold-dim: rgba(212, 168, 67, 0.12);
+  --accent-blue: #3d8ef0;
+  --accent-teal: #2eb89a;
+
+  /* Display font with robust fallback */
+  --font-display: 'Akira Expanded', 'Impact', 'Haettenschweiler', 'Arial Narrow Bold', sans-serif;
+  --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-serif: 'Instrument Serif', Georgia, serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-void);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Atmospheric gradient — deeper, more dramatic */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 40% at 30% -5%, rgba(61, 142, 240, 0.06), transparent 60%),
+    radial-gradient(ellipse 50% 35% at 85% 105%, rgba(212, 168, 67, 0.04), transparent 60%),
+    radial-gradient(ellipse 100% 60% at 50% 50%, rgba(100, 60, 200, 0.03), transparent);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Noise texture */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.6;
+}
+
+#root {
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+}
+
+::selection {
+  background: rgba(212, 168, 67, 0.25);
+  color: #fff;
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-bright);
+}

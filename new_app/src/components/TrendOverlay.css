@@ -1,0 +1,131 @@
+/* ── Trend Controls (toggle button group) ── */
+
+.trend-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.trend-controls__btn {
+  background: var(--bg-surface, #1a1c2a);
+  border: 1px solid var(--border-subtle, #2e3044);
+  border-radius: 4px;
+  color: var(--text-secondary, #a0a4b8);
+  font-family: var(--font-display, 'Akira Expanded', sans-serif);
+  font-size: 0.55rem;
+  font-weight: 500;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-transform: uppercase;
+  white-space: nowrap;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.trend-controls__btn:hover {
+  background: var(--bg-raised, #22243a);
+  color: var(--text-primary, #e8eaf0);
+  border-color: var(--text-tertiary, #6a6e82);
+}
+
+.trend-controls__btn--active {
+  background: var(--bg-raised, #22243a);
+  border-color: var(--gold, #c9a84c);
+  color: var(--gold, #c9a84c);
+  box-shadow: 0 0 6px rgba(201, 168, 76, 0.25);
+}
+
+.trend-controls__icon {
+  font-family: var(--font-body, sans-serif);
+  font-size: 0.7rem;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.trend-controls__btn--active .trend-controls__icon {
+  opacity: 1;
+}
+
+
+/* ── Trend Overlay (SVG + legend) ── */
+
+.trend-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  overflow: hidden;
+}
+
+.trend-overlay__svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Animated flowing dashes */
+.trend-overlay__arrow {
+  animation: trend-dash-flow 2s linear infinite;
+}
+
+.trend-overlay__arrow--main {
+  animation-duration: 1.8s;
+}
+
+.trend-overlay__arrow--horiz,
+.trend-overlay__arrow--vert {
+  animation-duration: 2.4s;
+}
+
+.trend-overlay__arrow--guide {
+  animation-duration: 3s;
+}
+
+@keyframes trend-dash-flow {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -40;
+  }
+}
+
+
+/* ── Legend box ── */
+
+.trend-overlay__legend {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  background: var(--bg-surface, #1a1c2a);
+  border: 1px solid var(--border-medium, #3a3d52);
+  border-radius: 4px;
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  pointer-events: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.trend-overlay__legend-title {
+  font-family: var(--font-display, 'Akira Expanded', sans-serif);
+  font-size: 0.55rem;
+  font-weight: 600;
+  color: var(--trend-color, var(--gold, #c9a84c));
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
+.trend-overlay__legend-hint {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.6rem;
+  color: var(--text-tertiary, #6a6e82);
+  line-height: 1.2;
+}

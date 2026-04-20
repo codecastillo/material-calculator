@@ -1,0 +1,289 @@
+/* ── AtomViewer — 3D CSS atom modal ───────────── */
+
+.atom-viewer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 5, 9, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  animation: av-fade-in 0.3s ease-out;
+}
+
+@keyframes av-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.atom-viewer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 40px 48px 36px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  box-shadow:
+    0 0 80px -20px color-mix(in srgb, var(--ac) 18%, transparent),
+    0 40px 80px -30px rgba(0, 0, 0, 0.6);
+  animation: av-scale-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes av-scale-in {
+  from { transform: scale(0.92); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+/* ── Close button ────────────────────────────── */
+
+.atom-viewer__close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  color: var(--text-tertiary);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+
+.atom-viewer__close:hover {
+  color: var(--text-primary);
+  border-color: var(--border-medium);
+  background: var(--bg-raised);
+}
+
+/* ── 3D Scene ────────────────────────────────── */
+
+.atom-viewer__scene {
+  width: 300px;
+  height: 300px;
+  perspective: 800px;
+  perspective-origin: 50% 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.atom-viewer__atom {
+  position: relative;
+  width: 300px;
+  height: 300px;
+  transform-style: preserve-3d;
+  animation: av-auto-rotate 20s linear infinite;
+}
+
+@keyframes av-auto-rotate {
+  from { transform: rotateY(0deg) rotateX(5deg); }
+  to   { transform: rotateY(360deg) rotateX(5deg); }
+}
+
+/* ── Nucleus ─────────────────────────────────── */
+
+.atom-viewer__nucleus {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transform-style: preserve-3d;
+  width: 0;
+  height: 0;
+}
+
+.atom-viewer__nucleon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 50%;
+  margin-top: -1.5px;
+  margin-left: -1.5px;
+  backface-visibility: hidden;
+}
+
+.atom-viewer__nucleon--proton {
+  background: var(--ac);
+  box-shadow: 0 0 4px color-mix(in srgb, var(--ac) 60%, transparent);
+}
+
+.atom-viewer__nucleon--neutron {
+  background: var(--text-tertiary);
+  box-shadow: 0 0 3px rgba(69, 72, 96, 0.4);
+}
+
+.atom-viewer__nucleus-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--ac) 30%, transparent) 0%,
+    color-mix(in srgb, var(--ac) 8%, transparent) 50%,
+    transparent 100%
+  );
+  animation: av-nucleus-pulse 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes av-nucleus-pulse {
+  0%, 100% { opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
+  50%      { opacity: 1;   transform: translate(-50%, -50%) scale(1.3); }
+}
+
+/* ── Orbit ring ──────────────────────────────── */
+
+.atom-viewer__orbit {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform-style: preserve-3d;
+  pointer-events: none;
+  /* center the orbit */
+  margin-top: calc(-1 * var(--_half, 50%));
+  margin-left: calc(-1 * var(--_half, 50%));
+  /* Use translate to center since width/height vary */
+  translate: -50% -50%;
+  /* Reset translate — we position via top/left + margin */
+}
+
+/* Override: center properly */
+.atom-viewer__orbit {
+  translate: none;
+  transform-origin: center center;
+  /* We set width/height inline; top/left 50% + negative margin = centered */
+}
+
+/* Fixup: use a simpler centering approach */
+.atom-viewer__orbit {
+  top: 50%;
+  left: 50%;
+  margin: 0;
+  transform-origin: center center;
+  /* The inline transform handles tilt. We need to also center it. */
+  /* Use a wrapper trick: offset by half width/height */
+}
+
+/* Final centering — nest the tilt inside a translate */
+.atom-viewer__orbit {
+  /* top: 50%; left: 50% is set. Now we need -50% -50% offset PLUS the tilt.
+     Since inline style sets transform for tilt, we prepend translate.
+     Actually, let's use a different approach: position with flexbox in the atom. */
+}
+
+/* Scratch the above — use absolute positioning with calc */
+.atom-viewer__orbit {
+  position: absolute;
+  /* We can't combine inline transform with CSS transform easily,
+     so we'll use inset calculations or a wrapper.
+     Simplest: set top/left to 50% and use the orbit's own size to offset. */
+  top: 50%;
+  left: 50%;
+  margin-top: -50%; /* This is 50% of parent — not what we want */
+  margin-left: -50%;
+}
+
+/* OK, clean restart for orbit positioning: */
+.atom-viewer__orbit {
+  position: absolute;
+  /* inline width/height set per shell */
+  /* We want the center of this element at the center of .atom-viewer__atom (150px, 150px) */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: auto;
+  transform-style: preserve-3d;
+}
+
+.atom-viewer__orbit-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--ac) 20%, transparent);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--ac) 6%, transparent);
+}
+
+/* ── Electron tracks ─────────────────────────── */
+
+.atom-viewer__electron-track {
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* width/height match orbit, set inline */
+  animation: av-electron-orbit linear infinite;
+  transform-origin: center center;
+}
+
+@keyframes av-electron-orbit {
+  from { transform: rotate(var(--_start, 0deg)); }
+  to   { transform: rotate(calc(var(--_start, 0deg) + 360deg)); }
+}
+
+/* The electron sits at the top of its track circle */
+.atom-viewer__electron {
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  border-radius: 50%;
+  background: var(--ac);
+  box-shadow:
+    0 0 6px var(--ac),
+    0 0 14px color-mix(in srgb, var(--ac) 50%, transparent);
+  animation: av-electron-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes av-electron-glow {
+  from { box-shadow: 0 0 4px var(--ac), 0 0 10px color-mix(in srgb, var(--ac) 40%, transparent); }
+  to   { box-shadow: 0 0 8px var(--ac), 0 0 20px color-mix(in srgb, var(--ac) 60%, transparent); }
+}
+
+/* ── Info label ──────────────────────────────── */
+
+.atom-viewer__info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.atom-viewer__symbol {
+  font-family: var(--font-serif);
+  font-size: 48px;
+  line-height: 1.1;
+  color: var(--ac);
+  text-shadow: 0 0 30px color-mix(in srgb, var(--ac) 25%, transparent);
+}
+
+.atom-viewer__name {
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.atom-viewer__number {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
