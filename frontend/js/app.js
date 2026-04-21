@@ -355,11 +355,11 @@ function renderPhaseCheckboxes(){
     const scoped={};sp.forEach(cat=>{const scope=getScopeForPhase(cat);if(!scoped[scope])scoped[scope]=[];scoped[scope].push(cat)});
 
     let html='';
+    const colors=['#d29922','#8b949e','#a371f7','#f778ba','#3fb950','#db6d28','#39d2c0','#7ee787'];
     Object.entries(scoped).forEach(([scope,phases])=>{
         phases.forEach((cat,i)=>{
             const ci=categories.indexOf(cat)%8;
-            const colors=['#d29922','#8b949e','#a371f7','#f778ba','#3fb950','#db6d28','#39d2c0','#7ee787'];
-            html+=`<label class="phase-chip checked" onclick="setTimeout(()=>{this.classList.toggle('checked',this.querySelector('input').checked);updatePhaseOptions()},0)"><input type="checkbox" value="${escAttr(cat)}" checked><span class="dot" style="background:${colors[ci]}"></span>${escHtml(cat)}</label>`;
+            html+=`<label class="phase-chip" onclick="setTimeout(()=>{this.classList.toggle('checked',this.querySelector('input').checked);updatePhaseOptions()},0)"><input type="checkbox" value="${escAttr(cat)}"><span class="dot" style="background:${colors[ci]}"></span>${escHtml(cat)}</label>`;
         });
     });
     wrap.innerHTML=html;
@@ -392,11 +392,10 @@ function updatePhaseOptions(){
     if(hasDrywall)renderDrywallAreaRows();
 }
 
-function renderDrywallAreaRows(){
-    const wrap=document.getElementById('drywallAreaRows');
-    if(!wrap)return;
+const DW_AREA_LABELS=['Walls','Ceilings','Garage','Shower/Wet Areas','Bedroom','Kitchen','Bathroom','Hallway','Other'];
+
+function getDrywallSheets(){
     const supplier=document.getElementById('calcSupplier').value;
-    // Get drywall sheet materials from current supplier(s)
     let sheets=[];
     if(supplier==='All Suppliers'){
         const seen=new Set();
@@ -406,33 +405,50 @@ function renderDrywallAreaRows(){
     }else{
         sheets=(materialsBySupplier[supplier]||[]).filter(m=>m.isDrywallSheet);
     }
+    return sheets;
+}
+
+function renderDrywallAreaRows(){
+    const wrap=document.getElementById('drywallAreaRows');
+    if(!wrap)return;
+    const sheets=getDrywallSheets();
     if(!sheets.length){wrap.innerHTML='<span class="hint">No drywall sheet types found for this supplier.</span>';return}
-    // Preserve existing state
-    const prev={};wrap.querySelectorAll('.dw-area-row').forEach(row=>{
-        const cb=row.querySelector('input[type="checkbox"]');
-        const inp=row.querySelector('.dw-sqft-wrap input');
-        if(cb)prev[cb.dataset.name]={checked:cb.checked,sqft:inp?.value||''};
-    });
-    const mainSqft=document.getElementById('calcSqft').value||'';
-    wrap.innerHTML=sheets.map((m,i)=>{
-        const p=prev[m.name];
-        const checked=p?p.checked:(i===0); // default: first sheet type checked
-        const sqft=p?p.sqft:(i===0?mainSqft:'');
-        return`<div class="dw-area-row${checked?' active':''}">
-            <label><input type="checkbox" data-name="${escAttr(m.name)}" data-sku="${escAttr(m.sku)}" ${checked?'checked':''} onchange="this.closest('.dw-area-row').classList.toggle('active',this.checked)">${escHtml(m.name)}</label>
-            <div class="dw-sqft-wrap"><input type="number" class="dw-area-sqft" value="${sqft}" placeholder="0" min="0"><span>sqft</span></div>
-        </div>`;
-    }).join('');
+    // If no rows yet, add one default row
+    if(!wrap.children.length)addDrywallArea();
+}
+
+function addDrywallArea(label,sheetSku,val,unit){
+    const wrap=document.getElementById('drywallAreaRows');
+    if(!wrap)return;
+    const sheets=getDrywallSheets();
+    if(!sheets.length)return;
+    const row=document.createElement('div');
+    row.className='dw-area-row';
+    const labelOpts=DW_AREA_LABELS.map(l=>`<option${l===(label||'Walls')?' selected':''}>${l}</option>`).join('');
+    const sheetOpts=sheets.map(s=>`<option value="${escAttr(s.sku)}"${s.sku===(sheetSku||sheets[0].sku)?' selected':''}>${escHtml(s.name)}</option>`).join('');
+    row.innerHTML=`<select class="dw-area-label">${labelOpts}</select>`+
+        `<select class="dw-area-sheet">${sheetOpts}</select>`+
+        `<input type="number" class="dw-area-val" value="${val||''}" placeholder="0" min="0">`+
+        `<select class="dw-area-unit"><option value="sqft"${(unit||'sqft')==='sqft'?' selected':''}>sqft</option><option value="lf"${unit==='lf'?' selected':''}>lf</option></select>`+
+        `<button type="button" class="dw-remove" onclick="this.closest('.dw-area-row').remove()" title="Remove">×</button>`;
+    wrap.appendChild(row);
 }
 
 function getDrywallAreas(){
     const rows=document.querySelectorAll('#drywallAreaRows .dw-area-row');
+    const sheets=getDrywallSheets();
+    const skuMap={};sheets.forEach(s=>{skuMap[s.sku]=s});
     const areas=[];
     rows.forEach(row=>{
-        const cb=row.querySelector('input[type="checkbox"]');
-        const inp=row.querySelector('.dw-area-sqft');
-        if(cb&&cb.checked){
-            areas.push({name:cb.dataset.name,sku:cb.dataset.sku,sqft:parseFloat(inp?.value)||0});
+        const sku=row.querySelector('.dw-area-sheet')?.value;
+        const val=parseFloat(row.querySelector('.dw-area-val')?.value)||0;
+        const unit=row.querySelector('.dw-area-unit')?.value||'sqft';
+        const label=row.querySelector('.dw-area-label')?.value||'';
+        if(sku&&val>0){
+            const sheet=skuMap[sku];
+            // Convert lf to sqft: linear ft × sheet height (4ft for standard sheets)
+            const sqft=unit==='lf'?val*4:val;
+            areas.push({name:sheet?.name||'',sku,sqft,label,rawVal:val,unit});
         }
     });
     return areas;
