@@ -266,12 +266,12 @@ function renderMaterialTable(){
             const ci=categories.indexOf(cat)%8;
             html+=`<tr class="phase-header"><td colspan="9" class="pc${ci}">${escHtml(cat)}</td></tr>`;
             items.forEach(m=>{
-                if(editingId===m.id){
+                if(editingId&&String(editingId)===String(m.id)){
                     html+=`<tr><td></td><td><input class="inline-input" id="edit-name" value="${escAttr(m.name)}"><input class="inline-input" id="edit-notes" value="${escAttr(m.notes||'')}" placeholder="Notes..." style="margin-top:4px;font-size:.78rem;color:var(--text3)"></td><td><input class="inline-input" id="edit-sku" value="${escAttr(m.sku)}" style="width:100px"></td><td><select class="inline-select" id="edit-unit">${UNITS.map(u=>`<option${u===m.unit?' selected':''}>${u}</option>`).join('')}</select></td><td><input class="inline-input" id="edit-price" type="number" step="0.01" min="0" value="${m.pricePerUnit}" style="text-align:right;width:80px"></td><td><select class="inline-select" id="edit-category">${categories.map(cc=>`<option${cc===m.category?' selected':''}>${cc}</option>`).join('')}</select></td><td><select class="inline-select" id="edit-calcType">${CALC_TYPES.map(t=>`<option${t===m.calcType?' selected':''}>${t}</option>`).join('')}</select></td><td><input class="inline-input" id="edit-coverage" type="number" step="0.1" min="0.1" value="${m.coveragePerUnit}" style="text-align:right;width:74px"></td><td class="text-center" style="white-space:nowrap"><button class="btn btn-success btn-sm" onclick="saveMaterialEdit('${m.id}')">Save</button> <button class="btn btn-secondary btn-sm" onclick="cancelEdit()">Cancel</button></td></tr>`;
                 }else{
                     const stale=isStale(m);const covLabel=m.calcType==='linear'?'lf':'sqft';
                     const priceHist=m.previousPrice!=null?(m.previousPrice<m.pricePerUnit?'<span class="price-up">&uarr;</span>':'<span class="price-down">&darr;</span>'):'';
-                    html+=`<tr draggable="true" data-id="${m.id}" ondragstart="dragStart(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropRow(event)"><td style="cursor:grab;color:var(--text3)">&#9776;</td><td>${escHtml(m.name)}${stale?'<span class="badge-stale">stale</span>':''}${m.notes?`<div style="font-size:.75rem;color:var(--text3);margin-top:2px">${escHtml(m.notes)}</div>`:''}</td><td class="mono" style="color:var(--text3);font-size:.8rem">${escHtml(m.sku)}</td><td>${m.unit}</td><td class="text-right mono">${fmt(m.pricePerUnit)}${priceHist}</td><td><span class="badge pb${ci} pc${ci}">${m.category}</span></td><td><span class="badge-type">${m.calcType}</span></td><td class="text-right mono">${m.coveragePerUnit} ${covLabel}</td><td class="text-center" style="white-space:nowrap"><button class="btn-icon" onclick="editMaterial('${m.id}')" title="Edit">&#9998;</button><button class="btn-icon" onclick="openDuplicate('${m.id}')" title="Copy">&#10697;</button><button class="btn-icon danger" onclick="deleteMaterial('${m.id}')" title="Delete">&#10005;</button></td></tr>`;
+                    html+=`<tr draggable="true" data-id="${m.id}" ondragstart="dragStart(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropRow(event)" ondragend="dragEnd(event)"><td style="cursor:grab;color:var(--text3)">&#9776;</td><td>${escHtml(m.name)}${stale?'<span class="badge-stale">stale</span>':''}${m.notes?`<div style="font-size:.75rem;color:var(--text3);margin-top:2px">${escHtml(m.notes)}</div>`:''}</td><td class="mono" style="color:var(--text3);font-size:.8rem">${escHtml(m.sku)}</td><td>${m.unit}</td><td class="text-right mono">${fmt(m.pricePerUnit)}${priceHist}</td><td><span class="badge pb${ci} pc${ci}">${m.category}</span></td><td><span class="badge-type">${m.calcType}</span></td><td class="text-right mono">${m.coveragePerUnit} ${covLabel}</td><td class="text-center" style="white-space:nowrap"><button class="btn-icon" onclick="editMaterial('${m.id}')" title="Edit">&#9998;</button><button class="btn-icon" onclick="openDuplicate('${m.id}')" title="Copy">&#10697;</button><button class="btn-icon danger" onclick="deleteMaterial('${m.id}')" title="Delete">&#10005;</button></td></tr>`;
                 }
             });
         });
@@ -283,32 +283,40 @@ function renderMaterialTable(){
 
 function updateStatsBar(){const mats=materialsBySupplier[activeSupplier]||[];const phases=getSupplierPhases(activeSupplier);const staleCount=mats.filter(isStale).length;document.getElementById('statsBar').innerHTML=`<div class="stat-item"><span class="stat-number">${mats.length}</span><span class="stat-label">Materials</span></div><div class="stat-item"><span class="stat-number">${phases.length}</span><span class="stat-label">Phases</span></div><div class="stat-item"><span class="stat-number">${suppliers.length}</span><span class="stat-label">Suppliers</span></div>${staleCount?`<div class="stat-item"><span class="stat-number" style="color:var(--err)">${staleCount}</span><span class="stat-label">Stale</span></div>`:''}`}
 
-function editMaterial(id){editingId=id;renderMaterialTable()}
+function editMaterial(id){editingId=String(id);renderMaterialTable()}
 function cancelEdit(){editingId=null;renderMaterialTable()}
-async function saveMaterialEdit(id){const mats=materialsBySupplier[activeSupplier]||[];const mat=mats.find(m=>m.id===id);if(!mat)return;const name=document.getElementById('edit-name').value.trim();const price=parseFloat(document.getElementById('edit-price').value);const coverage=parseFloat(document.getElementById('edit-coverage').value);if(!name){notify('Name required','error');return}if(isNaN(price)||price<0){notify('Invalid price','error');return}if(isNaN(coverage)||coverage<=0){notify('Coverage > 0','error');return}pushUndo();if(mat.pricePerUnit!==price)mat.previousPrice=mat.pricePerUnit;
+async function saveMaterialEdit(id){const mats=materialsBySupplier[activeSupplier]||[];const mat=mats.find(m=>String(m.id)===String(id));if(!mat)return;const name=document.getElementById('edit-name').value.trim();const price=parseFloat(document.getElementById('edit-price').value);const coverage=parseFloat(document.getElementById('edit-coverage').value);if(!name){notify('Name required','error');return}if(isNaN(price)||price<0){notify('Invalid price','error');return}if(isNaN(coverage)||coverage<=0){notify('Coverage > 0','error');return}pushUndo();if(mat.pricePerUnit!==price)mat.previousPrice=mat.pricePerUnit;
     const newCat=document.getElementById('edit-category').value;const newCalcType=document.getElementById('edit-calcType').value;
     const notes=(document.getElementById('edit-notes')?.value||'').trim();
     mat.name=name;mat.sku=document.getElementById('edit-sku').value.trim();mat.unit=document.getElementById('edit-unit').value;mat.pricePerUnit=price;mat.category=newCat;mat.calcType=newCalcType;mat.coveragePerUnit=coverage;mat.notes=notes;mat.lastUpdated=Date.now();
     if(api.getToken()){try{await api.updateMaterial(id,{name:mat.name,sku:mat.sku,unit:mat.unit,price_per_unit:price,category_id:window._categoryIdMap?.[newCat],coverage_per_unit:coverage,calc_type:newCalcType==='linear'?'linear_ft':'sqft',notes})}catch(e){console.warn('API:',e.message)}}
     addToRecent(id,mat.name,activeSupplier);
     editingId=null;saveAll();renderMaterialTable();notify('Updated','success')}
-async function addMaterial(){pushUndo();const mats=materialsBySupplier[activeSupplier]||[];
-    const catName=categories[0]||'Lath';
+function addMaterial(){
+    const filter=document.getElementById('categoryFilter').value;
+    if(filter!=='All'){doAddMaterial(filter);return}
+    // Show category picker modal
+    const sel=document.getElementById('addMaterialCategory');
+    sel.innerHTML=categories.map(c=>`<option>${c}</option>`).join('');
+    openModal('addMaterialModal');
+}
+function addMaterialFromModal(){const cat=document.getElementById('addMaterialCategory').value;closeModal('addMaterialModal');doAddMaterial(cat)}
+async function doAddMaterial(catName){pushUndo();const mats=materialsBySupplier[activeSupplier]||[];
     let newId=genId();
     if(api.getToken()&&window._supplierIdMap?.[activeSupplier]){
         try{const r=await api.createMaterial(window._supplierIdMap[activeSupplier],{name:'New Material',sku:'',unit:'each',price_per_unit:0,category_id:window._categoryIdMap?.[catName],coverage_per_unit:100,calc_type:'sqft'});if(r.material)newId=r.material.id}catch(e){console.warn('API:',e.message)}
     }
     const m={id:newId,name:'New Material',sku:'',unit:'each',pricePerUnit:0,category:catName,coveragePerUnit:100,calcType:'area',lastUpdated:Date.now()};
-    mats.push(m);materialsBySupplier[activeSupplier]=mats;saveAll();editingId=m.id;document.getElementById('categoryFilter').value='All';document.getElementById('materialSearch').value='';renderMaterialTable()}
-async function deleteMaterial(id){const mats=materialsBySupplier[activeSupplier]||[];const mat=mats.find(m=>m.id===id);if(!mat||!confirm(`Delete "${mat.name}"?`))return;pushUndo();
+    mats.push(m);materialsBySupplier[activeSupplier]=mats;saveAll();editingId=String(m.id);document.getElementById('categoryFilter').value='All';document.getElementById('materialSearch').value='';renderMaterialTable()}
+async function deleteMaterial(id){const mats=materialsBySupplier[activeSupplier]||[];const mat=mats.find(m=>String(m.id)===String(id));if(!mat||!confirm(`Delete "${mat.name}"?`))return;pushUndo();
     if(api.getToken()){try{await api.deleteMaterial(id)}catch(e){console.warn('API:',e.message)}}
-    materialsBySupplier[activeSupplier]=mats.filter(m=>m.id!==id);saveAll();renderMaterialTable();notify('Deleted','success')}
+    materialsBySupplier[activeSupplier]=mats.filter(m=>String(m.id)!==String(id));saveAll();renderMaterialTable();notify('Deleted','success')}
 function resetToDefaults(){if(!confirm('Reset ALL data to defaults?'))return;pushUndo();resetAllToDefaults(false);editingId=null;renderSupplierTabs();populateCategoryFilter();renderMaterialTable();populateOrderPhaseFilter()}
 
 // Duplicate
 let duplicateMatId=null;
-function openDuplicate(id){duplicateMatId=id;const sel=document.getElementById('duplicateTarget');sel.innerHTML=suppliers.filter(s=>s!==activeSupplier).map(s=>`<option>${s}</option>`).join('');if(!sel.innerHTML){notify('No other suppliers','error');return}openModal('duplicateModal')}
-async function doDuplicate(){const target=document.getElementById('duplicateTarget').value;const src=(materialsBySupplier[activeSupplier]||[]).find(m=>m.id===duplicateMatId);if(!src||!target)return;pushUndo();
+function openDuplicate(id){duplicateMatId=String(id);const sel=document.getElementById('duplicateTarget');sel.innerHTML=suppliers.filter(s=>s!==activeSupplier).map(s=>`<option>${s}</option>`).join('');if(!sel.innerHTML){notify('No other suppliers','error');return}openModal('duplicateModal')}
+async function doDuplicate(){const target=document.getElementById('duplicateTarget').value;const src=(materialsBySupplier[activeSupplier]||[]).find(m=>String(m.id)===String(duplicateMatId));if(!src||!target)return;pushUndo();
     let newId=genId();
     if(api.getToken()){try{const r=await api.createMaterial(window._supplierIdMap?.[target],{name:src.name,sku:src.sku,unit:src.unit,price_per_unit:src.pricePerUnit,category_id:window._categoryIdMap?.[src.category],coverage_per_unit:src.coveragePerUnit,calc_type:src.calcType==='linear'?'linear_ft':'sqft'});if(r.material)newId=r.material.id}catch(e){console.warn('API:',e.message)}}
     if(!materialsBySupplier[target])materialsBySupplier[target]=[];materialsBySupplier[target].push({...src,id:newId});saveAll();closeModal('duplicateModal');notify(`Copied to ${target}`,'success')}
@@ -317,7 +325,8 @@ async function doDuplicate(){const target=document.getElementById('duplicateTarg
 function dragStart(e){dragSrcId=e.currentTarget.dataset.id;e.currentTarget.classList.add('dragging');e.dataTransfer.effectAllowed='move'}
 function dragOver(e){e.preventDefault();e.dataTransfer.dropEffect='move';const row=e.currentTarget.closest('tr');if(row?.dataset.id)row.classList.add('drag-over')}
 function dragLeave(e){e.currentTarget.closest('tr')?.classList.remove('drag-over')}
-function dropRow(e){e.preventDefault();const tid=e.currentTarget.closest('tr')?.dataset.id;document.querySelectorAll('.drag-over,.dragging').forEach(el=>el.classList.remove('drag-over','dragging'));if(!dragSrcId||!tid||dragSrcId===tid)return;const mats=materialsBySupplier[activeSupplier]||[];const si=mats.findIndex(m=>m.id===dragSrcId),ti=mats.findIndex(m=>m.id===tid);if(si<0||ti<0)return;pushUndo();const[item]=mats.splice(si,1);mats.splice(ti,0,item);saveAll();renderMaterialTable()}
+function dragEnd(e){dragSrcId=null;document.querySelectorAll('.drag-over,.dragging').forEach(el=>el.classList.remove('drag-over','dragging'))}
+function dropRow(e){e.preventDefault();const tid=e.currentTarget.closest('tr')?.dataset.id;document.querySelectorAll('.drag-over,.dragging').forEach(el=>el.classList.remove('drag-over','dragging'));if(!dragSrcId||!tid||dragSrcId===tid){dragSrcId=null;return}const mats=materialsBySupplier[activeSupplier]||[];const si=mats.findIndex(m=>String(m.id)===String(dragSrcId)),ti=mats.findIndex(m=>String(m.id)===String(tid));if(si<0||ti<0){dragSrcId=null;return}pushUndo();const[item]=mats.splice(si,1);mats.splice(ti,0,item);dragSrcId=null;saveAll();renderMaterialTable()}
 
 // CSV
 function parseCSVLine(line){const r=[];let c='',q=false;for(let i=0;i<line.length;i++){const ch=line[i];if(q){if(ch==='"'&&line[i+1]==='"'){c+='"';i++}else if(ch==='"')q=false;else c+=ch}else{if(ch==='"')q=true;else if(ch===','){r.push(c.trim());c=''}else c+=ch}}r.push(c.trim());return r}
