@@ -68,6 +68,7 @@ async function loadData(){
                     coveragePerUnit:m.coverage_per_unit||100,
                     calcType:m.calc_type==='linear_ft'?'linear':(m.calc_type||'area'),
                     isPaint:name==='Sherwin Williams'&&(m.name||'').match(/paint|primer|latex/i)?true:false,
+                    isDrywallSheet:/drywall\s+sheet|denshield/i.test(m.name||''),
                     lastUpdated:m.updated_at?new Date(m.updated_at).getTime():Date.now(),
                     previousPrice:null
                 }));
@@ -109,7 +110,7 @@ async function loadData(){
     // Fallback: load from localStorage
     try{
         const s=localStorage.getItem('stucco_suppliers'),c=localStorage.getItem('stucco_categories'),m=localStorage.getItem('stucco_materials_v2'),j=localStorage.getItem('stucco_saved_jobs');
-        if(s&&c&&m){suppliers=JSON.parse(s);categories=JSON.parse(c);materialsBySupplier=JSON.parse(m);Object.values(materialsBySupplier).forEach(ms=>ms.forEach(mt=>{if(!mt.calcType)mt.calcType='area';if(!mt.lastUpdated)mt.lastUpdated=Date.now()}))}else resetAllToDefaults(true);
+        if(s&&c&&m){suppliers=JSON.parse(s);categories=JSON.parse(c);materialsBySupplier=JSON.parse(m);Object.values(materialsBySupplier).forEach(ms=>ms.forEach(mt=>{if(!mt.calcType)mt.calcType='area';if(!mt.lastUpdated)mt.lastUpdated=Date.now();if(mt.isDrywallSheet===undefined)mt.isDrywallSheet=/drywall\s+sheet|denshield/i.test(mt.name||'')}))}else resetAllToDefaults(true);
         if(j)savedJobs=JSON.parse(j);
     }catch{resetAllToDefaults(true)}
     if(suppliers.length>0)activeSupplier=suppliers[0];
