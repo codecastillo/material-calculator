@@ -380,15 +380,14 @@ function toggleCheckStyle(label){label.classList.toggle('checked',label.querySel
 function updatePhaseOptions(){
     const checked=document.querySelectorAll('#phaseCheckboxes input[type="checkbox"]:checked');
     const selected=[...checked].map(cb=>cb.value);
-    if(selected.length===0){document.getElementById('phaseOptions').classList.add('hidden');return}
-    const hasLinear=selected.some(p=>['Lath','Stone'].includes(p));
-    const hasPaint=selected.includes('Painting');
+    const hasStucco=selected.some(p=>['Lath','Gray Coat','Color Coat'].includes(p));
+    const hasStone=selected.includes('Stone');
     const hasDrywall=selected.includes('Drywall');
-    const showAny=hasLinear||hasPaint||hasDrywall;
-    document.getElementById('phaseOptions').classList.toggle('hidden',!showAny);
-    document.getElementById('optLinearFt').style.display=hasLinear?'':'none';
-    document.getElementById('optPaintCoats').style.display=hasPaint?'':'none';
-    document.getElementById('optDrywallAreas').style.display=hasDrywall?'':'none';
+    const hasPaint=selected.includes('Painting');
+    document.getElementById('optStucco').classList.toggle('hidden',!hasStucco);
+    document.getElementById('optStone').classList.toggle('hidden',!hasStone);
+    document.getElementById('optDrywall').classList.toggle('hidden',!hasDrywall);
+    document.getElementById('optPainting').classList.toggle('hidden',!hasPaint);
     if(hasDrywall)renderDrywallAreaRows();
 }
 
@@ -498,39 +497,50 @@ function rebuildTaxDropdown(){
     if(prev)sel.value=prev;
 }
 
-function calcForSupplier(supplier,sqft,linearFt,waste,selectedPhases,opts={}){
-    const adjSqft=sqft*(1+waste/100),adjLinear=linearFt*(1+waste/100);const paintCoats=opts.paintCoats||1;
+function calcForSupplier(supplier,waste,selectedPhases,opts={}){
+    const w=1+waste/100;
+    const paintCoats=opts.paintCoats||1;
     const drywallAreas=opts.drywallAreas||[];
-    const hasDrywallAreas=drywallAreas.length>0&&selectedPhases?.includes('Drywall');
-    // Total drywall sqft for accessories (sum of all area entries, with waste)
-    const totalDrywallSqft=hasDrywallAreas?drywallAreas.reduce((s,a)=>s+(a.sqft||0),0)*(1+waste/100):0;
-    // Map of sheet SKU -> adjusted sqft for that sheet type
-    const sheetSqftMap={};
-    if(hasDrywallAreas)drywallAreas.forEach(a=>{sheetSqftMap[a.sku]=(a.sqft||0)*(1+waste/100)});
+    const phaseDims=opts.phaseDims||{}; // {category: {sqft, linearFt}}
 
-    let mats=materialsBySupplier[supplier]||[];if(selectedPhases?.length>0)mats=mats.filter(m=>selectedPhases.includes(m.category));
-    // If drywall areas specified, exclude sheet types not selected
+    // Drywall area handling
+    const hasDrywallAreas=drywallAreas.length>0&&selectedPhases?.includes('Drywall');
+    const totalDrywallSqft=hasDrywallAreas?drywallAreas.reduce((s,a)=>s+(a.sqft||0),0)*w:0;
+    const sheetSqftMap={};
+    if(hasDrywallAreas)drywallAreas.forEach(a=>{sheetSqftMap[a.sku]=(a.sqft||0)*w});
+
+    // Stucco phases share dimensions
+    const stuccoPhases=['Lath','Gray Coat','Color Coat'];
+
+    let mats=materialsBySupplier[supplier]||[];
+    if(selectedPhases?.length>0)mats=mats.filter(m=>selectedPhases.includes(m.category));
     if(hasDrywallAreas)mats=mats.filter(m=>!m.isDrywallSheet||sheetSqftMap[m.sku]!==undefined);
 
     const phases={};categories.forEach(c=>phases[c]={total:0,count:0});let materialTotal=0;
     const items=mats.map(m=>{
         let base;
         if(m.isDrywallSheet&&hasDrywallAreas){
-            // Use the specific sqft for this sheet type
             base=sheetSqftMap[m.sku]||0;
         }else if(m.category==='Drywall'&&!m.isDrywallSheet&&hasDrywallAreas){
-            // Accessories use total drywall sqft
-            base=m.calcType==='linear'?adjLinear:totalDrywallSqft;
+            const dwDims=phaseDims['Drywall']||{};
+            base=m.calcType==='linear'?(dwDims.linearFt||0)*w:totalDrywallSqft;
         }else{
-            base=m.calcType==='linear'?adjLinear:adjSqft;
+            // Look up per-phase dimensions; stucco phases share 'Stucco' dims
+            const dimKey=stuccoPhases.includes(m.category)?'Stucco':m.category;
+            const dims=phaseDims[dimKey]||{sqft:0,linearFt:0};
+            base=m.calcType==='linear'?(dims.linearFt||0)*w:(dims.sqft||0)*w;
         }
-        let qty=base>0?Math.ceil(base/m.coveragePerUnit):0;if(m.isPaint&&paintCoats>1)qty=qty*paintCoats;const lineTotal=qty*m.pricePerUnit;if(phases[m.category]){phases[m.category].total+=lineTotal;phases[m.category].count++}materialTotal+=lineTotal;return{id:m.id,name:m.name,sku:m.sku,unit:m.unit,pricePerUnit:m.pricePerUnit,category:m.category,coveragePerUnit:m.coveragePerUnit,calcType:m.calcType,isPaint:m.isPaint,isDrywallSheet:m.isDrywallSheet,qty,lineTotal}});
+        let qty=base>0?Math.ceil(base/m.coveragePerUnit):0;
+        if(m.isPaint&&paintCoats>1)qty=qty*paintCoats;
+        const lineTotal=qty*m.pricePerUnit;
+        if(phases[m.category]){phases[m.category].total+=lineTotal;phases[m.category].count++}
+        materialTotal+=lineTotal;
+        return{id:m.id,name:m.name,sku:m.sku,unit:m.unit,pricePerUnit:m.pricePerUnit,category:m.category,coveragePerUnit:m.coveragePerUnit,calcType:m.calcType,isPaint:m.isPaint,isDrywallSheet:m.isDrywallSheet,qty,lineTotal};
+    });
     return{supplier,phases,items,materialTotal};
 }
 
 function calculateJob(){
-    const sqft=parseFloat(document.getElementById('calcSqft').value)||0;
-    const linearFt=parseFloat(document.getElementById('calcLinearFt')?.value)||0;
     const waste=parseFloat(document.getElementById('calcWaste').value)||0;
     const profitPct=parseFloat(document.getElementById('calcProfit').value)||0;
     const taxPct=parseFloat(document.getElementById('calcTax').value)||parseFloat(document.getElementById('calcTaxState').value)||0;
@@ -542,16 +552,33 @@ function calculateJob(){
     const paintCoats=paintCoatsRaw>0?paintCoatsRaw:1;
     const supplier=document.getElementById('calcSupplier').value;
 
-    if(sqft<=0&&linearFt<=0){notify('Enter sqft or linear ft','error');return}
-
     const selectedPhases=getSelectedPhases();
+    if(!selectedPhases.length){notify('Select at least one phase','error');return}
+
+    // Gather per-scope dimensions
+    const phaseDims={};
+    const stuccoSqft=parseFloat(document.getElementById('calcStuccoSqft')?.value)||0;
+    const stuccoLf=parseFloat(document.getElementById('calcStuccoLinearFt')?.value)||0;
+    if(stuccoSqft>0||stuccoLf>0)phaseDims['Stucco']={sqft:stuccoSqft,linearFt:stuccoLf};
+    const stoneSqft=parseFloat(document.getElementById('calcStoneSqft')?.value)||0;
+    const stoneLf=parseFloat(document.getElementById('calcStoneLinearFt')?.value)||0;
+    if(stoneSqft>0||stoneLf>0)phaseDims['Stone']={sqft:stoneSqft,linearFt:stoneLf};
+    const paintSqft=parseFloat(document.getElementById('calcPaintSqft')?.value)||0;
+    if(paintSqft>0)phaseDims['Painting']={sqft:paintSqft,linearFt:0};
+
     const drywallAreas=selectedPhases.includes('Drywall')?getDrywallAreas():[];
+
+    // Calculate total sqft across all scopes (for labor calc)
+    const totalSqft=stuccoSqft+stoneSqft+paintSqft+drywallAreas.reduce((s,a)=>s+(a.sqft||0),0);
+
+    // Validate at least some dimensions entered
+    if(totalSqft<=0&&stuccoLf<=0&&stoneLf<=0&&!drywallAreas.length){notify('Enter dimensions for selected phases','error');return}
+
     const isAll=supplier==='All Suppliers';
+    const calcOpts={paintCoats,drywallAreas,phaseDims};
 
     let r;
     if(isAll){
-        // COMPOSITE: pick the cheapest supplier FOR EACH PHASE separately
-        // then combine all the best items into one result
         const phases={};categories.forEach(c=>phases[c]={total:0,count:0});
         let allItems=[];let materialTotal=0;
         const bestPerPhase={};
@@ -561,7 +588,7 @@ function calculateJob(){
             suppliers.forEach(s=>{
                 const sp=getSupplierPhases(s);
                 if(!sp.includes(phase))return;
-                const result=calcForSupplier(s,sqft,linearFt,waste,[phase],{paintCoats,drywallAreas});
+                const result=calcForSupplier(s,waste,[phase],calcOpts);
                 if(result.materialTotal>0&&result.materialTotal<bestTotal){
                     bestTotal=result.materialTotal;bestSupplier=s;bestItems=result.items;
                 }
@@ -574,24 +601,23 @@ function calculateJob(){
             }
         });
 
-        // Build composite supplier label
         const uniqueSuppliers=[...new Set(Object.values(bestPerPhase))];
         const supplierLabel=uniqueSuppliers.length===1?uniqueSuppliers[0]:'Best per phase';
 
-        r={supplier:supplierLabel,phases,items:allItems,materialTotal,sqft,linearFt,waste,profitPct,taxPct,laborRate,deliveryFee,ccFeePct,paintCoats,selectedPhases,drywallAreas,bestPerPhase};
+        r={supplier:supplierLabel,phases,items:allItems,materialTotal,totalSqft,waste,profitPct,taxPct,laborRate,deliveryFee,ccFeePct,paintCoats,selectedPhases,drywallAreas,phaseDims,bestPerPhase};
     }else{
-        const base=calcForSupplier(supplier,sqft,linearFt,waste,selectedPhases,{paintCoats,drywallAreas});
-        r={...base,sqft,linearFt,waste,profitPct,taxPct,laborRate,deliveryFee,ccFeePct,paintCoats,selectedPhases,drywallAreas};
+        const base=calcForSupplier(supplier,waste,selectedPhases,calcOpts);
+        r={...base,totalSqft,waste,profitPct,taxPct,laborRate,deliveryFee,ccFeePct,paintCoats,selectedPhases,drywallAreas,phaseDims};
     }
 
-    r.taxAmount=r.materialTotal*(taxPct/100);r.materialPlusTax=r.materialTotal+r.taxAmount;r.laborTotal=laborRate*sqft;r.deliveryTotal=deliveryFee;
+    r.taxAmount=r.materialTotal*(taxPct/100);r.materialPlusTax=r.materialTotal+r.taxAmount;r.laborTotal=laborRate*totalSqft;r.deliveryTotal=deliveryFee;
     r.subtotalBeforeProfit=r.materialPlusTax+r.laborTotal+r.deliveryTotal;r.profitAmount=r.subtotalBeforeProfit*(profitPct/100);
     r.sellingBeforeCC=r.subtotalBeforeProfit+r.profitAmount;r.ccFeeAmount=r.sellingBeforeCC*(ccFeePct/100);r.sellingPrice=r.sellingBeforeCC+r.ccFeeAmount;
     r.grossMargin=r.sellingPrice>0?(r.profitAmount/r.sellingPrice*100):0;
     currentCalc=r;renderCalcResults(r);
 
     // Show comparison if All Suppliers
-    if(isAll){renderComparison(sqft,linearFt,waste,selectedPhases,paintCoats,drywallAreas)}else{document.getElementById('comparisonSection').innerHTML=''}
+    if(isAll){renderComparison(waste,selectedPhases,calcOpts)}else{document.getElementById('comparisonSection').innerHTML=''}
 }
 
 function renderCalcResults(r){
@@ -616,7 +642,7 @@ function renderCalcResults(r){
     document.getElementById('summaryGrid').innerHTML=sg;
 }
 
-function renderComparison(sqft,linearFt,waste,selectedPhases,paintCoats,drywallAreas){
+function renderComparison(waste,selectedPhases,calcOpts){
     // Only include suppliers that actually carry at least one of the selected phases
     const relevantSuppliers=suppliers.filter(s=>{
         const sp=getSupplierPhases(s);
@@ -625,7 +651,7 @@ function renderComparison(sqft,linearFt,waste,selectedPhases,paintCoats,drywallA
 
     if(relevantSuppliers.length<2){document.getElementById('comparisonSection').innerHTML='';return}
 
-    const results=relevantSuppliers.map(s=>{const r=calcForSupplier(s,sqft,linearFt,waste,selectedPhases,{paintCoats,drywallAreas});return{supplier:s,total:r.materialTotal,phases:r.phases}});
+    const results=relevantSuppliers.map(s=>{const r=calcForSupplier(s,waste,selectedPhases,calcOpts);return{supplier:s,total:r.materialTotal,phases:r.phases}});
     // Only consider suppliers with >$0 for "best"
     const nonZero=results.filter(r=>r.total>0);
     const minTotal=nonZero.length?Math.min(...nonZero.map(r=>r.total)):0;
@@ -658,7 +684,7 @@ function saveJob(){if(!currentCalc){notify('Calculate first','error');return}
     if(!isLicensed()&&savedJobs.length>=FREE_JOB_LIMIT){notify(`Free accounts can save up to ${FREE_JOB_LIMIT} jobs. Activate a license for unlimited.`,'error');return}
     const el=document.getElementById('saveJobName');el.value=document.getElementById('calcProjectName').value||'';document.getElementById('saveAsTemplate').checked=false;openModal('saveJobModal');el.focus()}
 async function doSaveJob(){const name=document.getElementById('saveJobName').value.trim();if(!name){notify('Enter name','error');return}const isTemplate=document.getElementById('saveAsTemplate').checked;
-    const job={id:'job-'+Date.now(),name,isTemplate,projectName:isTemplate?'':document.getElementById('calcProjectName').value,projectAddress:isTemplate?'':document.getElementById('calcProjectAddress').value,supplier:currentCalc.supplier,sqft:currentCalc.sqft,linearFt:currentCalc.linearFt,waste:currentCalc.waste,profitPct:currentCalc.profitPct,taxPct:currentCalc.taxPct,laborRate:currentCalc.laborRate,selectedPhases:currentCalc.selectedPhases||categories,materialTotal:currentCalc.materialTotal,sellingPrice:currentCalc.sellingPrice,savedAt:new Date().toISOString()};
+    const job={id:'job-'+Date.now(),name,isTemplate,projectName:isTemplate?'':document.getElementById('calcProjectName').value,projectAddress:isTemplate?'':document.getElementById('calcProjectAddress').value,supplier:currentCalc.supplier,sqft:currentCalc.totalSqft||0,linearFt:0,waste:currentCalc.waste,profitPct:currentCalc.profitPct,taxPct:currentCalc.taxPct,laborRate:currentCalc.laborRate,selectedPhases:currentCalc.selectedPhases||categories,phaseDims:currentCalc.phaseDims||{},drywallAreas:currentCalc.drywallAreas||[],materialTotal:currentCalc.materialTotal,sellingPrice:currentCalc.sellingPrice,savedAt:new Date().toISOString()};
     savedJobs.unshift(job);saveSavedJobs();
     // Save to API
     if(api.getToken()){
@@ -671,7 +697,12 @@ async function doSaveJob(){const name=document.getElementById('saveJobName').val
 
 function renderSavedJobs(){const el=document.getElementById('savedJobsList');if(!savedJobs.length){el.innerHTML='<div class="dash-empty">No saved jobs yet.</div>';return}el.innerHTML='<div class="saved-jobs-list">'+savedJobs.map(j=>{const d=new Date(j.savedAt);const ds=d.toLocaleDateString()+' '+d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});return`<div class="saved-job-card"><h4>${escHtml(j.name)}${j.isTemplate?'<span class="tmpl-badge">TEMPLATE</span>':''}</h4><div class="meta"><span>${escHtml(j.supplier)}</span><span>${(j.sqft||0).toLocaleString()} sqft</span>${j.linearFt?`<span>${j.linearFt.toLocaleString()} lf</span>`:''}</div>${!j.isTemplate?`<div class="meta"><span class="mono">${fmt(j.materialTotal)} cost</span><span class="mono">${fmt(j.sellingPrice)} sell</span></div>`:''}<div class="meta"><span>${ds}</span></div><div class="actions"><button class="btn btn-primary btn-sm" onclick="loadJob('${j.id}')">Load</button><button class="btn btn-secondary btn-sm" onclick="duplicateJob('${j.id}')">Duplicate</button><button class="btn btn-danger btn-sm" onclick="deleteJob('${j.id}')">Delete</button></div></div>`}).join('')+'</div>'}
 
-function loadJob(id){const job=savedJobs.find(j=>j.id===id);if(!job)return;document.getElementById('calcProjectName').value=job.isTemplate?'':job.projectName||'';document.getElementById('calcProjectAddress').value=job.isTemplate?'':job.projectAddress||'';document.getElementById('calcSqft').value=job.sqft||'';if(document.getElementById('calcLinearFt'))document.getElementById('calcLinearFt').value=job.linearFt||'';document.getElementById('calcWaste').value=job.waste||10;document.getElementById('calcProfit').value=job.profitPct||20;document.getElementById('calcTax').value=job.taxPct||0;document.getElementById('calcLabor').value=job.laborRate||0;showPage('calculator');setTimeout(()=>{const sel=document.getElementById('calcSupplier');if(suppliers.includes(job.supplier))sel.value=job.supplier;renderPhaseCheckboxes();if(job.selectedPhases)document.querySelectorAll('#phaseCheckboxes input[type="checkbox"]').forEach(cb=>{const ch=job.selectedPhases.includes(cb.value);cb.checked=ch;cb.closest('.phase-chip').classList.toggle('checked',ch)});if(!job.isTemplate)calculateJob()},50);notify(job.isTemplate?'Template loaded — enter project details':'Job loaded','info')}
+function loadJob(id){const job=savedJobs.find(j=>j.id===id);if(!job)return;document.getElementById('calcProjectName').value=job.isTemplate?'':job.projectName||'';document.getElementById('calcProjectAddress').value=job.isTemplate?'':job.projectAddress||'';document.getElementById('calcWaste').value=job.waste||10;document.getElementById('calcProfit').value=job.profitPct||20;document.getElementById('calcTax').value=job.taxPct||0;document.getElementById('calcLabor').value=job.laborRate||0;showPage('calculator');setTimeout(()=>{const sel=document.getElementById('calcSupplier');if(suppliers.includes(job.supplier))sel.value=job.supplier;renderPhaseCheckboxes();if(job.selectedPhases)document.querySelectorAll('#phaseCheckboxes input[type="checkbox"]').forEach(cb=>{const ch=job.selectedPhases.includes(cb.value);cb.checked=ch;cb.closest('.phase-chip').classList.toggle('checked',ch)});updatePhaseOptions();
+    // Restore per-scope dimensions from saved phaseDims
+    if(job.phaseDims){const pd=job.phaseDims;if(pd.Stucco){const el=document.getElementById('calcStuccoSqft');if(el)el.value=pd.Stucco.sqft||'';const lf=document.getElementById('calcStuccoLinearFt');if(lf)lf.value=pd.Stucco.linearFt||''}if(pd.Stone){const el=document.getElementById('calcStoneSqft');if(el)el.value=pd.Stone.sqft||'';const lf=document.getElementById('calcStoneLinearFt');if(lf)lf.value=pd.Stone.linearFt||''}if(pd.Painting){const el=document.getElementById('calcPaintSqft');if(el)el.value=pd.Painting.sqft||''}}
+    // Restore drywall areas
+    if(job.drywallAreas&&job.drywallAreas.length){const wrap=document.getElementById('drywallAreaRows');if(wrap)wrap.innerHTML='';job.drywallAreas.forEach(a=>addDrywallArea(a.label,a.sku,a.rawVal||a.sqft,a.unit||'sqft'))}
+    if(!job.isTemplate)calculateJob()},50);notify(job.isTemplate?'Template loaded — enter project details':'Job loaded','info')}
 function duplicateJob(id){const job=savedJobs.find(j=>j.id===id);if(!job)return;savedJobs.unshift({...job,id:'job-'+Date.now(),name:job.name+' (copy)',savedAt:new Date().toISOString()});saveSavedJobs();renderSavedJobs();notify('Duplicated','success')}
 async function deleteJob(id){if(!confirm('Delete?'))return;
     if(api.getToken()){try{await api.deleteJob(id)}catch(err){console.warn('API delete failed:',err.message)}}
@@ -922,12 +953,13 @@ async function initApp(){
     // Auto-recalculate: debounced recalc on any calculator input change
     let recalcTimer=null;
     function autoRecalc(){clearTimeout(recalcTimer);recalcTimer=setTimeout(()=>{if(currentCalc&&currentPageId==='calculator')calculateJob()},500)}
-    ['calcSqft','calcWaste','calcProfit','calcTax','calcLabor','calcDelivery','calcCCFee','calcLinearFt'].forEach(id=>{
+    ['calcWaste','calcProfit','calcTax','calcLabor','calcDelivery','calcCCFee','calcStuccoSqft','calcStuccoLinearFt','calcStoneSqft','calcStoneLinearFt','calcPaintSqft'].forEach(id=>{
         const el=document.getElementById(id);if(el)el.addEventListener('input',autoRecalc);
     });
-    // Auto-recalc on drywall area changes (delegated since rows are dynamic)
+    // Auto-recalc on drywall area and paint coats changes (delegated since rows are dynamic)
     const dwWrap=document.getElementById('drywallAreaRows');
     if(dwWrap){dwWrap.addEventListener('input',autoRecalc);dwWrap.addEventListener('change',autoRecalc)}
+    document.getElementById('calcPaintCoats')?.addEventListener('change',autoRecalc);
 
     // Track recently used materials
     trackRecentMaterials();
