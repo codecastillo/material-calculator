@@ -1,4 +1,4 @@
-const CACHE_NAME = 'esticount-v3';
+const CACHE_NAME = 'esticount-v4';
 const APP_SHELL = [
   '/index.html',
   '/css/styles.css',
