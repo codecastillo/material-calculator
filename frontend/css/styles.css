@@ -166,6 +166,16 @@ tr.drag-over td{border-top:2px solid var(--pri)}
 .phase-chip.checked{background:var(--pri-soft);border-color:var(--pri)}
 .phase-chip .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 
+/* Drywall area rows */
+.dw-area-row{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;background:var(--bg2);border:2px solid var(--border);margin-bottom:6px;transition:all .2s}
+.dw-area-row.active{border-color:var(--pri);background:var(--pri-soft)}
+.dw-area-row label{display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;font-size:.88rem;font-weight:500;min-width:0}
+.dw-area-row label input[type="checkbox"]{width:16px;height:16px;accent-color:var(--pri);cursor:pointer;flex-shrink:0}
+.dw-area-row .dw-sqft-wrap{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.dw-area-row .dw-sqft-wrap input{width:90px;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:.85rem;text-align:right}
+.dw-area-row .dw-sqft-wrap span{font-size:.78rem;color:var(--text3)}
+.dw-area-row:not(.active) .dw-sqft-wrap input{opacity:.4;pointer-events:none}
+
 /* Phase/summary cards */
 .phase-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:22px}
 .phase-card{padding:18px;border-radius:10px;border-left:4px solid;background:var(--bg2);box-shadow:var(--shadow)}

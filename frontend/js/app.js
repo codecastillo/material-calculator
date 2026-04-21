@@ -16,7 +16,7 @@ const STUCCO_LATH=[{name:'Wire Lath 2.5 lb (36" x 150\')',sku:'WL-2536150',unit:
 const STUCCO_GRAY=[{name:'Portland Cement Type S (94lb)',sku:'PC-TS-94',unit:'bag',pricePerUnit:14.50,category:'Gray Coat',coveragePerUnit:25,calcType:'area'},{name:'Plaster Sand',sku:'PS-TON',unit:'ton',pricePerUnit:45,category:'Gray Coat',coveragePerUnit:250,calcType:'area'},{name:'Hydrated Lime Type S (50lb)',sku:'HL-TS-50',unit:'bag',pricePerUnit:12,category:'Gray Coat',coveragePerUnit:75,calcType:'area'},{name:'Fiber Mesh (1lb)',sku:'FM-1LB',unit:'bag',pricePerUnit:8.50,category:'Gray Coat',coveragePerUnit:300,calcType:'area'},{name:'Bonding Agent - Weld-Crete (5 gal)',sku:'BA-WC-5G',unit:'pail',pricePerUnit:62,category:'Gray Coat',coveragePerUnit:500,calcType:'area'}];
 const STUCCO_COLOR=[{name:'LaHabra X-Kaliber Finish (65lb)',sku:'LH-XK-65',unit:'bag',pricePerUnit:28,category:'Color Coat',coveragePerUnit:65,calcType:'area'},{name:'Color Pigment (1lb tube)',sku:'LH-PIG-1',unit:'tube',pricePerUnit:9.50,category:'Color Coat',coveragePerUnit:200,calcType:'area'},{name:'Finish Sand 30-mesh (80lb)',sku:'FS-30-80',unit:'bag',pricePerUnit:12,category:'Color Coat',coveragePerUnit:100,calcType:'area'},{name:'Acrylic Additive (1 gal)',sku:'AA-QR-1G',unit:'gal',pricePerUnit:18,category:'Color Coat',coveragePerUnit:150,calcType:'area'}];
 const STONE_MATERIALS=[{name:'Manufactured Stone Veneer (flat)',sku:'SV-FLAT-BOX',unit:'box',pricePerUnit:125,category:'Stone',coveragePerUnit:10,calcType:'area'},{name:'Stone Corners (linear)',sku:'SV-CORN-BOX',unit:'box',pricePerUnit:85,category:'Stone',coveragePerUnit:5,calcType:'linear'},{name:'Stone Mortar Mix (80lb)',sku:'SM-MRT-80',unit:'bag',pricePerUnit:12.50,category:'Stone',coveragePerUnit:20,calcType:'area'},{name:'Stone Grout Bag (50lb)',sku:'SM-GRT-50',unit:'bag',pricePerUnit:14,category:'Stone',coveragePerUnit:35,calcType:'area'},{name:'Metal Lath for Stone (2.5 lb)',sku:'ML-ST-25',unit:'roll',pricePerUnit:52,category:'Stone',coveragePerUnit:450,calcType:'area'},{name:'Scratch Coat Cement (94lb)',sku:'SC-ST-94',unit:'bag',pricePerUnit:14.50,category:'Stone',coveragePerUnit:25,calcType:'area'}];
-const DRYWALL_MATERIALS=[{name:'Drywall Sheet 1/2" 4x8',sku:'DW-12-48',unit:'sheet',pricePerUnit:12.50,category:'Drywall',coveragePerUnit:32,calcType:'area',isDrywallSheet:true},{name:'Drywall Sheet 5/8" 4x8',sku:'DW-58-48',unit:'sheet',pricePerUnit:14.50,category:'Drywall',coveragePerUnit:32,calcType:'area',isDrywallSheet:true},{name:'Red Dot Joint Compound (4.5 gal)',sku:'RD-AP-45G',unit:'bucket',pricePerUnit:18,category:'Drywall',coveragePerUnit:230,calcType:'area'},{name:'TNT Lite Topping (4.5 gal)',sku:'TNT-LT-45G',unit:'bucket',pricePerUnit:22,category:'Drywall',coveragePerUnit:270,calcType:'area'},{name:'Sanding Discs 120 Grit (25pk)',sku:'SD-120-25',unit:'box',pricePerUnit:15,category:'Drywall',coveragePerUnit:1500,calcType:'area'},{name:'Sanding Discs 150 Grit (25pk)',sku:'SD-150-25',unit:'box',pricePerUnit:15,category:'Drywall',coveragePerUnit:1500,calcType:'area'},{name:'Paper Joint Tape (500\')',sku:'PJT-500',unit:'roll',pricePerUnit:4.50,category:'Drywall',coveragePerUnit:200,calcType:'area'},{name:'Mesh Joint Tape (300\')',sku:'MJT-300',unit:'roll',pricePerUnit:7,category:'Drywall',coveragePerUnit:150,calcType:'area'},{name:'Corner Bead Metal 8\'',sku:'CB-MT-8',unit:'piece',pricePerUnit:3.50,category:'Drywall',coveragePerUnit:8,calcType:'linear'}];
+const DRYWALL_MATERIALS=[{name:'Drywall Sheet 1/2" 4x8',sku:'DW-12-48',unit:'sheet',pricePerUnit:12.50,category:'Drywall',coveragePerUnit:32,calcType:'area',isDrywallSheet:true},{name:'Drywall Sheet 5/8" 4x8',sku:'DW-58-48',unit:'sheet',pricePerUnit:14.50,category:'Drywall',coveragePerUnit:32,calcType:'area',isDrywallSheet:true},{name:'DenShield Tile Backer 1/2" 4x8',sku:'DS-12-48',unit:'sheet',pricePerUnit:28,category:'Drywall',coveragePerUnit:32,calcType:'area',isDrywallSheet:true},{name:'Red Dot Joint Compound (4.5 gal)',sku:'RD-AP-45G',unit:'bucket',pricePerUnit:18,category:'Drywall',coveragePerUnit:230,calcType:'area'},{name:'TNT Lite Topping (4.5 gal)',sku:'TNT-LT-45G',unit:'bucket',pricePerUnit:22,category:'Drywall',coveragePerUnit:270,calcType:'area'},{name:'Sanding Discs 120 Grit (25pk)',sku:'SD-120-25',unit:'box',pricePerUnit:15,category:'Drywall',coveragePerUnit:1500,calcType:'area'},{name:'Sanding Discs 150 Grit (25pk)',sku:'SD-150-25',unit:'box',pricePerUnit:15,category:'Drywall',coveragePerUnit:1500,calcType:'area'},{name:'Paper Joint Tape (500\')',sku:'PJT-500',unit:'roll',pricePerUnit:4.50,category:'Drywall',coveragePerUnit:200,calcType:'area'},{name:'Mesh Joint Tape (300\')',sku:'MJT-300',unit:'roll',pricePerUnit:7,category:'Drywall',coveragePerUnit:150,calcType:'area'},{name:'Corner Bead Metal 8\'',sku:'CB-MT-8',unit:'piece',pricePerUnit:3.50,category:'Drywall',coveragePerUnit:8,calcType:'linear'}];
 const PAINT_MATERIALS=[{name:'Painters Plastic (9\' x 400\')',sku:'PP-9400',unit:'roll',pricePerUnit:18,category:'Painting',coveragePerUnit:3600,calcType:'area'},{name:'Primer (1 gal)',sku:'SW-PRM-1G',unit:'gal',pricePerUnit:28,category:'Painting',coveragePerUnit:400,calcType:'area',isPaint:true},{name:'Primer (5 gal)',sku:'SW-PRM-5G',unit:'bucket',pricePerUnit:115,category:'Painting',coveragePerUnit:2000,calcType:'area',isPaint:true},{name:'A-100 Exterior Latex (1 gal)',sku:'SW-A100-1G',unit:'gal',pricePerUnit:42,category:'Painting',coveragePerUnit:400,calcType:'area',isPaint:true},{name:'A-100 Exterior Latex (5 gal)',sku:'SW-A100-5G',unit:'bucket',pricePerUnit:185,category:'Painting',coveragePerUnit:2000,calcType:'area',isPaint:true}];
 
 const SUPPLIER_MATERIALS={'Pacific Supply':[...STUCCO_LATH,...STUCCO_GRAY,...STUCCO_COLOR,...STONE_MATERIALS,...DRYWALL_MATERIALS],'ABC Supply':[...STUCCO_LATH,...STUCCO_GRAY,...STUCCO_COLOR,...STONE_MATERIALS,...DRYWALL_MATERIALS],'Sherwin Williams':[...PAINT_MATERIALS]};
@@ -26,6 +26,7 @@ const SUPPLIER_PRICE_MODS={'Pacific Supply':1,'ABC Supply':1.03,'Sherwin William
 let suppliers=[],categories=[],materialsBySupplier={},activeSupplier='',editingId=null,currentCalc=null,savedJobs=[];
 let undoStack=[],redoStack=[];const MAX_UNDO=25;let dragSrcId=null;
 let pageHistory=['dashboard'];
+let savedPhaseSelection=null; // preserve phase checkboxes across page nav
 
 // ===== PERSISTENCE (API + localStorage cache) =====
 async function loadData(){
@@ -175,6 +176,11 @@ function toggleMobileMenu(){document.getElementById('topnavLinks').classList.tog
 function closeMobileMenu(){document.getElementById('topnavLinks').classList.remove('open');document.getElementById('mobileOverlay').classList.remove('open')}
 
 function showPage(id){
+    // Save phase selection before leaving calculator
+    if(currentPageId==='calculator'){
+        const boxes=document.querySelectorAll('#phaseCheckboxes input[type="checkbox"]');
+        if(boxes.length>0)savedPhaseSelection=[...boxes].filter(cb=>cb.checked).map(cb=>cb.value);
+    }
     currentPageId=id;
     localStorage.setItem('esticount_page',id);
     document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
@@ -189,7 +195,7 @@ function showPage(id){
     // Init page
     if(id==='dashboard')renderDashboard();
     if(id==='pricing'){renderSupplierTabs();populateCategoryFilter();renderMaterialTable();trackRecentMaterials()}
-    if(id==='calculator'){populateCalcSupplierDropdown();renderPhaseCheckboxes()}
+    if(id==='calculator'){populateCalcSupplierDropdown();renderPhaseCheckboxes();restorePhaseSelection()}
     if(id==='savedJobs')renderSavedJobs();
     if(id==='admin')renderAdminPanel();
     if(id==='account')renderAccountPage();
@@ -359,12 +365,20 @@ function renderPhaseCheckboxes(){
     updatePhaseOptions();
 }
 
+function restorePhaseSelection(){
+    if(!savedPhaseSelection)return;
+    document.querySelectorAll('#phaseCheckboxes input[type="checkbox"]').forEach(cb=>{
+        const ch=savedPhaseSelection.includes(cb.value);
+        cb.checked=ch;cb.closest('.phase-chip').classList.toggle('checked',ch);
+    });
+    updatePhaseOptions();
+}
+
 function toggleCheckStyle(label){label.classList.toggle('checked',label.querySelector('input').checked);updatePhaseOptions()}
 
 function updatePhaseOptions(){
     const checked=document.querySelectorAll('#phaseCheckboxes input[type="checkbox"]:checked');
     const selected=[...checked].map(cb=>cb.value);
-    // If nothing checked, phase options hidden
     if(selected.length===0){document.getElementById('phaseOptions').classList.add('hidden');return}
     const hasLinear=selected.some(p=>['Lath','Stone'].includes(p));
     const hasPaint=selected.includes('Painting');
@@ -373,7 +387,54 @@ function updatePhaseOptions(){
     document.getElementById('phaseOptions').classList.toggle('hidden',!showAny);
     document.getElementById('optLinearFt').style.display=hasLinear?'':'none';
     document.getElementById('optPaintCoats').style.display=hasPaint?'':'none';
-    document.getElementById('optDrywallSize').style.display=hasDrywall?'':'none';
+    document.getElementById('optDrywallAreas').style.display=hasDrywall?'':'none';
+    if(hasDrywall)renderDrywallAreaRows();
+}
+
+function renderDrywallAreaRows(){
+    const wrap=document.getElementById('drywallAreaRows');
+    if(!wrap)return;
+    const supplier=document.getElementById('calcSupplier').value;
+    // Get drywall sheet materials from current supplier(s)
+    let sheets=[];
+    if(supplier==='All Suppliers'){
+        const seen=new Set();
+        Object.values(materialsBySupplier).flat().filter(m=>m.isDrywallSheet).forEach(m=>{
+            if(!seen.has(m.name)){seen.add(m.name);sheets.push(m)}
+        });
+    }else{
+        sheets=(materialsBySupplier[supplier]||[]).filter(m=>m.isDrywallSheet);
+    }
+    if(!sheets.length){wrap.innerHTML='<span class="hint">No drywall sheet types found for this supplier.</span>';return}
+    // Preserve existing state
+    const prev={};wrap.querySelectorAll('.dw-area-row').forEach(row=>{
+        const cb=row.querySelector('input[type="checkbox"]');
+        const inp=row.querySelector('.dw-sqft-wrap input');
+        if(cb)prev[cb.dataset.name]={checked:cb.checked,sqft:inp?.value||''};
+    });
+    const mainSqft=document.getElementById('calcSqft').value||'';
+    wrap.innerHTML=sheets.map((m,i)=>{
+        const p=prev[m.name];
+        const checked=p?p.checked:(i===0); // default: first sheet type checked
+        const sqft=p?p.sqft:(i===0?mainSqft:'');
+        return`<div class="dw-area-row${checked?' active':''}">
+            <label><input type="checkbox" data-name="${escAttr(m.name)}" data-sku="${escAttr(m.sku)}" ${checked?'checked':''} onchange="this.closest('.dw-area-row').classList.toggle('active',this.checked)">${escHtml(m.name)}</label>
+            <div class="dw-sqft-wrap"><input type="number" class="dw-area-sqft" value="${sqft}" placeholder="0" min="0"><span>sqft</span></div>
+        </div>`;
+    }).join('');
+}
+
+function getDrywallAreas(){
+    const rows=document.querySelectorAll('#drywallAreaRows .dw-area-row');
+    const areas=[];
+    rows.forEach(row=>{
+        const cb=row.querySelector('input[type="checkbox"]');
+        const inp=row.querySelector('.dw-area-sqft');
+        if(cb&&cb.checked){
+            areas.push({name:cb.dataset.name,sku:cb.dataset.sku,sqft:parseFloat(inp?.value)||0});
+        }
+    });
+    return areas;
 }
 
 function applyStateTax(){
@@ -422,9 +483,31 @@ function rebuildTaxDropdown(){
 
 function calcForSupplier(supplier,sqft,linearFt,waste,selectedPhases,opts={}){
     const adjSqft=sqft*(1+waste/100),adjLinear=linearFt*(1+waste/100);const paintCoats=opts.paintCoats||1;
+    const drywallAreas=opts.drywallAreas||[];
+    const hasDrywallAreas=drywallAreas.length>0&&selectedPhases?.includes('Drywall');
+    // Total drywall sqft for accessories (sum of all area entries, with waste)
+    const totalDrywallSqft=hasDrywallAreas?drywallAreas.reduce((s,a)=>s+(a.sqft||0),0)*(1+waste/100):0;
+    // Map of sheet SKU -> adjusted sqft for that sheet type
+    const sheetSqftMap={};
+    if(hasDrywallAreas)drywallAreas.forEach(a=>{sheetSqftMap[a.sku]=(a.sqft||0)*(1+waste/100)});
+
     let mats=materialsBySupplier[supplier]||[];if(selectedPhases?.length>0)mats=mats.filter(m=>selectedPhases.includes(m.category));
+    // If drywall areas specified, exclude sheet types not selected
+    if(hasDrywallAreas)mats=mats.filter(m=>!m.isDrywallSheet||sheetSqftMap[m.sku]!==undefined);
+
     const phases={};categories.forEach(c=>phases[c]={total:0,count:0});let materialTotal=0;
-    const items=mats.map(m=>{const base=m.calcType==='linear'?adjLinear:adjSqft;let qty=base>0?Math.ceil(base/m.coveragePerUnit):0;if(m.isPaint&&paintCoats>1)qty=qty*paintCoats;const lineTotal=qty*m.pricePerUnit;if(phases[m.category]){phases[m.category].total+=lineTotal;phases[m.category].count++}materialTotal+=lineTotal;return{id:m.id,name:m.name,sku:m.sku,unit:m.unit,pricePerUnit:m.pricePerUnit,category:m.category,coveragePerUnit:m.coveragePerUnit,calcType:m.calcType,isPaint:m.isPaint,qty,lineTotal}});
+    const items=mats.map(m=>{
+        let base;
+        if(m.isDrywallSheet&&hasDrywallAreas){
+            // Use the specific sqft for this sheet type
+            base=sheetSqftMap[m.sku]||0;
+        }else if(m.category==='Drywall'&&!m.isDrywallSheet&&hasDrywallAreas){
+            // Accessories use total drywall sqft
+            base=m.calcType==='linear'?adjLinear:totalDrywallSqft;
+        }else{
+            base=m.calcType==='linear'?adjLinear:adjSqft;
+        }
+        let qty=base>0?Math.ceil(base/m.coveragePerUnit):0;if(m.isPaint&&paintCoats>1)qty=qty*paintCoats;const lineTotal=qty*m.pricePerUnit;if(phases[m.category]){phases[m.category].total+=lineTotal;phases[m.category].count++}materialTotal+=lineTotal;return{id:m.id,name:m.name,sku:m.sku,unit:m.unit,pricePerUnit:m.pricePerUnit,category:m.category,coveragePerUnit:m.coveragePerUnit,calcType:m.calcType,isPaint:m.isPaint,isDrywallSheet:m.isDrywallSheet,qty,lineTotal}});
     return{supplier,phases,items,materialTotal};
 }
 
@@ -445,6 +528,7 @@ function calculateJob(){
     if(sqft<=0&&linearFt<=0){notify('Enter sqft or linear ft','error');return}
 
     const selectedPhases=getSelectedPhases();
+    const drywallAreas=selectedPhases.includes('Drywall')?getDrywallAreas():[];
     const isAll=supplier==='All Suppliers';
 
     let r;
@@ -459,8 +543,8 @@ function calculateJob(){
             let bestSupplier=null,bestTotal=Infinity,bestItems=[];
             suppliers.forEach(s=>{
                 const sp=getSupplierPhases(s);
-                if(!sp.includes(phase))return; // supplier doesn't carry this phase
-                const result=calcForSupplier(s,sqft,linearFt,waste,[phase],{paintCoats});
+                if(!sp.includes(phase))return;
+                const result=calcForSupplier(s,sqft,linearFt,waste,[phase],{paintCoats,drywallAreas});
                 if(result.materialTotal>0&&result.materialTotal<bestTotal){
                     bestTotal=result.materialTotal;bestSupplier=s;bestItems=result.items;
                 }
@@ -477,10 +561,10 @@ function calculateJob(){
         const uniqueSuppliers=[...new Set(Object.values(bestPerPhase))];
         const supplierLabel=uniqueSuppliers.length===1?uniqueSuppliers[0]:'Best per phase';
 
-        r={supplier:supplierLabel,phases,items:allItems,materialTotal,sqft,linearFt,waste,profitPct,taxPct,laborRate,deliveryFee,ccFeePct,paintCoats,selectedPhases,bestPerPhase};
+        r={supplier:supplierLabel,phases,items:allItems,materialTotal,sqft,linearFt,waste,profitPct,taxPct,laborRate,deliveryFee,ccFeePct,paintCoats,selectedPhases,drywallAreas,bestPerPhase};
     }else{
-        const base=calcForSupplier(supplier,sqft,linearFt,waste,selectedPhases,{paintCoats});
-        r={...base,sqft,linearFt,waste,profitPct,taxPct,laborRate,deliveryFee,ccFeePct,paintCoats,selectedPhases};
+        const base=calcForSupplier(supplier,sqft,linearFt,waste,selectedPhases,{paintCoats,drywallAreas});
+        r={...base,sqft,linearFt,waste,profitPct,taxPct,laborRate,deliveryFee,ccFeePct,paintCoats,selectedPhases,drywallAreas};
     }
 
     r.taxAmount=r.materialTotal*(taxPct/100);r.materialPlusTax=r.materialTotal+r.taxAmount;r.laborTotal=laborRate*sqft;r.deliveryTotal=deliveryFee;
@@ -490,7 +574,7 @@ function calculateJob(){
     currentCalc=r;renderCalcResults(r);
 
     // Show comparison if All Suppliers
-    if(isAll){renderComparison(sqft,linearFt,waste,selectedPhases,paintCoats)}else{document.getElementById('comparisonSection').innerHTML=''}
+    if(isAll){renderComparison(sqft,linearFt,waste,selectedPhases,paintCoats,drywallAreas)}else{document.getElementById('comparisonSection').innerHTML=''}
 }
 
 function renderCalcResults(r){
@@ -515,7 +599,7 @@ function renderCalcResults(r){
     document.getElementById('summaryGrid').innerHTML=sg;
 }
 
-function renderComparison(sqft,linearFt,waste,selectedPhases,paintCoats){
+function renderComparison(sqft,linearFt,waste,selectedPhases,paintCoats,drywallAreas){
     // Only include suppliers that actually carry at least one of the selected phases
     const relevantSuppliers=suppliers.filter(s=>{
         const sp=getSupplierPhases(s);
@@ -524,7 +608,7 @@ function renderComparison(sqft,linearFt,waste,selectedPhases,paintCoats){
 
     if(relevantSuppliers.length<2){document.getElementById('comparisonSection').innerHTML='';return}
 
-    const results=relevantSuppliers.map(s=>{const r=calcForSupplier(s,sqft,linearFt,waste,selectedPhases,{paintCoats});return{supplier:s,total:r.materialTotal,phases:r.phases}});
+    const results=relevantSuppliers.map(s=>{const r=calcForSupplier(s,sqft,linearFt,waste,selectedPhases,{paintCoats,drywallAreas});return{supplier:s,total:r.materialTotal,phases:r.phases}});
     // Only consider suppliers with >$0 for "best"
     const nonZero=results.filter(r=>r.total>0);
     const minTotal=nonZero.length?Math.min(...nonZero.map(r=>r.total)):0;
@@ -824,6 +908,9 @@ async function initApp(){
     ['calcSqft','calcWaste','calcProfit','calcTax','calcLabor','calcDelivery','calcCCFee','calcLinearFt'].forEach(id=>{
         const el=document.getElementById(id);if(el)el.addEventListener('input',autoRecalc);
     });
+    // Auto-recalc on drywall area changes (delegated since rows are dynamic)
+    const dwWrap=document.getElementById('drywallAreaRows');
+    if(dwWrap){dwWrap.addEventListener('input',autoRecalc);dwWrap.addEventListener('change',autoRecalc)}
 
     // Track recently used materials
     trackRecentMaterials();
