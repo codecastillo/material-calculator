@@ -1,4 +1,4 @@
-# Stucco Material Calculator
+# Material Calculator
 
 Full-stack material estimating and order management for stucco, stone, drywall, and painting contractors.
 
