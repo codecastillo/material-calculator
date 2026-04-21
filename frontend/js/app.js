@@ -161,6 +161,8 @@ function escAttr(s){return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;'
 function notify(msg,type){const el=document.getElementById('notification');el.textContent=msg;el.className='notification '+(type||'info');setTimeout(()=>el.classList.add('show'),10);setTimeout(()=>el.classList.remove('show'),3000)}
 function openModal(id){document.getElementById(id).classList.add('open')}
 function closeModal(id){document.getElementById(id).classList.remove('open')}
+function toggleUserMenu(){document.getElementById('userBadge').classList.toggle('open')}
+document.addEventListener('click',function(e){const dd=document.getElementById('userBadge');if(dd&&!dd.contains(e.target))dd.classList.remove('open')});
 function toggleTheme(){const c=document.documentElement.getAttribute('data-theme');const n=c==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);localStorage.setItem('stucco_theme',n)}
 
 // ===== NAVIGATION =====
