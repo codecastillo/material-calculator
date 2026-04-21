@@ -219,7 +219,11 @@
         <div class="form-row-3">
             <div class="field" id="optLinearFt" style="display:none"><label>Linear Feet (trim/corners)</label><input type="number" class="input" id="calcLinearFt" placeholder="0" min="0"><span class="hint">Weep screed, corner aid, stone corners</span></div>
             <div class="field" id="optPaintCoats" style="display:none"><label>Paint Coats</label><select class="input" id="calcPaintCoats"><option value="0">N/A</option><option value="1">1 Coat</option><option value="2">2 Coats</option><option value="3">3 Coats</option></select></div>
-            <div class="field" id="optDrywallSize" style="display:none"><label>Drywall Sheet Size</label><select class="input" id="calcDrywallSize"><option value="">N/A</option><option>1/2" 4x8</option><option>1/2" 4x10</option><option>1/2" 4x12</option><option>5/8" 4x8</option><option>5/8" 4x10</option><option>5/8" 4x12</option></select></div>
+        </div>
+        <div id="optDrywallAreas" style="display:none">
+            <label style="font-weight:600;margin-bottom:8px;display:block">Drywall Areas</label>
+            <span class="hint" style="margin-bottom:10px;display:block">Select sheet types and enter sqft for each area. Accessories calculate from total drywall sqft.</span>
+            <div id="drywallAreaRows"></div>
         </div>
     </div>
 
