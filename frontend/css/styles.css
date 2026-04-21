@@ -28,7 +28,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 html{overflow-x:hidden}
 
 /* ===== TOP NAV ===== */
-.topnav{background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;box-shadow:var(--shadow);overflow:hidden}
+.topnav{background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;box-shadow:var(--shadow)}
 .topnav-inner{max-width:1300px;margin:0 auto;display:flex;align-items:center;padding:0 20px;height:56px;gap:16px}
 .topnav-left{flex-shrink:0;display:flex;align-items:center;gap:8px}
 .topnav-brand{display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text)}
