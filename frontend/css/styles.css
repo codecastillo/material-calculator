@@ -409,9 +409,15 @@ tr.drag-over td{border-top:2px solid var(--pri)}
 .login-switch{margin-top:16px;font-size:.84rem;color:var(--text3);text-align:center}
 .login-switch a{color:var(--pri);text-decoration:none;font-weight:500}
 .login-switch a:hover{text-decoration:underline}
-.user-badge{display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--text2);padding:4px 10px;border:1px solid var(--border);border-radius:20px;background:var(--bg2)}
-.user-badge button{background:none;border:none;color:var(--text3);cursor:pointer;font-size:.78rem;margin-left:4px}
-.user-badge button:hover{color:var(--err)}
+.user-dropdown{position:relative}
+.user-dropdown-toggle{display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--text2);padding:4px 12px;border:1px solid var(--border);border-radius:20px;background:var(--bg2);cursor:pointer;font-family:inherit;transition:all .15s}
+.user-dropdown-toggle:hover{color:var(--text);border-color:var(--text3)}
+.user-chevron{transition:transform .2s}
+.user-dropdown.open .user-chevron{transform:rotate(180deg)}
+.user-dropdown-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow2);z-index:200;padding:4px}
+.user-dropdown.open .user-dropdown-menu{display:block}
+.user-dropdown-menu button{display:block;width:100%;text-align:left;padding:8px 14px;background:none;border:none;color:var(--text2);font-size:.82rem;font-family:inherit;cursor:pointer;border-radius:6px;transition:all .15s}
+.user-dropdown-menu button:hover{background:var(--err-soft);color:var(--err)}
 
 /* ===== ACCOUNT PAGE ===== */
 .account-card{display:flex;align-items:center;gap:18px;padding:28px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:20px;box-shadow:var(--shadow)}
