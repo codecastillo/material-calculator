@@ -200,9 +200,8 @@
 
     <div class="calc-section">
         <h3 class="calc-section-title">Job Details</h3>
-        <div class="form-row-4">
+        <div class="form-row-3">
             <div class="field"><label>Supplier</label><select class="input" id="calcSupplier" onchange="renderPhaseCheckboxes()"></select></div>
-            <div class="field"><label>Wall Area (sqft)</label><input type="number" class="input input-big" id="calcSqft" placeholder="0" min="0"></div>
             <div class="field"><label>Waste %</label><input type="number" class="input" id="calcWaste" value="10" min="0" max="50"></div>
             <div class="field"><label>Markup %</label><input type="number" class="input" id="calcProfit" value="20" min="0" max="300"></div>
         </div>
@@ -213,18 +212,32 @@
         <div class="phase-selector" id="phaseCheckboxes"></div>
     </div>
 
-    <!-- Phase-specific options -->
-    <div class="calc-section hidden" id="phaseOptions">
-        <h3 class="calc-section-title">Phase Options</h3>
-        <div class="form-row-3">
-            <div class="field" id="optLinearFt" style="display:none"><label>Linear Feet (trim/corners)</label><input type="number" class="input" id="calcLinearFt" placeholder="0" min="0"><span class="hint">Weep screed, corner aid, stone corners</span></div>
-            <div class="field" id="optPaintCoats" style="display:none"><label>Paint Coats</label><select class="input" id="calcPaintCoats"><option value="0">N/A</option><option value="1">1 Coat</option><option value="2">2 Coats</option><option value="3">3 Coats</option></select></div>
+    <!-- Per-scope dimensions -->
+    <div class="calc-section hidden" id="optStucco">
+        <h3 class="calc-section-title">Stucco Dimensions</h3>
+        <div class="form-row-2">
+            <div class="field"><label>Wall Area (sqft)</label><input type="number" class="input" id="calcStuccoSqft" placeholder="0" min="0"></div>
+            <div class="field"><label>Linear Feet (trim/corners)</label><input type="number" class="input" id="calcStuccoLinearFt" placeholder="0" min="0"><span class="hint">Weep screed, corner aid, casing bead</span></div>
         </div>
-        <div id="optDrywallAreas" style="display:none">
-            <label style="font-weight:600;margin-bottom:8px;display:block">Drywall Areas</label>
-            <span class="hint" style="margin-bottom:10px;display:block">Add areas with their sheet type and dimensions. Accessories calculate from total sqft.</span>
-            <div id="drywallAreaRows"></div>
-            <button type="button" class="btn btn-secondary btn-sm" onclick="addDrywallArea()" style="margin-top:8px">+ Add Area</button>
+    </div>
+    <div class="calc-section hidden" id="optStone">
+        <h3 class="calc-section-title">Stone Dimensions</h3>
+        <div class="form-row-2">
+            <div class="field"><label>Stone Area (sqft)</label><input type="number" class="input" id="calcStoneSqft" placeholder="0" min="0"></div>
+            <div class="field"><label>Linear Feet (corners)</label><input type="number" class="input" id="calcStoneLinearFt" placeholder="0" min="0"><span class="hint">Stone corners</span></div>
+        </div>
+    </div>
+    <div class="calc-section hidden" id="optDrywall">
+        <h3 class="calc-section-title">Drywall Areas</h3>
+        <span class="hint" style="margin-bottom:10px;display:block">Add areas with their sheet type and dimensions. Accessories calculate from total sqft.</span>
+        <div id="drywallAreaRows"></div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="addDrywallArea()" style="margin-top:8px">+ Add Area</button>
+    </div>
+    <div class="calc-section hidden" id="optPainting">
+        <h3 class="calc-section-title">Painting Dimensions</h3>
+        <div class="form-row-2">
+            <div class="field"><label>Paint Area (sqft)</label><input type="number" class="input" id="calcPaintSqft" placeholder="0" min="0"></div>
+            <div class="field"><label>Paint Coats</label><select class="input" id="calcPaintCoats"><option value="1">1 Coat</option><option value="2">2 Coats</option><option value="3">3 Coats</option></select></div>
         </div>
     </div>
 
