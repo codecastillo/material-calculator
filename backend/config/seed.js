@@ -6,15 +6,18 @@ async function seed() {
   console.log('Seeding Supabase database...\n');
 
   // 1. Create default user
-  const hash = bcrypt.hashSync('password123', 10);
-  const { data: existingUser } = await supabase.from('users').select('id').eq('email', 'admin@example.com').single();
+  const seedPassword = process.env.SEED_ADMIN_PASSWORD;
+  if (!seedPassword) { console.error('Set SEED_ADMIN_PASSWORD env var before seeding'); return; }
+  const hash = bcrypt.hashSync(seedPassword, 10);
+  const seedEmail = process.env.SEED_ADMIN_EMAIL || 'admin@example.com';
+  const { data: existingUser } = await supabase.from('users').select('id').eq('email', seedEmail).single();
 
   let userId;
   if (existingUser) {
     userId = existingUser.id;
     console.log(`[Users] User already exists (id=${userId})`);
   } else {
-    const { data: newUser, error } = await supabase.from('users').insert({ email: 'admin@example.com', password_hash: hash, name: 'Admin' }).select('id').single();
+    const { data: newUser, error } = await supabase.from('users').insert({ email: seedEmail, password_hash: hash, name: 'Admin' }).select('id').single();
     if (error) { console.error('User create error:', error.message); return; }
     userId = newUser.id;
     console.log(`[Users] Created admin (id=${userId})`);

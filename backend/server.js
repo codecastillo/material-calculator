@@ -34,7 +34,17 @@ const PORT = process.env.PORT || 3000;
 
 // Security headers
 app.use(helmet({
-  contentSecurityPolicy: false // Disable CSP for serving frontend
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:"],
+      connectSrc: ["'self'"],
+      manifestSrc: ["'self'"]
+    }
+  }
 }));
 
 // CORS
@@ -63,6 +73,8 @@ const authLimiter = rateLimit({
 });
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
+app.use('/api/auth/reset-password', authLimiter);
 
 // Body parsing
 app.use(express.json({ limit: '1mb' }));

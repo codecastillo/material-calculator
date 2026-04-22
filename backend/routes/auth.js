@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const supabase = require('../config/database');
 const { authenticate } = require('../middleware/auth');
 const { Resend } = require('resend');
@@ -9,15 +10,12 @@ const { Resend } = require('resend');
 const JWT_SECRET = process.env.JWT_SECRET || 'change-this';
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-function generateToken(user) { return jwt.sign({ id: user.id, email: user.email, name: user.name, role: user.role || 'user' }, JWT_SECRET, { expiresIn: '7d' }); }
+function generateToken(user) { return jwt.sign({ id: user.id, email: user.email, name: user.name, role: user.role || 'user' }, JWT_SECRET, { expiresIn: '24h' }); }
 
-function generateCode() { return Math.floor(100000 + Math.random() * 900000).toString(); }
+function generateCode() { return crypto.randomInt(100000, 999999).toString(); }
 
 function generateReferralCode() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let code = 'REF-';
-  for (let i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
-  return code;
+  return 'REF-' + crypto.randomBytes(4).toString('hex').toUpperCase();
 }
 
 async function sendVerificationEmail(email, code) {
@@ -70,7 +68,7 @@ router.post('/register', async (req, res, next) => {
   try {
     const { email, password, name } = req.body;
     if (!email || !password || !name) return res.status(400).json({ error: 'Email, password, and name are required' });
-    if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    if (password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) return res.status(400).json({ error: 'Password must be at least 8 characters with an uppercase letter and a number' });
     const { data: existing } = await supabase.from('users').select('id').eq('email', email).single();
     if (existing) return res.status(409).json({ error: 'Email already registered' });
 
@@ -190,7 +188,7 @@ router.put('/profile', authenticate, async (req, res, next) => {
       updates.email = req.body.email;
     }
     if (req.body.password) {
-      if (req.body.password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+      if (req.body.password.length < 8 || !/[A-Z]/.test(req.body.password) || !/[0-9]/.test(req.body.password)) return res.status(400).json({ error: 'Password must be at least 8 characters with an uppercase letter and a number' });
       updates.password_hash = bcrypt.hashSync(req.body.password, 10);
     }
     if (!Object.keys(updates).length) return res.status(400).json({ error: 'Nothing to update' });
@@ -286,7 +284,7 @@ router.post('/reset-password', async (req, res, next) => {
   try {
     const { email, code, password } = req.body;
     if (!email || !code || !password) return res.status(400).json({ error: 'Email, code, and new password are required' });
-    if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    if (password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) return res.status(400).json({ error: 'Password must be at least 8 characters with an uppercase letter and a number' });
 
     const { data: user } = await supabase.from('users').select('id').eq('email', email.trim().toLowerCase()).single();
     if (!user) return res.status(400).json({ error: 'Invalid email or code' });
