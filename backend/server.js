@@ -38,10 +38,12 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'"],
+      scriptSrcAttr: ["'none'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:"],
-      connectSrc: ["'self'"],
+      // SW fetches Google Fonts CSS/woff2 — both endpoints need to be allowed.
+      connectSrc: ["'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com"],
       manifestSrc: ["'self'"]
     }
   }
@@ -63,10 +65,11 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Stricter rate limit for auth endpoints
+// Stricter rate limit for auth endpoints. Production is tight (anti-bruteforce);
+// development is lenient since dev iterations hit login often.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: process.env.NODE_ENV === 'production' ? 20 : 200,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many auth attempts, please try again later' }
@@ -153,3 +156,4 @@ process.on('SIGTERM', () => {
 });
 
 module.exports = app;
+// redeploy 1779148342
