@@ -1,7 +1,0 @@
-# Pin Node to 22 so better-sqlite3 finds prebuilt binaries (no native compile).
-# Don't add python3/gcc/gnumake here — they're huge and blow out the build
-# disk (~695 MB), and they're unnecessary since better-sqlite3 ships
-# prebuilt binaries for Node 22.
-
-[variables]
-NIXPACKS_NODE_VERSION = "22"
