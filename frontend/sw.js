@@ -1,7 +1,18 @@
-const CACHE_NAME = 'esticount-v7';
+const CACHE_NAME = 'esticount-v15';
 const APP_SHELL = [
   '/index.html',
   '/css/styles.css',
+  '/css/dashboard-v2.css',
+  '/css/pricing-v2.css',
+  '/css/orders-v2.css',
+  '/css/jobs-v2.css',
+  '/css/admin-v2.css',
+  '/css/login-v2.css',
+  '/css/account-v2.css',
+  '/css/mobile-v2.css',
+  '/js/handlers.js',
+  '/js/ui-handlers.js',
+  '/js/sw-register.js',
   '/js/app.js',
   '/js/api.js',
   '/assets/logo.png'
@@ -55,24 +66,39 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Cache-first for static assets
-  event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-      return fetch(event.request).then(response => {
-        // Cache successful responses for same-origin requests
+  // Network-first for HTML, CSS, and JS so style/script updates propagate immediately.
+  // Cache-first for everything else (images, fonts, etc.).
+  const isFreshFirst = /\.(css|js|html)$/.test(url.pathname) || event.request.mode === 'navigate';
+
+  if (isFreshFirst) {
+    event.respondWith(
+      fetch(event.request).then(response => {
         if (response.ok && url.origin === self.location.origin) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         }
         return response;
-      }).catch(() => {
-        // Offline fallback: serve index.html for navigation requests
-        if (event.request.mode === 'navigate') {
-          return caches.match('/index.html');
+      }).catch(() =>
+        caches.match(event.request).then(cached => {
+          if (cached) return cached;
+          if (event.request.mode === 'navigate') return caches.match('/index.html');
+          return new Response('Offline', { status: 503 });
+        })
+      )
+    );
+    return;
+  }
+
+  event.respondWith(
+    caches.match(event.request).then(cached => {
+      if (cached) return cached;
+      return fetch(event.request).then(response => {
+        if (response.ok && url.origin === self.location.origin) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         }
-        return new Response('Offline', { status: 503 });
-      });
+        return response;
+      }).catch(() => new Response('Offline', { status: 503 }));
     })
   );
 });

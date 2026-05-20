@@ -1,0 +1,345 @@
+/* account-v2 — page-scoped redesign.
+ * Tokens declared in styles.css (--v2-*). New classes prefixed account-v2-.
+ * Pairs visually with admin-v2 (dense, utilitarian) and login-v2 (form-heavy).
+ */
+
+/* ===== Page wrapper ===== */
+#accountPage.account-v2-page{
+    padding:24px 40px 64px;
+    max-width:1440px;
+    margin:0 auto;
+    font-family:var(--v2-font-sans);
+    color:var(--v2-text-primary);
+    font-size:14px;
+    line-height:1.45;
+}
+#accountPage.account-v2-page *{font-variant-numeric:tabular-nums}
+body:has(#accountPage.account-v2-page.active){background:var(--v2-bg-app)}
+
+/* ===== Header zone ===== */
+.account-v2-header{
+    display:flex;align-items:flex-start;justify-content:space-between;
+    gap:24px;padding-bottom:20px;margin-bottom:20px;
+    border-bottom:1px solid var(--v2-border-hairline);
+}
+.account-v2-header-left{display:flex;flex-direction:column;min-width:0}
+.account-v2-eyebrow{
+    font-family:var(--v2-font-mono);font-size:.7rem;font-weight:400;
+    color:var(--v2-text-tertiary);
+    letter-spacing:.10em;text-transform:uppercase;
+    margin-bottom:8px;
+}
+.account-v2-eyebrow .sep{margin:0 8px;color:var(--v2-text-muted)}
+.account-v2-title{
+    font-family:var(--v2-font-serif);font-weight:500;
+    font-size:2rem;line-height:1.05;
+    letter-spacing:-.005em;color:var(--v2-text-primary);
+    margin:0 0 6px;
+}
+.account-v2-subtitle{
+    font-family:var(--v2-font-sans);font-size:.88rem;font-weight:400;
+    color:var(--v2-text-secondary);
+}
+.account-v2-header-right{
+    display:flex;align-items:center;gap:16px;flex-shrink:0;padding-top:24px;
+}
+.account-v2-status-pill{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:4px 10px 4px 8px;
+    background:var(--v2-badge-surface-neutral);
+    border:1px solid var(--v2-border-hairline);
+    border-radius:var(--v2-r-pill);
+    font-family:var(--v2-font-sans);font-size:.75rem;font-weight:500;
+    color:var(--v2-text-primary);
+    line-height:1;
+}
+.account-v2-status-pill::before{
+    content:"";width:.5em;height:.5em;border-radius:999px;
+    background:var(--v2-text-muted);
+}
+.account-v2-status-pill.is-active::before{background:var(--v2-status-dot-green)}
+.account-v2-status-pill.is-trial::before{background:var(--v2-status-dot-amber)}
+.account-v2-status-pill.is-expired::before{background:#c75050}
+.account-v2-status-pill.is-none::before{background:var(--v2-text-muted)}
+
+/* ===== Two-column body ===== */
+.account-v2-body{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 360px;
+    gap:28px;
+    align-items:start;
+}
+.account-v2-main{display:flex;flex-direction:column;gap:16px;min-width:0}
+.account-v2-rail{display:flex;flex-direction:column;gap:16px;min-width:0}
+
+/* ===== Shared card chrome ===== */
+.account-v2-card{
+    background:var(--v2-bg-surface);
+    border:1px solid var(--v2-border-hairline);
+    border-radius:var(--v2-r-card);
+    padding:24px;
+}
+.account-v2-card-eyebrow{
+    font-family:var(--v2-font-mono);font-size:.7rem;font-weight:400;
+    color:var(--v2-text-tertiary);
+    letter-spacing:.10em;text-transform:uppercase;
+    margin-bottom:16px;
+    display:flex;align-items:baseline;justify-content:space-between;gap:16px;
+}
+.account-v2-card-eyebrow .meta{
+    font-family:var(--v2-font-sans);font-size:.78rem;font-weight:400;
+    letter-spacing:0;text-transform:none;
+    color:var(--v2-text-tertiary);
+}
+
+/* ===== Identity (avatar + name + email) ===== */
+.account-v2-identity{
+    display:flex;align-items:center;gap:20px;
+    padding:24px;
+    background:var(--v2-bg-surface);
+    border:1px solid var(--v2-border-hairline);
+    border-radius:var(--v2-r-card);
+}
+.account-v2-avatar{
+    width:72px;height:72px;flex-shrink:0;border-radius:50%;
+    display:inline-flex;align-items:center;justify-content:center;
+    font-family:var(--v2-font-sans);font-size:1.5rem;font-weight:600;
+    color:#fff;
+    background:var(--v2-accent);
+    /* color is overridden inline with style="background:#..." for per-user pastels */
+}
+.account-v2-identity-meta{display:flex;flex-direction:column;min-width:0;gap:4px}
+.account-v2-identity-name{
+    font-family:var(--v2-font-serif);font-weight:500;
+    font-size:1.6rem;line-height:1.1;letter-spacing:-.005em;
+    color:var(--v2-text-primary);
+    margin:0;
+    overflow:hidden;text-overflow:ellipsis;
+}
+.account-v2-identity-email{
+    font-family:var(--v2-font-sans);font-size:.88rem;font-weight:400;
+    color:var(--v2-text-secondary);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.account-v2-identity-role{
+    font-family:var(--v2-font-mono);font-size:.7rem;font-weight:400;
+    color:var(--v2-text-tertiary);
+    letter-spacing:.10em;text-transform:uppercase;
+    margin-top:2px;
+}
+.account-v2-identity-role .sep{margin:0 6px;color:var(--v2-text-muted)}
+
+/* ===== Form fields (Profile) ===== */
+.account-v2-form{display:flex;flex-direction:column;gap:16px}
+.account-v2-form-row{
+    display:grid;grid-template-columns:1fr 1fr;gap:16px;
+}
+.account-v2-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.account-v2-field label{
+    font-family:var(--v2-font-mono);font-size:.7rem;font-weight:400;
+    color:var(--v2-text-tertiary);
+    letter-spacing:.10em;text-transform:uppercase;
+}
+.account-v2-input{
+    height:44px;padding:0 14px;
+    background:var(--v2-bg-surface-2);
+    border:1px solid var(--v2-border-hairline);
+    border-radius:var(--v2-r-input);
+    color:var(--v2-text-primary);
+    font-family:var(--v2-font-sans);font-size:.95rem;font-weight:400;
+    line-height:1;outline:none;
+    transition:border-color 120ms ease;
+    width:100%;
+    box-sizing:border-box;
+}
+.account-v2-input::placeholder{color:var(--v2-text-tertiary)}
+.account-v2-input:focus{border-color:var(--v2-accent)}
+textarea.account-v2-input{
+    height:auto;min-height:60px;padding:10px 14px;
+    line-height:1.45;resize:vertical;
+    font-family:var(--v2-font-sans);
+}
+.account-v2-input.is-mono{
+    font-family:var(--v2-font-mono);font-size:.95rem;font-weight:500;
+    letter-spacing:.05em;text-transform:uppercase;
+}
+.account-v2-input.is-mono::placeholder{text-transform:none;letter-spacing:0}
+.account-v2-hint{
+    font-family:var(--v2-font-sans);font-size:.78rem;font-weight:400;
+    color:var(--v2-text-tertiary);
+    margin-top:-2px;
+}
+
+/* ===== Form action row ===== */
+.account-v2-form-actions{
+    display:flex;align-items:center;gap:16px;margin-top:8px;
+}
+.account-v2-cta{
+    display:inline-flex;align-items:center;gap:6px;
+    height:40px;padding:0 20px;
+    border:none;border-radius:var(--v2-r-button);
+    background:var(--v2-accent);color:#fff;
+    font-family:var(--v2-font-sans);font-size:.92rem;font-weight:600;
+    cursor:pointer;line-height:1;
+    transition:background 120ms ease,box-shadow 120ms ease;
+}
+.account-v2-cta:hover{background:var(--v2-accent-hover);box-shadow:0 0 0 4px rgba(68,147,248,.10)}
+.account-v2-cta .arr{font-weight:400}
+.account-v2-cta-secondary{
+    display:inline-flex;align-items:center;gap:6px;
+    height:40px;padding:0 18px;
+    background:var(--v2-bg-surface-2);
+    border:1px solid var(--v2-border-hairline);
+    border-radius:var(--v2-r-button);
+    color:var(--v2-text-primary);
+    font-family:var(--v2-font-sans);font-size:.92rem;font-weight:500;
+    cursor:pointer;line-height:1;
+    transition:background 120ms ease,border-color 120ms ease;
+}
+.account-v2-cta-secondary:hover{background:var(--v2-bg-surface-hover);border-color:var(--v2-border-strong)}
+.account-v2-form-message{
+    font-family:var(--v2-font-sans);font-size:.82rem;font-weight:500;
+    color:var(--v2-text-secondary);
+    transition:color 120ms ease;
+}
+.account-v2-form-message.is-ok{color:var(--v2-status-dot-green)}
+.account-v2-form-message.is-err{color:#e08a8a}
+.account-v2-form-message.is-muted{color:var(--v2-text-tertiary)}
+
+/* ===== License Status card ===== */
+.account-v2-license{
+    display:flex;flex-direction:column;gap:16px;
+}
+.account-v2-license-row{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    flex-wrap:wrap;
+}
+.account-v2-license-state{
+    display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+}
+.account-v2-license-type{
+    font-family:var(--v2-font-serif);font-weight:500;
+    font-size:1.8rem;line-height:1;letter-spacing:-.005em;
+    color:var(--v2-text-primary);
+    text-transform:capitalize;
+}
+.account-v2-license-type.is-none{color:var(--v2-text-secondary)}
+.account-v2-license-type.is-expired{color:#c75050}
+.account-v2-license-type.is-trial{color:var(--v2-accent)}
+.account-v2-license-type.is-lifetime{color:var(--v2-status-dot-green)}
+.account-v2-license-type.is-monthly,
+.account-v2-license-type.is-yearly{color:var(--v2-accent)}
+.account-v2-license-sub{
+    font-family:var(--v2-font-sans);font-size:.85rem;font-weight:400;
+    color:var(--v2-text-secondary);
+}
+.account-v2-license-meta{
+    display:grid;grid-template-columns:repeat(3,1fr);
+    gap:0;
+    background:var(--v2-bg-surface);
+    border:1px solid var(--v2-border-hairline);
+    border-radius:var(--v2-r-inner);
+    overflow:hidden;
+}
+.account-v2-license-meta-cell{
+    padding:14px 16px;display:flex;flex-direction:column;gap:6px;min-width:0;
+}
+.account-v2-license-meta-cell + .account-v2-license-meta-cell{
+    border-left:1px solid var(--v2-border-hairline);
+}
+.account-v2-license-meta-label{
+    font-family:var(--v2-font-mono);font-size:.7rem;font-weight:400;
+    color:var(--v2-text-tertiary);
+    letter-spacing:.10em;text-transform:uppercase;
+}
+.account-v2-license-meta-value{
+    font-family:var(--v2-font-mono);font-size:.92rem;font-weight:500;
+    color:var(--v2-text-primary);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.account-v2-license-meta-value.is-muted{color:var(--v2-text-tertiary);font-style:italic}
+
+/* ===== Activate card ===== */
+.account-v2-activate-row{
+    display:flex;gap:8px;align-items:stretch;
+}
+.account-v2-activate-row .account-v2-input{flex:1;min-width:0}
+.account-v2-activate-row .account-v2-cta{flex-shrink:0;height:44px}
+.account-v2-message{
+    margin-top:12px;padding:12px 14px;border-radius:var(--v2-r-input);
+    font-family:var(--v2-font-sans);font-size:.85rem;font-weight:400;
+    border:1px solid var(--v2-border-hairline);
+    background:var(--v2-bg-surface-2);
+    color:var(--v2-text-secondary);
+    display:none;
+}
+.account-v2-message.is-shown{display:block}
+.account-v2-message.is-ok{
+    color:var(--v2-status-dot-green);
+    border-color:rgba(93,207,138,.25);
+    background:rgba(93,207,138,.07);
+}
+.account-v2-message.is-err{
+    color:#e08a8a;
+    border-color:rgba(199,80,80,.30);
+    background:rgba(199,80,80,.08);
+}
+
+/* ===== Rail cards ===== */
+.account-v2-stat{
+    display:flex;justify-content:space-between;align-items:baseline;
+    padding:12px 0;
+    border-bottom:1px solid var(--v2-border-hairline);
+}
+.account-v2-stat:last-child{border-bottom:none}
+.account-v2-stat-label{
+    font-family:var(--v2-font-sans);font-size:.88rem;font-weight:400;
+    color:var(--v2-text-secondary);
+}
+.account-v2-stat-value{
+    font-family:var(--v2-font-mono);font-size:.95rem;font-weight:500;
+    color:var(--v2-text-primary);
+}
+.account-v2-stat-value.is-display{
+    font-family:var(--v2-font-serif);font-size:1.4rem;font-weight:500;
+    line-height:1;letter-spacing:-.005em;
+}
+
+.account-v2-help-line{
+    font-family:var(--v2-font-sans);font-size:.85rem;font-weight:400;
+    color:var(--v2-text-secondary);
+    line-height:1.55;
+    margin-bottom:12px;
+}
+.account-v2-help-line:last-child{margin-bottom:0}
+.account-v2-help-link{
+    color:var(--v2-accent);font-weight:500;text-decoration:none;
+}
+.account-v2-help-link:hover{color:var(--v2-accent-hover);text-decoration:underline}
+.account-v2-help-meta{
+    font-family:var(--v2-font-mono);font-size:.78rem;font-weight:400;
+    color:var(--v2-text-tertiary);
+    letter-spacing:.05em;
+    margin-top:12px;
+    padding-top:12px;
+    border-top:1px solid var(--v2-border-hairline);
+}
+
+/* ===== Mobile collapse ===== */
+@media (max-width:1024px){
+    .account-v2-body{grid-template-columns:1fr}
+}
+@media (max-width:768px){
+    #accountPage.account-v2-page{padding:20px 16px 72px}
+    .account-v2-header{flex-direction:column;align-items:flex-start;gap:12px}
+    .account-v2-header-right{padding-top:0}
+    .account-v2-title{font-size:1.7rem}
+    .account-v2-form-row{grid-template-columns:1fr}
+    .account-v2-identity{flex-direction:column;align-items:flex-start;text-align:left}
+    .account-v2-license-meta{grid-template-columns:1fr;}
+    .account-v2-license-meta-cell + .account-v2-license-meta-cell{
+        border-left:none;border-top:1px solid var(--v2-border-hairline);
+    }
+    .account-v2-activate-row{flex-direction:column}
+    .account-v2-activate-row .account-v2-cta{width:100%;justify-content:center}
+}

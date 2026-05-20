@@ -1,0 +1,10 @@
+# Pin Node to 22 so better-sqlite3 finds prebuilt binaries (no native compile).
+# Also provide python3 + gcc + gnumake so if a prebuild is ever missing the
+# gyp fallback can build without crashing on missing Python (see Railway
+# deploy logs: "find Python ... You need to install the latest version of Python.").
+
+[variables]
+NIXPACKS_NODE_VERSION = "22"
+
+[phases.setup]
+nixPkgs = ["nodejs_22", "python3", "gcc", "gnumake"]

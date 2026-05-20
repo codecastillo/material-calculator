@@ -1,0 +1,538 @@
+/* dashboard-v2 — page-scoped redesign. See docs/calc-redesign/pages-spec.md §1
+   Owns: #dashboardPage. All new classes prefixed with `dash-v2-`.
+   Tokens (--v2-*) and chip palette (.v2-chip.*) are inherited from styles.css. */
+
+/* Paint the app surface to match the v2 background when dashboard is the
+   visible page (mirrors how calc-v2 does it). */
+body:has(.dash-v2-page.active) { background: var(--v2-bg-app); }
+
+/* ============================================================ */
+/* 1. Page shell                                                 */
+/* ============================================================ */
+
+.dash-v2-page {
+    color: var(--v2-text-primary);
+    font-family: var(--v2-font-sans);
+    padding: var(--v2-s6) 0 64px;
+    max-width: 1440px;
+    margin: 0 auto;
+}
+
+.dash-v2-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 380px;
+    gap: var(--v2-s8);
+    align-items: start;
+}
+
+/* ============================================================ */
+/* 2. Header                                                     */
+/* ============================================================ */
+
+.dash-v2-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--v2-s6);
+}
+.dash-v2-header-left { min-width: 0; }
+
+.dash-v2-eyebrow {
+    font-family: var(--v2-font-mono);
+    font-size: .7rem;
+    letter-spacing: .10em;
+    text-transform: uppercase;
+    color: var(--v2-text-tertiary);
+    display: inline-flex;
+    gap: var(--v2-s2);
+    align-items: center;
+    margin-bottom: 8px;
+}
+.dash-v2-eyebrow-sep { color: var(--v2-text-tertiary); }
+
+.dash-v2-title {
+    font-family: var(--v2-font-serif);
+    font-weight: 500;
+    font-size: 2rem;
+    line-height: 1.05;
+    color: var(--v2-text-primary);
+    letter-spacing: -.005em;
+    margin: 0 0 6px;
+    font-optical-sizing: auto;
+    font-feature-settings: 'tnum' 1, 'ss01' 1;
+}
+
+.dash-v2-subtitle {
+    font-family: var(--v2-font-sans);
+    font-size: .88rem;
+    color: var(--v2-text-secondary);
+    margin: 0;
+    line-height: 1.45;
+}
+.dash-v2-sub-sep { color: var(--v2-text-tertiary); margin: 0 var(--v2-s2); }
+
+.dash-v2-header-right {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--v2-s4);
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.dash-v2-btn {
+    height: 36px;
+    padding: 0 16px;
+    border-radius: var(--v2-r-button);
+    border: 1px solid var(--v2-border-hairline);
+    background: var(--v2-bg-surface-2);
+    color: var(--v2-text-primary);
+    font-family: var(--v2-font-sans);
+    font-size: .88rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1;
+    transition: background .15s, border-color .15s;
+}
+.dash-v2-btn:hover { background: var(--v2-bg-surface-hover); }
+
+.dash-v2-btn-primary {
+    background: var(--v2-accent);
+    color: #fff;
+    border-color: transparent;
+    font-weight: 600;
+}
+.dash-v2-btn-primary:hover { background: var(--v2-accent-hover); }
+
+.dash-v2-btn-glyph {
+    font-family: var(--v2-font-mono);
+    font-size: .9em;
+    opacity: .9;
+}
+
+.dash-v2-divider {
+    border: 0;
+    border-top: 1px solid var(--v2-border-hairline);
+    margin: var(--v2-s5) 0 var(--v2-s5);
+}
+
+/* ============================================================ */
+/* 3. Metric strip (4-up)                                        */
+/* ============================================================ */
+
+.dash-v2-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    background: var(--v2-bg-surface);
+    border: 1px solid var(--v2-border-hairline);
+    border-radius: var(--v2-r-inner);
+    overflow: hidden;
+    margin-bottom: var(--v2-s5);
+}
+.dash-v2-metric {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+.dash-v2-metric + .dash-v2-metric {
+    border-left: 1px solid var(--v2-border-hairline);
+}
+.dash-v2-metric-label {
+    font-family: var(--v2-font-mono);
+    font-size: .7rem;
+    letter-spacing: .10em;
+    text-transform: uppercase;
+    color: var(--v2-text-tertiary);
+}
+.dash-v2-metric-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+.dash-v2-metric-num {
+    font-family: var(--v2-font-mono);
+    font-size: 1.6rem;
+    font-weight: 500;
+    color: var(--v2-text-primary);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+.dash-v2-metric-unit {
+    font-family: var(--v2-font-mono);
+    font-size: .65rem;
+    color: var(--v2-text-tertiary);
+    letter-spacing: .04em;
+    text-transform: lowercase;
+}
+.dash-v2-metric-trend {
+    margin-top: 8px;
+    font-family: var(--v2-font-sans);
+    font-size: .78rem;
+    color: var(--v2-text-secondary);
+    line-height: 1.3;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.dash-v2-metric-trend.is-positive .dash-v2-trend-arrow { color: var(--v2-accent); }
+.dash-v2-trend-arrow {
+    color: var(--v2-text-secondary);
+    font-family: var(--v2-font-mono);
+    font-size: .8rem;
+}
+
+/* Amber-tinted variant for the stale-prices metric (active when >0). */
+.dash-v2-metric--warn .dash-v2-metric-num { color: var(--v2-warn, var(--v2-accent)); }
+.dash-v2-metric--warn .dash-v2-metric-label { color: var(--v2-warn, var(--v2-accent)); }
+
+/* ============================================================ */
+/* 4. Section heading row (eyebrow + title + meta)               */
+/* ============================================================ */
+
+.dash-v2-section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--v2-s4);
+    padding: 0 4px;
+    margin: 0 0 var(--v2-s3);
+}
+.dash-v2-section-head-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.dash-v2-section-eyebrow {
+    font-family: var(--v2-font-mono);
+    font-size: .7rem;
+    letter-spacing: .10em;
+    text-transform: uppercase;
+    color: var(--v2-text-tertiary);
+}
+.dash-v2-section-title {
+    font-family: var(--v2-font-sans);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--v2-text-primary);
+    margin: 0;
+}
+.dash-v2-section-head-right {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--v2-s3);
+    font-family: var(--v2-font-mono);
+    font-size: .7rem;
+    letter-spacing: .10em;
+    text-transform: uppercase;
+    color: var(--v2-text-tertiary);
+}
+.dash-v2-section-link {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-family: var(--v2-font-sans);
+    font-size: .85rem;
+    font-weight: 500;
+    color: var(--v2-text-secondary);
+    letter-spacing: 0;
+    text-transform: none;
+}
+.dash-v2-section-link:hover { color: var(--v2-text-primary); }
+
+/* ============================================================ */
+/* 5. Active estimates table                                     */
+/* ============================================================ */
+
+.dash-v2-jobs-card {
+    background: var(--v2-bg-surface);
+    border: 1px solid var(--v2-border-hairline);
+    border-radius: var(--v2-r-card);
+    overflow: hidden;
+}
+.dash-v2-jobs-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-family: var(--v2-font-sans);
+}
+.dash-v2-jobs-table colgroup col.dash-v2-col-job   { width: 90px; }
+.dash-v2-jobs-table colgroup col.dash-v2-col-phase { width: 160px; }
+.dash-v2-jobs-table colgroup col.dash-v2-col-due   { width: 140px; }
+.dash-v2-jobs-table colgroup col.dash-v2-col-total { width: 96px; }
+.dash-v2-jobs-table colgroup col.dash-v2-col-chev  { width: 28px; }
+
+.dash-v2-jobs-table thead th {
+    text-align: left;
+    padding: 10px 20px;
+    background: var(--v2-bg-surface);
+    border-bottom: 1px solid var(--v2-border-hairline);
+    font-family: var(--v2-font-mono);
+    font-size: .7rem;
+    letter-spacing: .10em;
+    text-transform: uppercase;
+    color: var(--v2-text-tertiary);
+    font-weight: 400;
+}
+.dash-v2-jobs-table thead th.text-right { text-align: right; }
+
+.dash-v2-jobs-table tbody td {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--v2-border-hairline);
+    vertical-align: middle;
+}
+.dash-v2-jobs-table tbody tr:last-child td { border-bottom: none; }
+
+.dash-v2-job-row { cursor: pointer; transition: background .15s; }
+.dash-v2-job-row:hover { background: var(--v2-bg-surface-hover); }
+
+.dash-v2-job-code {
+    font-family: var(--v2-font-mono);
+    font-size: .85rem;
+    color: var(--v2-text-primary);
+    font-variant-numeric: tabular-nums;
+}
+.dash-v2-job-name {
+    font-family: var(--v2-font-sans);
+    font-size: .88rem;
+    font-weight: 600;
+    color: var(--v2-text-primary);
+    line-height: 1.3;
+    /* keep name on one line, ellipsize if needed */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.dash-v2-job-sub {
+    font-family: var(--v2-font-sans);
+    font-size: .78rem;
+    color: var(--v2-text-tertiary);
+    margin-top: 2px;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.dash-v2-job-cell-phase { padding-right: 8px; }
+.dash-v2-job-phase-chips {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+.dash-v2-job-due {
+    text-align: right;
+    white-space: nowrap;
+}
+.dash-v2-job-due-sqft {
+    font-family: var(--v2-font-mono);
+    font-size: .95rem;
+    font-weight: 500;
+    color: var(--v2-text-primary);
+    font-variant-numeric: tabular-nums;
+}
+.dash-v2-job-due-date {
+    font-family: var(--v2-font-mono);
+    font-size: .78rem;
+    color: var(--v2-text-tertiary);
+    margin-left: 8px;
+}
+.dash-v2-job-total {
+    text-align: right;
+    font-family: var(--v2-font-mono);
+    font-size: .95rem;
+    font-weight: 500;
+    color: var(--v2-text-primary);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.dash-v2-job-chev {
+    text-align: right;
+    color: var(--v2-text-tertiary);
+    font-family: var(--v2-font-mono);
+    font-size: 1rem;
+    line-height: 1;
+    padding-left: 0;
+}
+
+.dash-v2-empty {
+    padding: 28px 20px;
+    text-align: center;
+    color: var(--v2-text-tertiary);
+    font-family: var(--v2-font-sans);
+    font-size: .88rem;
+}
+
+/* ============================================================ */
+/* 6. Right rail (Suppliers + Activity)                          */
+/* ============================================================ */
+
+.dash-v2-rail {
+    display: flex;
+    flex-direction: column;
+    gap: var(--v2-s6);
+    min-width: 0;
+}
+
+.dash-v2-card {
+    background: var(--v2-bg-surface);
+    border: 1px solid var(--v2-border-hairline);
+    border-radius: var(--v2-r-card);
+    padding: 20px 24px;
+}
+.dash-v2-card-eyebrow {
+    font-family: var(--v2-font-mono);
+    font-size: .7rem;
+    letter-spacing: .10em;
+    text-transform: uppercase;
+    color: var(--v2-text-tertiary);
+    margin: 0 0 var(--v2-s4);
+}
+
+/* --- Suppliers --- */
+
+.dash-v2-supplier-list {
+    display: flex;
+    flex-direction: column;
+}
+.dash-v2-supplier-row {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--v2-border-hairline);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: none;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    text-align: left;
+    color: inherit;
+    width: 100%;
+    font-family: inherit;
+    transition: opacity .15s;
+}
+.dash-v2-supplier-row:first-child { padding-top: 0; }
+.dash-v2-supplier-row:last-child { border-bottom: none; padding-bottom: 0; }
+.dash-v2-supplier-row:hover { opacity: .82; }
+
+.dash-v2-supplier-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+}
+.dash-v2-supplier-name {
+    font-family: var(--v2-font-sans);
+    font-size: .95rem;
+    font-weight: 600;
+    color: var(--v2-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.dash-v2-supplier-sync {
+    font-family: var(--v2-font-sans);
+    font-size: .78rem;
+    color: var(--v2-text-secondary);
+    white-space: nowrap;
+}
+.dash-v2-supplier-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.dash-v2-supplier-stale {
+    color: var(--v2-warn, var(--v2-accent));
+    font-weight: 500;
+}
+
+/* --- Catalog footer stat (under recent jobs) --- */
+
+.dash-v2-footer-stat {
+    margin-top: var(--v2-s5);
+    padding: 12px 4px 0;
+    font-family: var(--v2-font-sans);
+    font-size: .8rem;
+    color: var(--v2-text-tertiary);
+    text-align: right;
+    line-height: 1.4;
+}
+.dash-v2-footer-num {
+    font-family: var(--v2-font-mono);
+    font-weight: 500;
+    color: var(--v2-text-secondary);
+    font-variant-numeric: tabular-nums;
+    margin: 0 2px;
+}
+
+/* --- Help link at bottom of right rail --- */
+
+.dash-v2-help {
+    margin: 0;
+    padding: 0 4px;
+    font-family: var(--v2-font-sans);
+    font-size: .78rem;
+    color: var(--v2-text-tertiary);
+    line-height: 1.4;
+}
+.dash-v2-help-link {
+    color: var(--v2-text-secondary);
+    text-decoration: none;
+    border-bottom: 1px solid var(--v2-border-hairline);
+    transition: color .15s, border-color .15s;
+}
+.dash-v2-help-link:hover {
+    color: var(--v2-text-primary);
+    border-color: var(--v2-text-secondary);
+}
+
+/* ============================================================ */
+/* 7. Responsive collapses                                       */
+/* ============================================================ */
+
+@media (max-width: 1100px) {
+    .dash-v2-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--v2-s6);
+    }
+}
+
+@media (max-width: 768px) {
+    .dash-v2-page {
+        padding: var(--v2-s5) 0 64px;
+    }
+    .dash-v2-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--v2-s4);
+    }
+    .dash-v2-header-right {
+        justify-content: stretch;
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--v2-s2);
+    }
+    .dash-v2-btn { width: 100%; justify-content: center; }
+    .dash-v2-title { font-size: 1.7rem; }
+
+    .dash-v2-metrics {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .dash-v2-metric + .dash-v2-metric { border-left: 1px solid var(--v2-border-hairline); }
+    .dash-v2-metric:nth-child(odd) { border-left: none; }
+    .dash-v2-metric:nth-child(3),
+    .dash-v2-metric:nth-child(4) { border-top: 1px solid var(--v2-border-hairline); }
+
+    .dash-v2-jobs-table colgroup col.dash-v2-col-job,
+    .dash-v2-jobs-table colgroup col.dash-v2-col-phase { width: 0; }
+    .dash-v2-jobs-table thead th.dash-v2-th-job,
+    .dash-v2-jobs-table thead th.dash-v2-th-phase,
+    .dash-v2-jobs-table tbody td.dash-v2-job-cell-code,
+    .dash-v2-jobs-table tbody td.dash-v2-job-cell-phase { display: none; }
+    .dash-v2-jobs-table thead th,
+    .dash-v2-jobs-table tbody td { padding: 12px 14px; }
+}

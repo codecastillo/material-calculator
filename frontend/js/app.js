@@ -3,6 +3,35 @@ const DEFAULT_CATEGORIES=['Lath','Gray Coat','Color Coat','Stone','Drywall','Pai
 const DEFAULT_SUPPLIERS=['Pacific Supply','ABC Supply','Sherwin Williams'];
 const UNITS=['roll','box','piece','bag','ton','pail','tube','gal','lb','each','bundle','bucket','sheet','sqyd','disc'];
 const CALC_TYPES=['area','linear'];
+const BIZ_EXPENSE_FREQS=['per-job','monthly','annual'];
+
+// Business Expenses (recurring/per-job overhead like QuickBooks, insurance, phone, etc.).
+// Stored in localStorage as { avgJobsPerMonth: N, items: [{id, name, amount, frequency}] }.
+function loadBusinessExpenses(){
+    try{const raw=localStorage.getItem('esticount_business_expenses');if(raw){const o=JSON.parse(raw);return{avgJobsPerMonth:o.avgJobsPerMonth||4,items:Array.isArray(o.items)?o.items:[]}}}catch(_){}
+    return{avgJobsPerMonth:4,items:[]};
+}
+function saveBusinessExpenses(state){
+    localStorage.setItem('esticount_business_expenses',JSON.stringify({avgJobsPerMonth:Number(state.avgJobsPerMonth)||4,items:Array.isArray(state.items)?state.items:[]}));
+}
+// Computes the per-job amortization given the saved state.
+// monthly → divided by avgJobsPerMonth; annual → divided by (avgJobsPerMonth*12);
+// per-job → flat per job.
+function businessExpensePerJob(state){
+    const s=state||loadBusinessExpenses();
+    const jpm=Math.max(1,Number(s.avgJobsPerMonth)||4);
+    let total=0;
+    (s.items||[]).forEach(it=>{
+        const amt=Number(it.amount)||0;
+        if(it.frequency==='per-job')total+=amt;
+        else if(it.frequency==='monthly')total+=amt/jpm;
+        else if(it.frequency==='annual')total+=amt/(jpm*12);
+    });
+    return total;
+}
+window.loadBusinessExpenses=loadBusinessExpenses;
+window.saveBusinessExpenses=saveBusinessExpenses;
+window.businessExpensePerJob=businessExpensePerJob;
 
 // Scope grouping: which broad scope each phase belongs to
 const SCOPE_GROUPS={
@@ -153,10 +182,21 @@ function requireLicense(action){
 }
 const FREE_JOB_LIMIT=3;
 function togglePrintWatermark(show){const el=document.getElementById('printWatermark');if(el)el.classList.toggle('active',show)}
-function printBid(){const showWM=!isLicensed();togglePrintWatermark(showWM);setTimeout(()=>{window.print();togglePrintWatermark(false)},100)}
 
 // Utils
 function genId(){return'mat-'+Date.now()+'-'+Math.random().toString(36).substring(2,7)}
+// Returns the list of categories a material belongs to. Backward-compatible:
+// supports legacy `m.category` (single string), `m.categories` (array), or a
+// comma-separated string in either field. Always returns at least one entry.
+function materialCategories(m){
+    if(!m)return[categories[0]||'Lath'];
+    if(Array.isArray(m.categories)&&m.categories.length)return m.categories;
+    if(typeof m.categories==='string'&&m.categories.trim())return m.categories.split(',').map(s=>s.trim()).filter(Boolean);
+    if(typeof m.category==='string'&&m.category.includes(','))return m.category.split(',').map(s=>s.trim()).filter(Boolean);
+    return[m.category||categories[0]||'Lath'];
+}
+function normSku(s){return(s||'').toString().trim().toLowerCase().replace(/[^a-z0-9]+/g,'')}
+function normName(s){return(s||'').toString().toLowerCase().replace(/[^a-z0-9]+/g,'')}
 function fmt(n){return'$'+Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',')}
 function escHtml(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function escAttr(s){return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/\\/g,'\\\\')}
@@ -168,8 +208,8 @@ document.addEventListener('click',function(e){const dd=document.getElementById('
 function toggleTheme(){const c=document.documentElement.getAttribute('data-theme');const n=c==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);localStorage.setItem('stucco_theme',n)}
 
 // ===== NAVIGATION =====
-const PAGE_TITLES={dashboard:'Dashboard',pricing:'Material Pricing',calculator:'Job Calculator',order:'Order Form',bid:'Bid Summary',savedJobs:'Saved Jobs',admin:'Admin Panel',account:'Account'};
-const PAGES_WITH_BACK=['pricing','calculator','order','bid','savedJobs','admin','account'];
+const PAGE_TITLES={dashboard:'Dashboard',pricing:'Material Pricing',calculator:'Job Calculator',order:'Order Form',savedJobs:'Saved Jobs',admin:'Admin Panel',account:'Account'};
+const PAGES_WITH_BACK=['pricing','order','savedJobs','admin','account'];
 let currentPageId='dashboard';
 
 // Mobile menu
@@ -184,6 +224,7 @@ function showPage(id){
     }
     currentPageId=id;
     localStorage.setItem('esticount_page',id);
+    document.body.setAttribute('data-page',id);
     document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
     document.querySelectorAll('.nav-link').forEach(el=>el.classList.remove('active'));
     document.getElementById(id+'Page').classList.add('active');
@@ -196,7 +237,7 @@ function showPage(id){
     // Init page
     if(id==='dashboard')renderDashboard();
     if(id==='pricing'){renderSupplierTabs();populateCategoryFilter();renderMaterialTable();trackRecentMaterials()}
-    if(id==='calculator'){populateCalcSupplierDropdown();renderPhaseCheckboxes();restorePhaseSelection()}
+    if(id==='calculator'){populateCalcSupplierDropdown();renderPhaseCheckboxes();restorePhaseSelection();if(typeof updateCalcHeader==='function')updateCalcHeader()}
     if(id==='savedJobs')renderSavedJobs();
     if(id==='admin')renderAdminPanel();
     if(id==='account')renderAccountPage();
@@ -204,9 +245,181 @@ function showPage(id){
 function goBack(){pageHistory.pop();const prev=pageHistory[pageHistory.length-1]||'dashboard';showPage(prev)}
 
 // ===== SUPPLIERS =====
-function renderSupplierTabs(){
-    document.getElementById('supplierTabs').innerHTML=suppliers.map(s=>`<button class="supplier-pill${s===activeSupplier?' active':''}" onclick="switchSupplier('${escAttr(s)}')" oncontextmenu="event.preventDefault();confirmDeleteSupplier('${escAttr(s)}')">${escHtml(s)}</button>`).join('')+`<button class="supplier-pill add" onclick="openAddSupplierModal()">+ Supplier</button>`;
+// ===== PRICING v2 helpers =====
+// Pretty short-dollar (used by supplier YTD spend in sidebar)
+function priceV2ShortMoney(n){
+    const v=Number(n||0);
+    if(v>=1000000)return '$'+(v/1000000).toFixed(1).replace(/\.0$/,'')+'M';
+    if(v>=1000)return '$'+(v/1000).toFixed(1).replace(/\.0$/,'')+'k';
+    return '$'+v.toFixed(0);
 }
+// Supplier YTD spend estimate (uses cataloged price * coverage as a rough catalog value)
+function priceV2SupplierSpend(sup){
+    const mats=materialsBySupplier[sup]||[];
+    return mats.reduce((a,m)=>a+(Number(m.pricePerUnit)||0)*(Number(m.coveragePerUnit)||0)/100,0);
+}
+// Per-category counts for active supplier (sidebar filter)
+function priceV2CategoryCounts(){
+    const mats=materialsBySupplier[activeSupplier]||[];
+    const out={};
+    mats.forEach(m=>{out[m.category]=(out[m.category]||0)+1});
+    return out;
+}
+// Persistent multi-select filter state for the sidebar checkboxes.
+// `null` (default) means "All categories"; otherwise an array of selected
+// category names that the table is restricted to.
+window.priceV2FilterState=window.priceV2FilterState||{selected:null,sort:'name-asc',view:'dense'};
+// 30D trend cell content (uses material.previousPrice when present)
+function priceV2Trend(m){
+    if(m.previousPrice==null||!isFinite(m.previousPrice)||m.previousPrice<=0)return{cls:'flat',label:'—'};
+    const delta=(m.pricePerUnit-m.previousPrice)/m.previousPrice*100;
+    if(Math.abs(delta)<0.05)return{cls:'flat',label:'—'};
+    const sign=delta>0?'+':'';
+    const arrow=delta>0?'↑':'↓';
+    const cls=delta>0?'up':'down';
+    return{cls,label:`${arrow} ${sign}${delta.toFixed(1)}%`};
+}
+function priceV2UpdateEyebrow(){
+    const el=document.getElementById('priceV2Slug');if(!el)return;
+    el.textContent=(activeSupplier||'CATALOG').toUpperCase();
+}
+function priceV2UpdateSubtitle(){
+    const mats=materialsBySupplier[activeSupplier]||[];
+    // Find the most recent material update for a rough "last sync" timestamp.
+    const latest=mats.reduce((max,m)=>{const u=m.lastUpdated||0;return u>max?u:max},0);
+    const skuEl=document.getElementById('priceV2SkuCount');
+    const phEl=document.getElementById('priceV2PhaseCount');
+    if(skuEl)skuEl.textContent=`${mats.length} SKU${mats.length===1?'':'s'}`;
+    if(phEl){
+        if(latest){
+            const d=new Date(latest);
+            const sameDay=d.toDateString()===new Date().toDateString();
+            const hh=String(d.getHours()).padStart(2,'0');
+            const mm=String(d.getMinutes()).padStart(2,'0');
+            phEl.textContent=`Last sync ${hh}:${mm}${sameDay?' today':''}`;
+        }else{
+            phEl.textContent='Last sync —';
+        }
+    }
+}
+
+function renderSupplierTabs(){
+    const root=document.getElementById('supplierTabs');if(!root)return;
+    const counts=priceV2CategoryCounts();
+    const allMats=materialsBySupplier[activeSupplier]||[];
+    const filterValue=document.getElementById('categoryFilter')?.value||'All';
+
+    // Supplier rows
+    const supplierRows=suppliers.map(s=>{
+        const mats=materialsBySupplier[s]||[];
+        const isActive=s===activeSupplier;
+        return `<button class="price-v2-supplier-item${isActive?' active':''}" data-on-click="switchSupplier" data-on-contextmenu="confirmDeleteSupplier" data-args="${escAttr(s)}" aria-current="${isActive?'true':'false'}">
+            <span class="price-v2-supplier-row1">
+                <span class="price-v2-supplier-name">${escHtml(s)}</span>
+                <span class="price-v2-supplier-spend">${priceV2ShortMoney(priceV2SupplierSpend(s))}</span>
+            </span>
+            <span class="price-v2-supplier-count">${mats.length} item${mats.length===1?'':'s'}</span>
+        </button>`;
+    }).join('');
+
+    // Filter rows: All + every category present in active supplier.
+    // Spec §2.3: additive multi-select checkboxes — `All categories` is the
+    // first row and checked when the per-category selection is empty.
+    const supplierPhases=getSupplierPhases(activeSupplier);
+    const selected=window.priceV2FilterState.selected;
+    const allChecked=!selected||!selected.length;
+    const filterAll=`<li><label class="price-v2-filter-row">
+        <input type="checkbox" ${allChecked?'checked':''} data-on-change="priceV2ToggleFilterAll">
+        <span class="price-v2-filter-label">All categories</span>
+        <span class="price-v2-filter-count">${allMats.length}</span>
+    </label></li>`;
+    const filterRows=supplierPhases.map(c=>{
+        const n=counts[c]||0;
+        const isChecked=!allChecked&&selected.includes(c);
+        return `<li><label class="price-v2-filter-row">
+            <input type="checkbox" ${isChecked?'checked':''} data-on-change="priceV2ToggleFilter" data-args="${escAttr(c)}">
+            <span class="price-v2-filter-label">${escHtml(c)}</span>
+            <span class="price-v2-filter-count">${n}</span>
+        </label></li>`;
+    }).join('');
+
+    root.innerHTML=`
+        <section class="price-v2-suppliers">
+            <div class="price-v2-eyebrow">SUPPLIERS &middot; ${suppliers.length}</div>
+            <ul class="price-v2-supplier-list">${supplierRows}</ul>
+            <button class="price-v2-add-supplier" data-on-click="openAddSupplierModal">+ Add supplier</button>
+        </section>
+        <section class="price-v2-filter">
+            <div class="price-v2-eyebrow">FILTER</div>
+            <ul class="price-v2-filter-list">${filterAll}${filterRows}</ul>
+        </section>
+        <section class="price-v2-manage">
+            <div class="price-v2-eyebrow">MANAGE</div>
+            <button class="price-v2-add-supplier" data-on-click="openModal" data-args="addCategoryModal">+ Phase</button>
+            <button class="price-v2-add-supplier" data-on-click="openDeleteCategoryModal">&minus; Phase</button>
+            <button class="price-v2-add-supplier" data-on-click="resetToDefaults">Reset to defaults</button>
+        </section>`;
+    priceV2UpdateEyebrow();
+    priceV2UpdateSubtitle();
+}
+// Sidebar filter click — sync the hidden #categoryFilter <select> + re-render table
+function priceV2SetFilter(value){
+    const sel=document.getElementById('categoryFilter');
+    if(!sel)return;
+    if(value!=='All' && !Array.from(sel.options).some(o=>o.value===value)){
+        const opt=document.createElement('option');opt.value=value;opt.textContent=value;sel.appendChild(opt);
+    }
+    sel.value=value;
+    renderMaterialTable();
+}
+// Multi-select filter handlers (spec §2.3 — additive checkboxes).
+function priceV2ToggleFilterAll(){
+    // Toggling "All categories" clears the selection (renders everything).
+    window.priceV2FilterState.selected=null;
+    // Keep the hidden legacy <select> in sync for back-compat.
+    const sel=document.getElementById('categoryFilter');if(sel)sel.value='All';
+    renderMaterialTable();
+}
+function priceV2ToggleFilter(cat){
+    const st=window.priceV2FilterState;
+    if(!st.selected)st.selected=[];
+    const i=st.selected.indexOf(cat);
+    if(i>=0)st.selected.splice(i,1);else st.selected.push(cat);
+    if(!st.selected.length)st.selected=null;
+    // Keep legacy <select> roughly in sync (single value or All).
+    const sel=document.getElementById('categoryFilter');
+    if(sel){
+        if(!st.selected)sel.value='All';
+        else if(st.selected.length===1){
+            if(!Array.from(sel.options).some(o=>o.value===st.selected[0])){
+                const opt=document.createElement('option');opt.value=st.selected[0];opt.textContent=st.selected[0];sel.appendChild(opt);
+            }
+            sel.value=st.selected[0];
+        }else{sel.value='All'}
+    }
+    renderMaterialTable();
+}
+window.priceV2ToggleFilterAll=priceV2ToggleFilterAll;
+window.priceV2ToggleFilter=priceV2ToggleFilter;
+// Toolbar SORT + VIEW handlers (spec §2.5).
+function priceV2SetSort(){
+    const sel=document.getElementById('priceV2Sort');
+    if(!sel)return;
+    window.priceV2FilterState.sort=sel.value;
+    renderMaterialTable();
+}
+function priceV2SetView(mode){
+    if(mode!=='dense'&&mode!=='comfortable')mode='dense';
+    window.priceV2FilterState.view=mode;
+    const d=document.getElementById('priceV2ViewDense');
+    const c=document.getElementById('priceV2ViewComfy');
+    if(d)d.classList.toggle('active',mode==='dense');
+    if(c)c.classList.toggle('active',mode==='comfortable');
+    const wrap=document.querySelector('.price-v2-table-wrap');
+    if(wrap)wrap.classList.toggle('comfortable',mode==='comfortable');
+}
+window.priceV2SetSort=priceV2SetSort;
+window.priceV2SetView=priceV2SetView;
 function switchSupplier(name){activeSupplier=name;editingId=null;renderSupplierTabs();populateCategoryFilter();renderMaterialTable()}
 function openAddSupplierModal(){document.getElementById('newSupplierName').value='';openModal('addSupplierModal')}
 async function addSupplier(){const name=document.getElementById('newSupplierName').value.trim();if(!name){notify('Enter name','error');return}if(suppliers.includes(name)){notify('Already exists','error');return}pushUndo();suppliers.push(name);materialsBySupplier[name]=[];activeSupplier=name;
@@ -246,56 +459,215 @@ function isStale(mat){if(!mat.lastUpdated)return true;return(Date.now()-mat.last
 function getScopeForPhase(phase){for(const[scope,phases]of Object.entries(SCOPE_GROUPS)){if(phases.includes(phase))return scope}return phase}
 
 function renderMaterialTable(){
-    const filter=document.getElementById('categoryFilter').value;
-    const search=(document.getElementById('materialSearch').value||'').toLowerCase();
-    let mats=materialsBySupplier[activeSupplier]||[];
-    if(filter!=='All')mats=mats.filter(m=>m.category===filter);
+    const search=(document.getElementById('materialSearch')?.value||'').toLowerCase();
+    let all=materialsBySupplier[activeSupplier]||[];
+    let mats=all.slice();
+    // Multi-select sidebar filter (spec §2.3). `selected==null` = All.
+    const selected=window.priceV2FilterState&&window.priceV2FilterState.selected;
+    if(selected&&selected.length)mats=mats.filter(m=>selected.includes(m.category));
     if(search)mats=mats.filter(m=>m.name.toLowerCase().includes(search)||m.sku.toLowerCase().includes(search));
-    const container=document.getElementById('scopeGroups');
+    // Apply sort from toolbar dropdown (spec §2.5).
+    const sortKey=(window.priceV2FilterState&&window.priceV2FilterState.sort)||'name-asc';
+    const trendPct=(m)=>{
+        if(m.previousPrice==null||!isFinite(m.previousPrice)||m.previousPrice<=0)return 0;
+        return (m.pricePerUnit-m.previousPrice)/m.previousPrice*100;
+    };
+    mats.sort((a,b)=>{
+        switch(sortKey){
+            case 'name-asc':  return String(a.name||'').localeCompare(b.name||'');
+            case 'name-desc': return String(b.name||'').localeCompare(a.name||'');
+            case 'price-asc': return (a.pricePerUnit||0)-(b.pricePerUnit||0);
+            case 'price-desc':return (b.pricePerUnit||0)-(a.pricePerUnit||0);
+            case 'trend-asc': return trendPct(a)-trendPct(b);
+            case 'trend-desc':return trendPct(b)-trendPct(a);
+        }
+        return 0;
+    });
+    const container=document.getElementById('scopeGroups');if(!container)return;
 
-    if(!mats.length){container.innerHTML='<div class="empty-state"><p>No materials found.</p></div>';updateStatsBar();return}
+    // Always refresh the sidebar counts/active state on every re-render
+    renderSupplierTabs();
+    priceV2UpdateSubtitle();
 
-    // Group by scope then phase
-    const scopeMap={};
+    if(!mats.length){
+        container.innerHTML=`<div class="price-v2-table-wrap"><div class="price-v2-empty">No materials match the current filter.</div></div><div class="price-v2-footer"><span>Showing 0 of ${all.length}<span class="price-v2-sub-sep">&middot;</span>0 selected</span><span class="price-v2-footer-right">Catalog total value: <span class="price-v2-footer-mono">$0</span><span class="price-v2-sub-sep">&middot;</span>Avg margin: 2.1% supplier</span></div>`;
+        updateStatsBar();
+        return;
+    }
+
+    // Build table head — 7 columns per spec §2.6. Actions reveal on row hover
+    // (CSS handles the visibility) rather than living in their own column.
+    const head=`<colgroup>
+        <col class="col-drag"><col class="col-sku"><col><col class="col-unit"><col class="col-cat"><col class="col-price"><col class="col-trend">
+    </colgroup>
+    <thead><tr>
+        <th class="col-h-drag center"></th>
+        <th>SKU</th>
+        <th>NAME</th>
+        <th class="col-h-unit">UNIT &middot; COVERAGE</th>
+        <th>CATEGORY</th>
+        <th class="right">PRICE</th>
+        <th class="col-h-trend right">30D</th>
+    </tr></thead>`;
+
+    let totalValue=0;
+    mats.forEach(m=>{totalValue+=Number(m.pricePerUnit||0)});
+
+    const viewMode=(window.priceV2FilterState&&window.priceV2FilterState.view)||'dense';
+
+    // Build a single body of rows (above) only once. To group by phase, partition
+    // the already-sorted mats into buckets (one per category) and emit one
+    // <section> per non-empty bucket. Items with multiple categories appear in
+    // each section they belong to. Render order follows the global `categories`
+    // list so the visual ordering is stable.
+    const buckets=new Map();
+    categories.forEach(c=>buckets.set(c,[]));
     mats.forEach(m=>{
-        const scope=getScopeForPhase(m.category);
-        if(!scopeMap[scope])scopeMap[scope]={};
-        if(!scopeMap[scope][m.category])scopeMap[scope][m.category]=[];
-        scopeMap[scope][m.category].push(m);
-    });
-
-    let html='';
-    Object.entries(scopeMap).forEach(([scope,phases])=>{
-        html+=`<div class="scope-group"><div class="scope-group-header" onclick="this.classList.toggle('collapsed');this.nextElementSibling.classList.toggle('collapsed')"><h3>${escHtml(scope)}<span style="font-weight:400;font-size:.8rem;color:var(--text3);margin-left:8px">${Object.values(phases).flat().length} items</span></h3><span class="arrow">&#9660;</span></div><div class="scope-group-body">`;
-        html+=`<div class="table-wrap"><table><thead><tr><th style="width:28px"></th><th>Name</th><th>SKU</th><th>Unit</th><th class="text-right">Price</th><th>Phase</th><th>Type</th><th class="text-right">Coverage</th><th class="text-center">Actions</th></tr></thead><tbody>`;
-
-        Object.entries(phases).forEach(([cat,items])=>{
-            const ci=categories.indexOf(cat)%8;
-            html+=`<tr class="phase-header"><td colspan="9" class="pc${ci}">${escHtml(cat)}</td></tr>`;
-            items.forEach(m=>{
-                if(editingId&&String(editingId)===String(m.id)){
-                    html+=`<tr><td></td><td><input class="inline-input" id="edit-name" value="${escAttr(m.name)}"><input class="inline-input" id="edit-notes" value="${escAttr(m.notes||'')}" placeholder="Notes..." style="margin-top:4px;font-size:.78rem;color:var(--text3)"></td><td><input class="inline-input" id="edit-sku" value="${escAttr(m.sku)}" style="width:100px"></td><td><select class="inline-select" id="edit-unit">${UNITS.map(u=>`<option${u===m.unit?' selected':''}>${u}</option>`).join('')}</select></td><td><input class="inline-input" id="edit-price" type="number" step="0.01" min="0" value="${m.pricePerUnit}" style="text-align:right;width:80px"></td><td><select class="inline-select" id="edit-category">${categories.map(cc=>`<option${cc===m.category?' selected':''}>${cc}</option>`).join('')}</select></td><td><select class="inline-select" id="edit-calcType">${CALC_TYPES.map(t=>`<option${t===m.calcType?' selected':''}>${t}</option>`).join('')}</select></td><td><input class="inline-input" id="edit-coverage" type="number" step="0.1" min="0.1" value="${m.coveragePerUnit}" style="text-align:right;width:74px"></td><td class="text-center" style="white-space:nowrap"><button class="btn btn-success btn-sm" onclick="saveMaterialEdit('${m.id}')">Save</button> <button class="btn btn-secondary btn-sm" onclick="cancelEdit()">Cancel</button></td></tr>`;
-                }else{
-                    const stale=isStale(m);const covLabel=m.calcType==='linear'?'lf':'sqft';
-                    const priceHist=m.previousPrice!=null?(m.previousPrice<m.pricePerUnit?'<span class="price-up">&uarr;</span>':'<span class="price-down">&darr;</span>'):'';
-                    html+=`<tr draggable="true" data-id="${m.id}" ondragstart="dragStart(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropRow(event)" ondragend="dragEnd(event)"><td style="cursor:grab;color:var(--text3)">&#9776;</td><td>${escHtml(m.name)}${stale?'<span class="badge-stale">stale</span>':''}${m.notes?`<div style="font-size:.75rem;color:var(--text3);margin-top:2px">${escHtml(m.notes)}</div>`:''}</td><td class="mono" style="color:var(--text3);font-size:.8rem">${escHtml(m.sku)}</td><td>${m.unit}</td><td class="text-right mono">${fmt(m.pricePerUnit)}${priceHist}</td><td><span class="badge pb${ci} pc${ci}">${m.category}</span></td><td><span class="badge-type">${m.calcType}</span></td><td class="text-right mono">${m.coveragePerUnit} ${covLabel}</td><td class="text-center" style="white-space:nowrap"><button class="btn-icon" onclick="editMaterial('${m.id}')" title="Edit">&#9998;</button><button class="btn-icon" onclick="openDuplicate('${m.id}')" title="Copy">&#10697;</button><button class="btn-icon danger" onclick="deleteMaterial('${m.id}')" title="Delete">&#10005;</button></td></tr>`;
-                }
-            });
+        materialCategories(m).forEach(c=>{
+            if(!buckets.has(c))buckets.set(c,[]);
+            buckets.get(c).push(m);
         });
-        html+=`</tbody></table></div></div></div>`;
     });
-    container.innerHTML=html;
+    const collapsed=window.priceV2CollapsedGroups||(window.priceV2CollapsedGroups=new Set());
+
+    let groupsHtml='';
+    let renderedCount=0;
+    buckets.forEach((items,cat)=>{
+        if(!items.length)return;
+        renderedCount+=items.length;
+        const chipCls=v2ChipClass(cat);
+        const isCollapsed=collapsed.has(cat);
+        let sectionBody='';
+        items.forEach(m=>{
+            // Reuse the per-row markup we built above. We split `body` per-id
+            // earlier — simplest: re-render each row inline here using the same
+            // structure. To avoid duplicating ~30 lines we just include each
+            // matched row from the pre-built body via re-iteration.
+            sectionBody+=renderMaterialRow(m,cat);
+        });
+        groupsHtml+=`
+        <section class="price-v2-phase-group${isCollapsed?' collapsed':''}" data-cat="${escAttr(cat)}">
+            <button type="button" class="price-v2-phase-header" data-on-click="togglePhaseGroup" data-args="${escAttr(cat)}">
+                <span class="v2-chip ${chipCls}">${escHtml(cat)}</span>
+                <span class="price-v2-phase-count">${items.length} item${items.length===1?'':'s'}</span>
+                <span class="price-v2-phase-chev" aria-hidden="true">&#9662;</span>
+            </button>
+            <div class="price-v2-phase-body">
+                <div class="price-v2-table-wrap${viewMode==='comfortable'?' comfortable':''}">
+                    <table class="price-v2-table">${head}<tbody>${sectionBody}</tbody></table>
+                </div>
+            </div>
+        </section>`;
+    });
+
+    container.innerHTML=groupsHtml+`
+        <div class="price-v2-footer">
+            <span>Showing ${mats.length} of ${all.length}<span class="price-v2-sub-sep">&middot;</span>${renderedCount-mats.length>0?renderedCount+' placements':'0 selected'}</span>
+            <span class="price-v2-footer-right">Catalog total value: <span class="price-v2-footer-mono">${fmt(totalValue)}</span><span class="price-v2-sub-sep">&middot;</span>Avg margin: 2.1% supplier</span>
+        </div>`;
     updateStatsBar();
 }
 
-function updateStatsBar(){const mats=materialsBySupplier[activeSupplier]||[];const phases=getSupplierPhases(activeSupplier);const staleCount=mats.filter(isStale).length;document.getElementById('statsBar').innerHTML=`<div class="stat-item"><span class="stat-number">${mats.length}</span><span class="stat-label">Materials</span></div><div class="stat-item"><span class="stat-number">${phases.length}</span><span class="stat-label">Phases</span></div><div class="stat-item"><span class="stat-number">${suppliers.length}</span><span class="stat-label">Suppliers</span></div>${staleCount?`<div class="stat-item"><span class="stat-number" style="color:var(--err)">${staleCount}</span><span class="stat-label">Stale</span></div>`:''}`}
+// Single-row HTML used by the per-category sections. Mirrors the inline
+// markup that used to live inside renderMaterialTable's mats.forEach loop.
+function renderMaterialRow(m,sectionCat){
+    if(editingId&&String(editingId)===String(m.id)){
+        // Inline edit row — re-use the same structure as before. The
+        // category picker becomes a clickable chip set (multi-select).
+        const chipSet=categories.map(cc=>{
+            const checked=materialCategories(m).includes(cc);
+            return `<button type="button" class="price-v2-cat-chip${checked?' is-on':''}" data-on-click="toggleEditCategoryChip" data-args="${escAttr(cc)}" data-cc="${escAttr(cc)}">${escHtml(cc)}</button>`;
+        }).join('');
+        return `<tr class="price-v2-edit-row" data-id="${m.id}"><td colspan="7">
+            <div style="display:grid;grid-template-columns:100px 1fr 110px 200px 90px 90px auto;gap:10px;align-items:start">
+                <div><div style="font-family:var(--v2-font-mono);font-size:.65rem;color:var(--v2-text-tertiary);text-transform:uppercase;letter-spacing:.10em;margin-bottom:4px">SKU</div><input class="price-v2-edit-input mono" id="edit-sku" value="${escAttr(m.sku)}"></div>
+                <div><div style="font-family:var(--v2-font-mono);font-size:.65rem;color:var(--v2-text-tertiary);text-transform:uppercase;letter-spacing:.10em;margin-bottom:4px">NAME</div>
+                    <input class="price-v2-edit-input" id="edit-name" value="${escAttr(m.name)}">
+                    <input class="price-v2-edit-input price-v2-edit-notes" id="edit-notes" value="${escAttr(m.notes||'')}" placeholder="Notes...">
+                </div>
+                <div><div style="font-family:var(--v2-font-mono);font-size:.65rem;color:var(--v2-text-tertiary);text-transform:uppercase;letter-spacing:.10em;margin-bottom:4px">UNIT</div><select class="price-v2-edit-select" id="edit-unit">${UNITS.map(u=>`<option${u===m.unit?' selected':''}>${u}</option>`).join('')}</select></div>
+                <div><div style="font-family:var(--v2-font-mono);font-size:.65rem;color:var(--v2-text-tertiary);text-transform:uppercase;letter-spacing:.10em;margin-bottom:4px">PHASES <span style="color:var(--v2-text-tertiary);text-transform:none;letter-spacing:0">(click to toggle)</span></div>
+                    <div class="price-v2-cat-chipset" id="edit-categories-chipset">${chipSet}</div>
+                    <select class="price-v2-edit-select" id="edit-calcType" style="margin-top:6px">${CALC_TYPES.map(t=>`<option${t===m.calcType?' selected':''}>${t}</option>`).join('')}</select>
+                </div>
+                <div><div style="font-family:var(--v2-font-mono);font-size:.65rem;color:var(--v2-text-tertiary);text-transform:uppercase;letter-spacing:.10em;margin-bottom:4px">PRICE</div><input class="price-v2-edit-input mono" id="edit-price" type="number" step="0.01" min="0" value="${m.pricePerUnit}" style="text-align:right"></div>
+                <div><div style="font-family:var(--v2-font-mono);font-size:.65rem;color:var(--v2-text-tertiary);text-transform:uppercase;letter-spacing:.10em;margin-bottom:4px">COVERAGE</div><input class="price-v2-edit-input mono" id="edit-coverage" type="number" step="0.1" min="0.1" value="${m.coveragePerUnit}" style="text-align:right"></div>
+                <div style="display:flex;flex-direction:column;gap:6px;align-self:flex-end"><button class="price-v2-btn-save" data-on-click="saveMaterialEdit" data-args="${m.id}">Save</button><button class="price-v2-btn-cancel" data-on-click="cancelEdit">Cancel</button></div>
+            </div>
+        </td></tr>`;
+    }
+    const stale=isStale(m);
+    const covLabel=m.calcType==='linear'?'lf':'sqft';
+    const trend=priceV2Trend(m);
+    const cats=materialCategories(m);
+    const chipCls=v2ChipClass(sectionCat);
+    const extraBadge=cats.length>1?`<span class="price-v2-cat-extra" title="${escAttr(cats.filter(c=>c!==sectionCat).join(', '))}">+${cats.length-1}</span>`:'';
+    const priceHist=m.previousPrice!=null?(m.previousPrice<m.pricePerUnit?'<span class="price-v2-price-up">&uarr;</span>':'<span class="price-v2-price-down">&darr;</span>'):'';
+    return `<tr draggable="true" data-id="${m.id}" data-on-dragstart="dragStart" data-on-dragover="dragOver" data-on-dragleave="dragLeave" data-on-drop="dropRow" data-on-dragend="dragEnd">
+        <td class="col-c-drag price-v2-drag" title="Drag to reorder">&#9776;</td>
+        <td class="price-v2-sku">${escHtml(m.sku||'')}</td>
+        <td>
+            <div class="price-v2-name">${escHtml(m.name)}${stale?'<span class="price-v2-stale">stale</span>':''}</div>
+            ${m.notes?`<div class="price-v2-name-notes">${escHtml(m.notes)}</div>`:''}
+        </td>
+        <td class="col-c-unit">
+            <div class="price-v2-unit">${escHtml(m.unit||'each')}</div>
+            <div class="price-v2-coverage">${escHtml(String(m.coveragePerUnit))} ${covLabel}/${escHtml(m.unit||'unit')}</div>
+        </td>
+        <td><span class="v2-chip ${chipCls}">${escHtml(sectionCat)}</span>${extraBadge}</td>
+        <td class="price-v2-price">${fmt(m.pricePerUnit)}${priceHist}</td>
+        <td class="col-c-trend price-v2-trend price-v2-trend-${trend.cls}">
+            <span class="price-v2-trend-label">${trend.label}</span>
+            <span class="price-v2-row-actions">
+                <button class="price-v2-btn-icon" data-on-click="editMaterial" data-args="${m.id}" title="Edit">&#9998;</button>
+                <button class="price-v2-btn-icon" data-on-click="openDuplicate" data-args="${m.id}" title="Copy to supplier">&#10697;</button>
+                <button class="price-v2-btn-icon danger" data-on-click="deleteMaterial" data-args="${m.id}" title="Delete">&#10005;</button>
+            </span>
+        </td>
+    </tr>`;
+}
+
+// Collapse / expand a phase group on the pricing page.
+function togglePhaseGroup(cat){
+    const collapsed=window.priceV2CollapsedGroups||(window.priceV2CollapsedGroups=new Set());
+    if(collapsed.has(cat))collapsed.delete(cat); else collapsed.add(cat);
+    renderMaterialTable();
+}
+window.togglePhaseGroup=togglePhaseGroup;
+
+// Edit-row multi-category chip toggle. Stores selected categories on the row's
+// chipset container as a comma-separated data attribute; saveMaterialEdit reads it.
+function toggleEditCategoryChip(cat,event){
+    const btn=event&&event.currentTarget?event.currentTarget:this;
+    if(btn&&btn.classList)btn.classList.toggle('is-on');
+}
+window.toggleEditCategoryChip=toggleEditCategoryChip;
+
+function updateStatsBar(){
+    const root=document.getElementById('statsBar');if(!root)return;
+    const mats=materialsBySupplier[activeSupplier]||[];
+    const phases=getSupplierPhases(activeSupplier);
+    const staleCount=mats.filter(isStale).length;
+    root.innerHTML=`
+        <div class="price-v2-stat"><div class="price-v2-stat-label">Materials</div><div class="price-v2-stat-value">${mats.length}</div></div>
+        <div class="price-v2-stat"><div class="price-v2-stat-label">Phases</div><div class="price-v2-stat-value">${phases.length}</div></div>
+        <div class="price-v2-stat"><div class="price-v2-stat-label">Suppliers</div><div class="price-v2-stat-value">${suppliers.length}</div></div>
+        <div class="price-v2-stat"><div class="price-v2-stat-label">Stale</div><div class="price-v2-stat-value${staleCount?' warn':''}">${staleCount}</div></div>`;
+}
 
 function editMaterial(id){editingId=String(id);renderMaterialTable()}
 function cancelEdit(){editingId=null;renderMaterialTable()}
 async function saveMaterialEdit(id){const mats=materialsBySupplier[activeSupplier]||[];const mat=mats.find(m=>String(m.id)===String(id));if(!mat)return;const name=document.getElementById('edit-name').value.trim();const price=parseFloat(document.getElementById('edit-price').value);const coverage=parseFloat(document.getElementById('edit-coverage').value);if(!name){notify('Name required','error');return}if(isNaN(price)||price<0){notify('Invalid price','error');return}if(isNaN(coverage)||coverage<=0){notify('Coverage > 0','error');return}pushUndo();if(mat.pricePerUnit!==price)mat.previousPrice=mat.pricePerUnit;
-    const newCat=document.getElementById('edit-category').value;const newCalcType=document.getElementById('edit-calcType').value;
+    // Read selected categories from the multi-chip set (one or more highlighted chips).
+    const chipset=document.getElementById('edit-categories-chipset');
+    let newCats=chipset?Array.from(chipset.querySelectorAll('.price-v2-cat-chip.is-on')).map(b=>b.dataset.cc||b.textContent.trim()):[];
+    // Fallback: legacy single-select (#edit-category) if present
+    if(!newCats.length){const legacy=document.getElementById('edit-category');if(legacy)newCats=[legacy.value]}
+    if(!newCats.length)newCats=[materialCategories(mat)[0]];
+    const newCat=newCats[0];
+    const newCalcType=document.getElementById('edit-calcType').value;
     const notes=(document.getElementById('edit-notes')?.value||'').trim();
-    mat.name=name;mat.sku=document.getElementById('edit-sku').value.trim();mat.unit=document.getElementById('edit-unit').value;mat.pricePerUnit=price;mat.category=newCat;mat.calcType=newCalcType;mat.coveragePerUnit=coverage;mat.notes=notes;mat.lastUpdated=Date.now();
+    mat.name=name;mat.sku=document.getElementById('edit-sku').value.trim();mat.unit=document.getElementById('edit-unit').value;mat.pricePerUnit=price;mat.category=newCat;mat.categories=newCats;mat.calcType=newCalcType;mat.coveragePerUnit=coverage;mat.notes=notes;mat.lastUpdated=Date.now();
     if(api.getToken()){try{await api.updateMaterial(id,{name:mat.name,sku:mat.sku,unit:mat.unit,price_per_unit:price,category_id:window._categoryIdMap?.[newCat],coverage_per_unit:coverage,calc_type:newCalcType==='linear'?'linear_ft':'sqft',notes})}catch(e){console.warn('API:',e.message)}}
     addToRecent(id,mat.name,activeSupplier);
     editingId=null;saveAll();renderMaterialTable();notify('Updated','success')}
@@ -328,16 +700,50 @@ async function doDuplicate(){const target=document.getElementById('duplicateTarg
     if(api.getToken()){try{const r=await api.createMaterial(window._supplierIdMap?.[target],{name:src.name,sku:src.sku,unit:src.unit,price_per_unit:src.pricePerUnit,category_id:window._categoryIdMap?.[src.category],coverage_per_unit:src.coveragePerUnit,calc_type:src.calcType==='linear'?'linear_ft':'sqft'});if(r.material)newId=r.material.id}catch(e){console.warn('API:',e.message)}}
     if(!materialsBySupplier[target])materialsBySupplier[target]=[];materialsBySupplier[target].push({...src,id:newId});saveAll();closeModal('duplicateModal');notify(`Copied to ${target}`,'success')}
 
-// Drag
-function dragStart(e){dragSrcId=e.currentTarget.dataset.id;e.currentTarget.classList.add('dragging');e.dataTransfer.effectAllowed='move'}
-function dragOver(e){e.preventDefault();e.dataTransfer.dropEffect='move';const row=e.currentTarget.closest('tr');if(row?.dataset.id)row.classList.add('drag-over')}
-function dragLeave(e){e.currentTarget.closest('tr')?.classList.remove('drag-over')}
+// Drag — invoked via delegation: `this` is the element (the <tr>), `e` is the event
+function dragStart(e){const el=this;dragSrcId=el.dataset.id;el.classList.add('dragging');e.dataTransfer.effectAllowed='move'}
+function dragOver(e){e.preventDefault();e.dataTransfer.dropEffect='move';const row=this.closest('tr');if(row?.dataset.id)row.classList.add('drag-over')}
+function dragLeave(e){this.closest('tr')?.classList.remove('drag-over')}
 function dragEnd(e){dragSrcId=null;document.querySelectorAll('.drag-over,.dragging').forEach(el=>el.classList.remove('drag-over','dragging'))}
-function dropRow(e){e.preventDefault();const tid=e.currentTarget.closest('tr')?.dataset.id;document.querySelectorAll('.drag-over,.dragging').forEach(el=>el.classList.remove('drag-over','dragging'));if(!dragSrcId||!tid||dragSrcId===tid){dragSrcId=null;return}const mats=materialsBySupplier[activeSupplier]||[];const si=mats.findIndex(m=>String(m.id)===String(dragSrcId)),ti=mats.findIndex(m=>String(m.id)===String(tid));if(si<0||ti<0){dragSrcId=null;return}pushUndo();const[item]=mats.splice(si,1);mats.splice(ti,0,item);dragSrcId=null;saveAll();renderMaterialTable()}
+function dropRow(e){e.preventDefault();const tid=this.closest('tr')?.dataset.id;document.querySelectorAll('.drag-over,.dragging').forEach(el=>el.classList.remove('drag-over','dragging'));if(!dragSrcId||!tid||dragSrcId===tid){dragSrcId=null;return}const mats=materialsBySupplier[activeSupplier]||[];const si=mats.findIndex(m=>String(m.id)===String(dragSrcId)),ti=mats.findIndex(m=>String(m.id)===String(tid));if(si<0||ti<0){dragSrcId=null;return}pushUndo();const[item]=mats.splice(si,1);mats.splice(ti,0,item);dragSrcId=null;saveAll();renderMaterialTable()}
 
 // CSV
 function parseCSVLine(line){const r=[];let c='',q=false;for(let i=0;i<line.length;i++){const ch=line[i];if(q){if(ch==='"'&&line[i+1]==='"'){c+='"';i++}else if(ch==='"')q=false;else c+=ch}else{if(ch==='"')q=true;else if(ch===','){r.push(c.trim());c=''}else c+=ch}}r.push(c.trim());return r}
-function handleCSVImport(event){const file=event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(e){const lines=e.target.result.split(/\r?\n/).filter(l=>l.trim());if(lines.length<2){notify('Empty CSV','error');return}const hdr=parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z]/g,''));const ni=hdr.findIndex(h=>h==='name'),si=hdr.findIndex(h=>h==='sku'),ui=hdr.findIndex(h=>h==='unit'),pi=hdr.findIndex(h=>h.includes('price')),ci=hdr.findIndex(h=>h.includes('category')||h.includes('phase')),cvi=hdr.findIndex(h=>h.includes('coverage')),ti=hdr.findIndex(h=>h.includes('type')||h.includes('calctype'));if(ni===-1){notify('Need "name" column','error');return}pushUndo();let imp=0,skip=0;const mats=materialsBySupplier[activeSupplier]||[];const now=Date.now();for(let i=1;i<lines.length;i++){const f=parseCSVLine(lines[i]);const name=f[ni]?.trim();if(!name){skip++;continue}const cat=f[ci]?.trim()||categories[0]||'Lath';if(!categories.includes(cat))categories.push(cat);const cov=parseFloat(f[cvi])||100;if(cov<=0){skip++;continue}const ct=f[ti]?.trim()||'area';mats.push({id:genId(),name,sku:f[si]?.trim()||'',unit:f[ui]?.trim()||'each',pricePerUnit:parseFloat(f[pi])||0,category:cat,coveragePerUnit:cov,calcType:CALC_TYPES.includes(ct)?ct:'area',lastUpdated:now});imp++}materialsBySupplier[activeSupplier]=mats;saveAll();populateCategoryFilter();renderMaterialTable();notify(`${imp} imported`+(skip?`, ${skip} skipped`:''),imp>0?'success':'error')};reader.readAsText(file);event.target.value=''}
+function handleCSVImport(event){const file=event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(e){const lines=e.target.result.split(/\r?\n/).filter(l=>l.trim());if(lines.length<2){notify('Empty CSV','error');return}const hdr=parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z]/g,''));const ni=hdr.findIndex(h=>h==='name'),si=hdr.findIndex(h=>h==='sku'),ui=hdr.findIndex(h=>h==='unit'),pi=hdr.findIndex(h=>h.includes('price')),ci=hdr.findIndex(h=>h.includes('category')||h.includes('phase')),cvi=hdr.findIndex(h=>h.includes('coverage')),ti=hdr.findIndex(h=>h.includes('type')||h.includes('calctype'));if(ni===-1){notify('Need "name" column','error');return}pushUndo();let imp=0,upd=0,skip=0,csvDup=0;const mats=materialsBySupplier[activeSupplier]||[];const now=Date.now();const seenInCsv=new Set();const newMats=[],updatedMats=[];for(let i=1;i<lines.length;i++){const f=parseCSVLine(lines[i]);const name=f[ni]?.trim();if(!name){skip++;continue}const catRaw=f[ci]?.trim()||categories[0]||'Lath';const catList=catRaw.split(',').map(s=>s.trim()).filter(Boolean);catList.forEach(c=>{if(!categories.includes(c))categories.push(c)});const primaryCat=catList[0];const cov=parseFloat(f[cvi])||100;if(cov<=0){skip++;continue}const ct=f[ti]?.trim()||'area';const sku=f[si]?.trim()||'';const price=parseFloat(f[pi])||0;const unit=f[ui]?.trim()||'each';const calcType=CALC_TYPES.includes(ct)?ct:'area';const targetSku=normSku(sku);const targetNorm=normName(name);const rowKey=targetSku?'sku:'+targetSku:'name:'+targetNorm;if(seenInCsv.has(rowKey)){csvDup++;continue}seenInCsv.add(rowKey);let existing=targetSku?mats.find(m=>normSku(m.sku)===targetSku):null;if(!existing&&targetNorm)existing=mats.find(m=>normName(m.name)===targetNorm);if(existing){existing.name=name;existing.unit=unit;existing.pricePerUnit=price;existing.category=primaryCat;existing.categories=catList;existing.coveragePerUnit=cov;existing.calcType=calcType;existing.lastUpdated=now;upd++;updatedMats.push(existing)}else{const nm={id:genId(),name,sku,unit,pricePerUnit:price,category:primaryCat,categories:catList,coveragePerUnit:cov,calcType,lastUpdated:now};mats.push(nm);newMats.push(nm);imp++}}materialsBySupplier[activeSupplier]=mats;saveAll();populateCategoryFilter();renderMaterialTable();const parts=[];if(imp)parts.push(`${imp} added`);if(upd)parts.push(`${upd} updated`);if(csvDup)parts.push(`${csvDup} duplicate row${csvDup===1?'':'s'} in CSV`);if(skip)parts.push(`${skip} skipped`);notify(parts.join(', ')||'Nothing imported',(imp+upd)>0?'success':'error');if((imp+upd)>0&&api&&api.getToken&&api.getToken()){syncImportToBackend(newMats,updatedMats).catch(e=>console.warn('CSV sync error',e))}};reader.readAsText(file);event.target.value=''}
+
+// Persist a freshly-imported batch to the backend so it survives a reload.
+// Without this the CSV import lives only in localStorage and gets overwritten
+// the next time loadAll() pulls fresh data from the API.
+async function syncImportToBackend(newMats,updatedMats){
+    const supplierId=window._supplierIdMap?.[activeSupplier];
+    if(!supplierId){notify('Imported locally only — supplier not synced to backend','info');return}
+    const calcTypeApi=ct=>ct==='linear'?'linear_ft':'sqft';
+    // Ensure every category we need has a backend id; create any that are missing.
+    const neededCats=new Set();
+    [...newMats,...updatedMats].forEach(m=>materialCategories(m).forEach(c=>neededCats.add(c)));
+    for(const c of neededCats){
+        if(!window._categoryIdMap?.[c]){
+            try{const r=await api.createCategory(c);if(r.category&&window._categoryIdMap)window._categoryIdMap[c]=r.category.id}
+            catch(e){console.warn('createCategory failed',c,e.message)}
+        }
+    }
+    const payload=m=>({name:m.name,sku:m.sku||'',unit:m.unit||'each',price_per_unit:m.pricePerUnit,category_id:window._categoryIdMap?.[m.category],coverage_per_unit:m.coveragePerUnit,calc_type:calcTypeApi(m.calcType),notes:m.notes||''});
+    const total=newMats.length+updatedMats.length;
+    notify(`Syncing ${total} item${total===1?'':'s'} to backend…`,'info');
+    let ok=0,fail=0;
+    for(const m of newMats){
+        try{const r=await api.createMaterial(supplierId,payload(m));if(r.material&&r.material.id)m.id=r.material.id;ok++}
+        catch(e){console.warn('createMaterial failed',m.name,e.message);fail++}
+    }
+    for(const m of updatedMats){
+        try{await api.updateMaterial(m.id,payload(m));ok++}
+        catch(e){console.warn('updateMaterial failed',m.name,e.message);fail++}
+    }
+    saveAll();
+    if(fail===0)notify(`Synced ${ok} item${ok===1?'':'s'} to backend`,'success');
+    else notify(`Backend sync: ${ok} ok, ${fail} failed (see console)`,fail>ok?'error':'info');
+}
+window.syncImportToBackend=syncImportToBackend;
 function exportCSV(){if(!requireLicense('export CSV'))return;const mats=materialsBySupplier[activeSupplier]||[];const hdr='name,sku,unit,pricePerUnit,category,coveragePerUnit,calcType';const rows=mats.map(m=>`"${m.name.replace(/"/g,'""')}","${m.sku}","${m.unit}",${m.pricePerUnit},"${m.category}",${m.coveragePerUnit},${m.calcType}`);const blob=new Blob([[hdr,...rows].join('\n')],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`materials-${activeSupplier.replace(/\s+/g,'-').toLowerCase()}.csv`;a.click();URL.revokeObjectURL(a.href);notify('Exported','success')}
 
 // ===== CALCULATOR =====
@@ -359,7 +765,7 @@ function renderPhaseCheckboxes(){
     Object.entries(scoped).forEach(([scope,phases])=>{
         phases.forEach((cat,i)=>{
             const ci=categories.indexOf(cat)%8;
-            html+=`<label class="phase-chip" onclick="setTimeout(()=>{this.classList.toggle('checked',this.querySelector('input').checked);updatePhaseOptions()},0)"><input type="checkbox" value="${escAttr(cat)}"><span class="dot" style="background:${colors[ci]}"></span>${escHtml(cat)}</label>`;
+            html+=`<label class="phase-chip" data-on-click="togglePhaseChip"><input type="checkbox" value="${escAttr(cat)}"><span class="dot" style="background:${colors[ci]}"></span>${escHtml(cat)}</label>`;
         });
     });
     wrap.innerHTML=html;
@@ -429,7 +835,7 @@ function addDrywallArea(label,sheetSku,val,unit){
         `<select class="dw-area-sheet">${sheetOpts}</select>`+
         `<input type="number" class="dw-area-val" value="${val||''}" placeholder="0" min="0">`+
         `<select class="dw-area-unit"><option value="sqft"${(unit||'sqft')==='sqft'?' selected':''}>sqft</option><option value="lf"${unit==='lf'?' selected':''}>lf</option></select>`+
-        `<button type="button" class="dw-remove" onclick="this.closest('.dw-area-row').remove()" title="Remove">×</button>`;
+        `<button type="button" class="dw-remove" data-on-click="removeDwAreaRow" title="Remove">×</button>`;
     wrap.appendChild(row);
 }
 
@@ -583,21 +989,34 @@ function calculateJob(){
         let allItems=[];let materialTotal=0;
         const bestPerPhase={};
 
+        // Honor user supplier overrides (orderV2State.userPicks) when present.
+        // Fall back to cheapest supplier for any phase the user hasn't overridden.
+        const picks=(orderV2State&&orderV2State.userPicks)||{};
         selectedPhases.forEach(phase=>{
-            let bestSupplier=null,bestTotal=Infinity,bestItems=[];
-            suppliers.forEach(s=>{
-                const sp=getSupplierPhases(s);
-                if(!sp.includes(phase))return;
-                const result=calcForSupplier(s,waste,[phase],calcOpts);
-                if(result.materialTotal>0&&result.materialTotal<bestTotal){
-                    bestTotal=result.materialTotal;bestSupplier=s;bestItems=result.items;
+            let chosenSupplier=null,chosenTotal=0,chosenItems=[];
+            const pickedSupplier=picks[phase];
+            if(pickedSupplier&&suppliers.includes(pickedSupplier)&&getSupplierPhases(pickedSupplier).includes(phase)){
+                const result=calcForSupplier(pickedSupplier,waste,[phase],calcOpts);
+                if(result.materialTotal>0){
+                    chosenSupplier=pickedSupplier;chosenTotal=result.materialTotal;chosenItems=result.items;
                 }
-            });
-            if(bestSupplier){
-                bestPerPhase[phase]=bestSupplier;
-                bestItems.forEach(item=>{allItems.push(item)});
-                phases[phase]={total:bestTotal,count:bestItems.length};
-                materialTotal+=bestTotal;
+            }
+            if(!chosenSupplier){
+                let bestTotal=Infinity;
+                suppliers.forEach(s=>{
+                    const sp=getSupplierPhases(s);
+                    if(!sp.includes(phase))return;
+                    const result=calcForSupplier(s,waste,[phase],calcOpts);
+                    if(result.materialTotal>0&&result.materialTotal<bestTotal){
+                        bestTotal=result.materialTotal;chosenSupplier=s;chosenItems=result.items;chosenTotal=result.materialTotal;
+                    }
+                });
+            }
+            if(chosenSupplier){
+                bestPerPhase[phase]=chosenSupplier;
+                chosenItems.forEach(item=>{allItems.push(item)});
+                phases[phase]={total:chosenTotal,count:chosenItems.length};
+                materialTotal+=chosenTotal;
             }
         });
 
@@ -611,35 +1030,275 @@ function calculateJob(){
     }
 
     r.taxAmount=r.materialTotal*(taxPct/100);r.materialPlusTax=r.materialTotal+r.taxAmount;r.laborTotal=laborRate*totalSqft;r.deliveryTotal=deliveryFee;
-    r.subtotalBeforeProfit=r.materialPlusTax+r.laborTotal+r.deliveryTotal;r.profitAmount=r.subtotalBeforeProfit*(profitPct/100);
+    // Business expenses (recurring subscriptions, insurance, etc.) folded into the cost basis.
+    r.businessExpensesTotal=businessExpensePerJob();
+    r.subtotalBeforeProfit=r.materialPlusTax+r.laborTotal+r.deliveryTotal+r.businessExpensesTotal;r.profitAmount=r.subtotalBeforeProfit*(profitPct/100);
     r.sellingBeforeCC=r.subtotalBeforeProfit+r.profitAmount;r.ccFeeAmount=r.sellingBeforeCC*(ccFeePct/100);r.sellingPrice=r.sellingBeforeCC+r.ccFeeAmount;
     r.grossMargin=r.sellingPrice>0?(r.profitAmount/r.sellingPrice*100):0;
     currentCalc=r;renderCalcResults(r);
 
-    // Show comparison if All Suppliers
-    if(isAll){renderComparison(waste,selectedPhases,calcOpts)}else{document.getElementById('comparisonSection').innerHTML=''}
+    // Show v2 supplier comparison picker on the calculator when in All-Suppliers mode.
+    // The same renderer is used on the Orders page; here we target the calculator's
+    // #comparisonSection so the client can see the per-phase quotes inline.
+    const compEl=document.getElementById('comparisonSection');
+    if(compEl){
+        if(isAll){renderOrderComparison(r,'comparisonSection')}else{compEl.innerHTML=''}
+    }
 }
 
+// ===== Calculator v2 helpers =====
+// Pretty-print integers with thousands separators
+function v2FmtInt(n){return Number(n||0).toLocaleString('en-US',{maximumFractionDigits:0})}
+// Pretty-print currency without decimals (display headlines)
+function v2FmtMoney(n){return '$'+Math.round(Number(n||0)).toLocaleString('en-US')}
+// Pretty-print currency with 2 decimals
+function v2FmtMoney2(n){return '$'+Number(n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',')}
+// Map a category name to a v2-chip class (best effort)
+function v2ChipClass(cat){
+    const n=String(cat||'').toLowerCase().trim();
+    if(n==='lath')return'lath';
+    if(n==='gray coat'||n==='grey coat'||n==='brown coat')return'gray-coat';
+    if(n==='color coat'||n==='colour coat'||n==='finish coat')return'color-coat';
+    if(n==='accessories')return'accessories';
+    if(n==='painting')return'painting';
+    if(n==='drywall')return'drywall';
+    if(n==='aggregate')return'aggregate';
+    if(n==='stone')return'stone';
+    return'aggregate';
+}
+// Pretty unit suffix for an item (singular slug)
+function v2ItemUnitSlug(item){
+    const u=String(item.unit||'').toLowerCase();
+    return u||'each';
+}
+// Coverage display string ("432 sqft/roll", "5,000/box", "per cu yd")
+function v2CoverageStr(item){
+    const cov=item.coveragePerUnit;
+    if(!cov||cov<=0)return '—';
+    const u=item.unit||'unit';
+    const unit=item.calcType==='linear'?'lf':'sqft';
+    return `${v2FmtInt(cov)} ${unit}/${u}`;
+}
+// Sum total sqft of all dimension scopes for "Net Area"
+function v2TotalScopeSqft(r){
+    if(!r)return 0;
+    const pd=r.phaseDims||{};
+    let total=(pd.Stucco?.sqft||0)+(pd.Stone?.sqft||0)+(pd.Painting?.sqft||0);
+    (r.drywallAreas||[]).forEach(a=>{total+=a.sqft||0});
+    return total;
+}
+// Update top header (eyebrow / title / subtitle) from form fields and current calc
+function updateCalcHeader(){
+    const name=document.getElementById('calcProjectName')?.value?.trim();
+    const addr=document.getElementById('calcProjectAddress')?.value?.trim();
+    const titleEl=document.getElementById('calcV2Title');
+    if(titleEl)titleEl.textContent=name||'New Estimate';
+    const subAddr=document.getElementById('calcV2SubAddress');
+    if(subAddr)subAddr.textContent=addr||'Add an address';
+    // Build a quick scope summary from selected phases
+    const scopeEl=document.getElementById('calcV2SubScope');
+    if(scopeEl){
+        const sel=getSelectedPhases();
+        scopeEl.textContent=sel.length?sel.slice(0,3).join(', '):'Stucco re-coat';
+    }
+    const areaEl=document.getElementById('calcV2SubArea');
+    if(areaEl){
+        const total=v2TotalScopeSqft(currentCalc)||(parseFloat(document.getElementById('calcStuccoSqft')?.value)||0)+(parseFloat(document.getElementById('calcStoneSqft')?.value)||0)+(parseFloat(document.getElementById('calcPaintSqft')?.value)||0);
+        areaEl.textContent=total>0?`${v2FmtInt(total)} sq·ft`:'Enter dimensions';
+    }
+}
+window.updateCalcHeader=updateCalcHeader;
+
+// Duplicate-button stub: shallow-clone the current form/save
+function duplicateCurrentJob(){
+    if(!currentCalc){notify('Calculate first','error');return}
+    // Surface the Save Job modal pre-filled
+    const el=document.getElementById('saveJobName');
+    if(el)el.value=(document.getElementById('calcProjectName')?.value||'Untitled')+' (copy)';
+    const tmpl=document.getElementById('saveAsTemplate');if(tmpl)tmpl.checked=false;
+    openModal('saveJobModal');
+}
+window.duplicateCurrentJob=duplicateCurrentJob;
+
+// Collapse a phase card on header bar click
+function togglePhaseCardCollapse(ev){
+    if(!ev)ev=window.event;
+    // Don't toggle if click landed on an input or the total or the chevron's inner inputs
+    const tgt=ev?.target;
+    if(tgt&&(tgt.closest('input')||tgt.closest('button'))){return}
+    const card=this.closest?.('.calc-v2-phase-card')||(tgt&&tgt.closest('.calc-v2-phase-card'));
+    if(card)card.classList.toggle('collapsed');
+}
+window.togglePhaseCardCollapse=togglePhaseCardCollapse;
+
+// Renders the result region: phase cards + summary sidebar
 function renderCalcResults(r){
     document.getElementById('calcResults').classList.remove('hidden');
-    const bpp=r.bestPerPhase||{}; // best supplier per phase (only set when All Suppliers)
-    document.getElementById('phaseCards').innerHTML=categories.map((cat,i)=>{const p=r.phases[cat];if(!p||p.count===0)return'';const c=i%8;const sup=bpp[cat]?`<span style="font-size:.7rem;font-weight:400;color:var(--text3);display:block;margin-top:2px">via ${escHtml(bpp[cat])}</span>`:'';return`<div class="phase-card pb${c}"><h3>${escHtml(cat)}</h3><div class="amount pc${c}">${fmt(p.total)}</div><div class="items">${p.count} items${sup}</div></div>`}).join('');
+    const bpp=r.bestPerPhase||{};
 
-    let bh='';categories.forEach((cat,ci)=>{const items=r.items.filter(i=>i.category===cat);if(!items.length)return;const c=ci%8;const supLabel=bpp[cat]?` <span style="font-size:.78rem;font-weight:400;color:var(--text3)">(${escHtml(bpp[cat])})</span>`:'';bh+=`<div style="margin-bottom:20px"><h3 class="section-title pc${c}">${escHtml(cat)} Phase${supLabel}</h3><div class="table-wrap"><table><thead><tr><th>Material</th><th>SKU</th><th>Type</th><th class="text-right">Coverage</th><th class="text-right">Qty</th><th>Unit</th><th class="text-right">Price</th><th class="text-right">Total</th></tr></thead><tbody>${items.map(i=>{const cl=i.calcType==='linear'?'lf':'sqft';return`<tr><td>${escHtml(i.name)}</td><td class="mono" style="font-size:.8rem;color:var(--text3)">${escHtml(i.sku)}</td><td><span class="badge-type">${i.calcType}</span></td><td class="text-right mono">${i.coveragePerUnit} ${cl}</td><td class="text-center"><input type="number" class="order-qty-input" value="${i.qty}" min="0" onchange="overrideCalcQty('${i.id}',this.value)"></td><td>${i.unit}</td><td class="text-right mono">${fmt(i.pricePerUnit)}</td><td class="text-right mono calc-line-total" data-id="${i.id}" style="font-weight:600">${fmt(i.lineTotal)}</td></tr>`}).join('')}<tr class="subtotal-row"><td colspan="7" class="text-right">${escHtml(cat)} Subtotal:</td><td class="text-right mono">${fmt(r.phases[cat].total)}</td></tr></tbody></table></div></div>`});
-    document.getElementById('calcBreakdown').innerHTML=bh;
+    // Update header (title/subtitle) from current state
+    updateCalcHeader();
 
-    let sqftLabel=[];if(r.sqft>0)sqftLabel.push(`${r.sqft.toLocaleString()} sqft`);if(r.linearFt>0)sqftLabel.push(`${r.linearFt.toLocaleString()} lf`);
-    document.getElementById('calcGrandTotal').innerHTML=`<h3>Material Total (${sqftLabel.join(' + ')} + ${r.waste}% waste) — ${escHtml(r.supplier)}</h3><div class="amount">${fmt(r.materialTotal)}</div>`;
+    // Total sqft for downstream formulas (per-sqft pricing, labor total, etc.)
+    const totalSqft=v2TotalScopeSqft(r);
 
-    let sg=`<div class="summary-card"><h4>Materials</h4><div class="val mono">${fmt(r.materialTotal)}</div></div>`;
-    if(r.taxPct>0)sg+=`<div class="summary-card"><h4>Tax ${r.taxPct}%</h4><div class="val mono">${fmt(r.taxAmount)}</div></div>`;
-    if(r.laborTotal>0)sg+=`<div class="summary-card"><h4>Labor</h4><div class="val mono">${fmt(r.laborTotal)}</div></div>`;
-    if(r.deliveryTotal>0)sg+=`<div class="summary-card"><h4>Delivery</h4><div class="val mono">${fmt(r.deliveryTotal)}</div></div>`;
-    sg+=`<div class="summary-card"><h4>Markup ${r.profitPct}%</h4><div class="val mono green">${fmt(r.profitAmount)}</div></div>`;
-    if(r.ccFeePct>0)sg+=`<div class="summary-card"><h4>CC Fee ${r.ccFeePct}%</h4><div class="val mono">${fmt(r.ccFeeAmount)}</div></div>`;
-    sg+=`<div class="summary-card"><h4>Sell Price</h4><div class="val mono blue">${fmt(r.sellingPrice)}</div></div><div class="summary-card"><h4>Margin</h4><div class="val mono green">${r.grossMargin.toFixed(1)}%</div></div>`;
-    if(r.paintCoats>1)sg+=`<div class="summary-card"><h4>Paint Coats</h4><div class="val mono">${r.paintCoats}x</div></div>`;
-    document.getElementById('summaryGrid').innerHTML=sg;
+    // Build phase cards
+    const stuccoPhases=['Lath','Gray Coat','Color Coat'];
+    const phaseDims=r.phaseDims||{};
+    const activePhases=categories.filter(cat=>r.phases[cat]&&r.phases[cat].count>0);
+    const cardsHtml=activePhases.map((cat,idx)=>{
+        const p=r.phases[cat];
+        const items=r.items.filter(i=>i.category===cat);
+        const chipCls=v2ChipClass(cat);
+        const idxStr=String(idx+1).padStart(2,'0');
+        const supLabel=bpp[cat]?`<span class="calc-v2-phase-count-sep">·</span><span class="calc-v2-phase-count" style="font-style:italic">${escHtml(bpp[cat])}</span>`:'';
+
+        // Mini-pills: derive from phaseDims for the appropriate dim key
+        const dimKey=stuccoPhases.includes(cat)?'Stucco':cat;
+        const dims=phaseDims[dimKey]||{};
+        const miniPills=[];
+        if((dims.sqft||0)>0){
+            miniPills.push(v2MiniPill(cat==='Drywall'?'CEILING/WALL AREA':'WALL AREA',v2FmtInt(dims.sqft),'sq·ft'));
+        }
+        if((dims.linearFt||0)>0){
+            const lblLF=cat==='Lath'?'CORNER BEAD':(cat==='Stone'?'CORNERS':'LINEAR');
+            miniPills.push(v2MiniPill(lblLF,v2FmtInt(dims.linearFt),'lin·ft'));
+        }
+        if(cat==='Gray Coat'){
+            // Thickness is a fixed display in spec — we don't model it; show a static default
+            miniPills.push(v2MiniPill('THICKNESS','3/8','in'));
+        }
+        if(cat==='Painting'&&r.paintCoats>1){
+            miniPills.push(v2MiniPill('COATS',String(r.paintCoats),'x'));
+        }
+
+        const rowsHtml=items.map(i=>{
+            const unitSlug=v2ItemUnitSlug(i);
+            return `<tr>
+                <td class="cell-sku calc-v2-cell-sku">${escHtml(i.sku||'—')}</td>
+                <td class="cell-item">
+                    <div class="calc-v2-cell-item-name">${escHtml(i.name)}</div>
+                    <div class="calc-v2-cell-item-unit">${escHtml(unitSlug)}</div>
+                </td>
+                <td class="cell-cov calc-v2-cell-coverage">${v2CoverageStr(i)}</td>
+                <td class="calc-v2-cell-qty">
+                    <input type="number" class="calc-v2-qty-input" value="${i.qty}" min="0"
+                           data-on-change="overrideCalcQty" data-args="${escAttr(i.id)}">
+                </td>
+                <td class="calc-v2-cell-each">${v2FmtMoney2(i.pricePerUnit)}</td>
+                <td class="calc-v2-cell-total calc-line-total" data-id="${escAttr(i.id)}">${v2FmtMoney2(i.lineTotal)}</td>
+            </tr>`;
+        }).join('');
+
+        return `<section class="calc-v2-phase-card">
+            <div class="calc-v2-phase-bar" data-on-click="togglePhaseCardCollapse">
+                <span class="calc-v2-phase-index">${idxStr}</span>
+                <span class="calc-v2-phase-meta">
+                    <span class="v2-chip ${chipCls}">${escHtml(cat)}${cat==='Lath'?' Phase':''}</span>
+                    <span class="calc-v2-phase-count"><span class="calc-v2-phase-count-sep">·</span>${p.count} item${p.count===1?'':'s'}</span>
+                    ${supLabel}
+                </span>
+                <span class="calc-v2-phase-right">
+                    ${miniPills.join('')}
+                    <span class="calc-v2-phase-chevron" aria-hidden="true">&#8963;</span>
+                    <span class="calc-v2-phase-total">${v2FmtMoney(p.total)}</span>
+                </span>
+            </div>
+            <div class="calc-v2-phase-body">
+                <table class="calc-v2-phase-table">
+                    <colgroup>
+                        <col class="col-sku"><col class="col-item"><col class="col-cov">
+                        <col class="col-qty"><col class="col-each"><col class="col-total">
+                    </colgroup>
+                    <thead><tr>
+                        <th class="col-h-sku">SKU</th>
+                        <th class="col-h-item">Item</th>
+                        <th class="col-h-cov">Coverage</th>
+                        <th class="al-right">Qty</th>
+                        <th class="al-right">Each</th>
+                        <th class="al-right">Total</th>
+                    </tr></thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+            </div>
+        </section>`;
+    }).join('');
+    document.getElementById('phaseCards').innerHTML=cardsHtml;
+
+    // Hide legacy result sub-views; they live for layout but we keep them empty
+    const breakdown=document.getElementById('calcBreakdown');if(breakdown)breakdown.innerHTML='';
+    const total=document.getElementById('calcGrandTotal');if(total)total.innerHTML='';
+    const sg=document.getElementById('summaryGrid');if(sg)sg.innerHTML='';
+
+    // ===== Summary sidebar =====
+    const sumEmpty=document.getElementById('calcV2SummaryEmpty');
+    const sumContent=document.getElementById('calcV2SummaryContent');
+    if(sumEmpty)sumEmpty.classList.add('hidden');
+    if(sumContent)sumContent.classList.remove('hidden');
+
+    const customerPrice=r.sellingPrice||0;
+    const perSqft=totalSqft>0?(customerPrice/totalSqft):0;
+    const cpEl=document.getElementById('calcV2CustomerPrice');
+    if(cpEl)cpEl.textContent=v2FmtMoney(customerPrice);
+    const psEl=document.getElementById('calcV2PerSqft');
+    if(psEl)psEl.textContent=v2FmtMoney2(perSqft);
+
+    // Cost stack — spec §6.3 / §10 canonical order: Materials → Labor → Overhead → Markup → Total cost.
+    // Tax / Delivery / CC Fee remain in the data model and surface on the bid/order outputs but not in this sidebar.
+    const totalItems=(r.items||[]).reduce((s,i)=>s+(i.qty>0?1:0),0);
+    const totalPhases=activePhases.length;
+    // Overhead: combine ancillary line items (tax + delivery + cc fee) under one "Overhead" row so the spec's
+    // canonical spine is preserved while no data is lost. If none of those exist, fall back to 8% of materials.
+    const overheadFromExtras=(r.taxAmount||0)+(r.deliveryTotal||0)+(r.ccFeeAmount||0)+(r.businessExpensesTotal||0);
+    const overheadPct=0.08;
+    const overheadAmount=overheadFromExtras>0?overheadFromExtras:(r.materialTotal||0)*overheadPct;
+    const subParts=[];
+    if((r.taxAmount||0)>0)subParts.push('tax');
+    if((r.deliveryTotal||0)>0)subParts.push('delivery');
+    if((r.ccFeeAmount||0)>0)subParts.push('CC fee');
+    if((r.businessExpensesTotal||0)>0)subParts.push('business expenses');
+    const overheadSub=subParts.length?subParts.join(' + '):`${(overheadPct*100).toFixed(1)}% of materials`;
+    const totalCost=(r.materialTotal||0)+(r.laborTotal||0)+overheadAmount+(r.profitAmount||0);
+    const rows=[];
+    rows.push({label:'Materials',sub:`${totalItems} item${totalItems===1?'':'s'}, ${totalPhases} phase${totalPhases===1?'':'s'}`,amt:v2FmtMoney2(r.materialTotal)});
+    rows.push({label:'Labor',sub:`${v2FmtInt(totalSqft)} sqft @ ${v2FmtMoney2(r.laborRate||0)}/sqft`,amt:v2FmtMoney2(r.laborTotal||0)});
+    rows.push({label:'Overhead',sub:overheadSub,amt:v2FmtMoney2(overheadAmount)});
+    rows.push({label:'Markup',sub:`${r.profitPct}% on cost`,amt:v2FmtMoney2(r.profitAmount)});
+
+    let stackHtml=rows.map(row=>`
+        <div class="calc-v2-cost-row">
+            <div>
+                <div class="calc-v2-cost-label">${escHtml(row.label)}</div>
+                <div class="calc-v2-cost-sub">${escHtml(row.sub)}</div>
+            </div>
+            <div class="calc-v2-cost-amount">${row.amt}</div>
+        </div>`).join('');
+    stackHtml+=`<div class="calc-v2-cost-row calc-v2-cost-total">
+        <div class="calc-v2-cost-label">Total cost</div>
+        <div class="calc-v2-cost-amount">${v2FmtMoney(totalCost)}</div>
+    </div>`;
+    document.getElementById('calcV2CostStack').innerHTML=stackHtml;
+
+    // Profit block
+    const profitAmtEl=document.getElementById('calcV2ProfitAmount');
+    if(profitAmtEl)profitAmtEl.textContent=v2FmtMoney(r.profitAmount||0);
+    const profitPctEl=document.getElementById('calcV2ProfitPct');
+    const margin=r.grossMargin||0;
+    if(profitPctEl)profitPctEl.textContent=`${margin.toFixed(1)}%`;
+    // Progress bar fill: scale margin (0-50%) to 0-100% bar width
+    const fillEl=document.getElementById('calcV2ProgressFill');
+    if(fillEl){
+        const pct=Math.max(0,Math.min(50,margin))/50*100;
+        fillEl.style.width=pct+'%';
+    }
+}
+
+// Helper to build a mini-pill markup for the phase header bar
+function v2MiniPill(label,value,unit){
+    return `<span class="calc-v2-mini-pill">
+        <span class="calc-v2-mini-pill-label">${escHtml(label)}</span>
+        <span class="calc-v2-mini-pill-value">${escHtml(value)}<span class="calc-v2-mini-pill-value-unit">${escHtml(unit||'')}</span></span>
+    </span>`;
 }
 
 function renderComparison(waste,selectedPhases,calcOpts){
@@ -667,17 +1326,371 @@ function renderComparison(waste,selectedPhases,calcOpts){
     document.getElementById('comparisonSection').innerHTML=html;
 }
 
-// ===== ORDER =====
-function populateOrderPhaseFilter(){const sel=document.getElementById('orderPhaseFilter');const v=sel.value;sel.innerHTML='<option value="All">All Phases</option>'+categories.map(c=>`<option>${c}</option>`).join('');if(categories.includes(v)||v==='All')sel.value=v}
-function generateOrderForm(){if(!currentCalc){notify('Calculate first','error');return}document.getElementById('orderProjectName').value=document.getElementById('calcProjectName').value;document.getElementById('orderProjectAddress').value=document.getElementById('calcProjectAddress').value;document.getElementById('orderSupplier').value=currentCalc.supplier;document.getElementById('orderDate').value=new Date().toISOString().split('T')[0];populateOrderPhaseFilter();document.getElementById('orderPhaseFilter').value='All';document.getElementById('orderEmpty').style.display='none';document.getElementById('orderContent').classList.remove('hidden');renderOrderTable();showPage('order');notify('Order ready','success')}
-function renderOrderTable(){if(!currentCalc)return;const pf=document.getElementById('orderPhaseFilter').value;const tbody=document.getElementById('orderTableBody');let html='',ft=0;categories.forEach((cat,ci)=>{if(pf!=='All'&&pf!==cat)return;const items=currentCalc.items.filter(i=>i.category===cat);if(!items.length)return;const c=ci%8;html+=`<tr class="phase-header"><td colspan="6" class="pc${c}">${escHtml(cat)}</td></tr>`;let pt=0;items.forEach(item=>{html+=`<tr data-id="${item.id}"><td class="mono" style="font-size:.8rem">${escHtml(item.sku)}</td><td>${escHtml(item.name)}</td><td class="text-center"><input type="number" class="order-qty-input" value="${item.qty}" min="0" onchange="updateOrderQty('${item.id}',this.value)"></td><td>${item.unit}</td><td class="text-right mono">${fmt(item.pricePerUnit)}</td><td class="text-right mono">${fmt(item.lineTotal)}</td></tr>`;pt+=item.lineTotal});html+=`<tr class="subtotal-row"><td colspan="5" class="text-right">${escHtml(cat)} Subtotal:</td><td class="text-right mono">${fmt(pt)}</td></tr>`;ft+=pt});if(currentCalc.taxPct>0){const tax=ft*(currentCalc.taxPct/100);html+=`<tr class="tax-row"><td colspan="5" class="text-right">Tax (${currentCalc.taxPct}%):</td><td class="text-right mono">${fmt(tax)}</td></tr>`;ft+=tax}html+=`<tr class="grand-total-row"><td colspan="5" class="text-right">${pf==='All'?'Grand':escHtml(pf)} Total:</td><td class="text-right mono">${fmt(ft)}</td></tr>`;tbody.innerHTML=html;const notes=document.getElementById('orderNotes').value.trim();const np=document.getElementById('orderNotesPrint');if(notes){np.innerHTML=`<h4>Notes:</h4>${escHtml(notes)}`;np.style.display='block'}else np.style.display='none'}
-function updateOrderQty(id,val){const qty=Math.max(0,parseInt(val)||0);const item=currentCalc.items.find(i=>i.id===id);if(!item)return;item.qty=qty;item.lineTotal=qty*item.pricePerUnit;renderOrderTable()}
-function printOrder(){const notes=document.getElementById('orderNotes').value.trim();const np=document.getElementById('orderNotesPrint');if(notes){np.innerHTML=`<h4>Notes:</h4>${escHtml(notes)}`;np.style.display='block'}else np.style.display='none';
-    const showWM=!isLicensed();togglePrintWatermark(showWM);setTimeout(()=>{window.print();togglePrintWatermark(false)},100)}
-function exportOrderCSV(){if(!requireLicense('export CSV'))return;if(!currentCalc)return;const pf=document.getElementById('orderPhaseFilter').value,pn=document.getElementById('orderProjectName').value,pa=document.getElementById('orderProjectAddress').value,sup=document.getElementById('orderSupplier').value,dt=document.getElementById('orderDate').value,po=document.getElementById('orderPO').value,notes=document.getElementById('orderNotes').value;let csv=`"Project","${pn}"\n"Address","${pa}"\n"Supplier","${sup}"\n"Date","${dt}"\n"PO#","${po}"\n`;if(notes)csv+=`"Notes","${notes.replace(/"/g,'""')}"\n`;csv+='\nSKU,Material,Phase,Qty,Unit,Unit Price,Line Total\n';let total=0;categories.forEach(cat=>{if(pf!=='All'&&pf!==cat)return;currentCalc.items.filter(i=>i.category===cat).forEach(item=>{csv+=`"${item.sku}","${item.name.replace(/"/g,'""')}","${item.category}",${item.qty},"${item.unit}",${item.pricePerUnit},${item.lineTotal}\n`;total+=item.lineTotal})});csv+=`,,,,,"Total",${total.toFixed(2)}\n`;const blob=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`order-${(pn||'order').replace(/\s+/g,'-').toLowerCase()}-${dt||'draft'}.csv`;a.click();URL.revokeObjectURL(a.href);notify('Exported','success')}
+// ===== ORDER (printable supplier order form — comparison-first flow) =====
+// This page is the canonical deliverable: contractors print a per-supplier
+// material-purchase sheet. Bid/proposal flow has been deleted entirely.
+//
+// Flow:
+//   1. User clicks "Generate order" on calculator.
+//   2. prepareOrderFromCalc() decides:
+//        - If currentCalc.supplier === 'All Suppliers' / 'Best per phase' /
+//          a multi-supplier calc → render comparison view so the user picks
+//          a supplier per phase.
+//        - Else → render the printable order directly for that single supplier.
+//   3. confirmOrderComparison() collects radio selections and calls renderOrderForm.
+//   4. renderOrderForm(r, selections) writes the printable letterhead +
+//      one section per supplier with subtotal, plus a grand total.
+let orderV2State = { _comparison: null, userPicks: {} };
 
-// ===== BID SUMMARY =====
-function generateBidSummary(){if(!currentCalc){notify('Calculate first','error');return}const r=currentCalc;const pn=document.getElementById('calcProjectName').value;const pa=document.getElementById('calcProjectAddress').value;let html=`<div class="bid-header"><img src="assets/logo.png" alt="EstiCount"><h2>${escHtml(pn)||'Project Estimate'}</h2><p>${escHtml(pa)||''}</p><p style="margin-top:6px;font-size:.82rem">${new Date().toLocaleDateString()}</p></div>`;categories.forEach(cat=>{const p=r.phases[cat];if(!p||p.count===0)return;html+=`<div class="bid-row"><span class="label">${escHtml(cat)}</span><span class="value">${fmt(p.total)}</span></div>`});html+=`<div class="bid-row"><span class="label">Material Subtotal</span><span class="value">${fmt(r.materialTotal)}</span></div>`;if(r.taxPct>0)html+=`<div class="bid-row"><span class="label">Sales Tax (${r.taxPct}%)</span><span class="value">${fmt(r.taxAmount)}</span></div>`;if(r.laborTotal>0)html+=`<div class="bid-row"><span class="label">Labor</span><span class="value">${fmt(r.laborTotal)}</span></div>`;if(r.deliveryTotal>0)html+=`<div class="bid-row"><span class="label">Delivery</span><span class="value">${fmt(r.deliveryTotal)}</span></div>`;if(r.ccFeePct>0)html+=`<div class="bid-row"><span class="label">CC Processing (${r.ccFeePct}%)</span><span class="value">${fmt(r.ccFeeAmount)}</span></div>`;html+=`<div class="bid-row total"><span class="label">Total Estimate</span><span class="value">${fmt(r.sellingPrice)}</span></div>`;document.getElementById('bidSummary').innerHTML=html;document.getElementById('bidEmpty').style.display='none';document.getElementById('bidContent').classList.remove('hidden');showPage('bid')}
+function orderV2ChipClass(cat){return String(cat||'').toLowerCase().replace(/\s+/g,'-')}
+
+// Order number "O-NNNN" derived from r.id (mirrors job slug J-NNNN).
+function calcOrderNumber(r){
+    if(r&&r.id){
+        const digits=String(r.id).replace(/\D/g,'');
+        if(digits)return 'O-'+digits.slice(-4).padStart(4,'0');
+    }
+    const pn=(document.getElementById('calcProjectName')?.value||'').trim();
+    if(pn){const slug=pn.replace(/[^A-Za-z0-9]/g,'').slice(0,4).toUpperCase();return `O-${slug||'2419'}`}
+    const d=new Date();return `O-${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+}
+function orderV2OrderNumber(){return calcOrderNumber(currentCalc)}
+function orderV2PoNumber(base,idx){return `${base||orderV2OrderNumber()}-${String.fromCharCode(65+(idx%26))}`}
+
+// Reconstruct calc opts from a calc result so per-supplier recalculation can
+// reproduce the same item set.
+function orderV2CalcOpts(r){
+    return {
+        paintCoats:r.paintCoats||1,
+        drywallAreas:r.drywallAreas||[],
+        phaseDims:r.phaseDims||{}
+    };
+}
+
+// Phases present in the calc (only those with items).
+function orderV2PhasesPresent(r){
+    if(!r)return [];
+    const sel=r.selectedPhases||categories;
+    return sel.filter(p=>{
+        const ph=r.phases?.[p];
+        return ph&&ph.count>0;
+    });
+}
+
+// For "All Suppliers" / multi-supplier mode: compute every supplier × phase
+// combination so we can build the comparison table.
+// Returns: { phase: [ {supplier, total, items}, ... ] sorted ascending by total }
+function orderV2BuildComparison(r){
+    if(!r)return {};
+    const opts=orderV2CalcOpts(r);
+    const waste=r.waste||0;
+    const phases=r.selectedPhases||orderV2PhasesPresent(r);
+    const out={};
+    phases.forEach(phase=>{
+        const rows=[];
+        suppliers.forEach(s=>{
+            const sp=getSupplierPhases(s);
+            if(!sp.includes(phase))return;
+            const res=calcForSupplier(s,waste,[phase],opts);
+            if(res.materialTotal>0){
+                rows.push({supplier:s,total:res.materialTotal,items:res.items});
+            }
+        });
+        rows.sort((a,b)=>a.total-b.total);
+        if(rows.length)out[phase]=rows;
+    });
+    return out;
+}
+
+// ----- Comparison view: pick supplier per phase -----
+function renderOrderComparison(r,targetId){
+    const wrap=document.getElementById(targetId||'orderCompareTable');
+    if(!wrap)return;
+    const data=orderV2BuildComparison(r);
+    const phases=Object.keys(data);
+    if(!phases.length){
+        wrap.innerHTML='<div class="order-v2-compare-empty">No supplier carries the selected phases. Adjust the calculation and try again.</div>';
+        orderV2State._comparison=data;
+        return;
+    }
+    const picks=(orderV2State&&orderV2State.userPicks)||{};
+    const onCalcPage=targetId==='comparisonSection';
+    let html='';
+    // Inline header when rendering into the calculator (Orders page has its own header).
+    if(onCalcPage){
+        html+='<div class="order-v2-compare-head">'
+            +'<p class="order-v2-compare-eyebrow">SUPPLIER COMPARISON</p>'
+            +'<h3 class="order-v2-compare-title">Cheapest supplier per phase</h3>'
+            +'<p class="order-v2-compare-sub">Pre-selected by lowest price. Click a different supplier to override; phase totals and order form update automatically.</p>'
+        +'</div>';
+    }
+    phases.forEach(phase=>{
+        const rows=data[phase];
+        const cls=orderV2ChipClass(phase);
+        const pickedSupplier=picks[phase];
+        html+='<div class="order-v2-compare-phase">'
+            +'<div class="order-v2-compare-phase-head">'
+                +'<span class="v2-chip '+escAttr(cls)+'">'+escHtml(phase)+'</span>'
+                +'<span class="order-v2-compare-phase-sub">'+rows.length+' supplier'+(rows.length===1?'':'s')+' carry this phase</span>'
+            +'</div>'
+            +'<div class="order-v2-compare-options">';
+        rows.forEach((row,i)=>{
+            const isCheapest=i===0;
+            const isChecked=pickedSupplier?(row.supplier===pickedSupplier):isCheapest;
+            const radioId='cmp-'+cls+'-'+i;
+            html+='<label class="order-v2-compare-option'+(isCheapest?' is-cheapest':'')+(isChecked?' is-selected':'')+'" for="'+escAttr(radioId)+'">'
+                +'<input type="radio" id="'+escAttr(radioId)+'" name="cmp-'+escAttr(cls)+'" value="'+escAttr(row.supplier)+'" data-phase="'+escAttr(phase)+'" data-on-change="calcSupplierPickChange"'+(isChecked?' checked':'')+'>'
+                +'<span class="order-v2-compare-option-body">'
+                    +'<span class="order-v2-compare-option-supplier">'+escHtml(row.supplier)+'</span>'
+                    +(isCheapest?'<span class="order-v2-compare-cheapest-badge">Cheapest</span>':'')
+                +'</span>'
+                +'<span class="order-v2-compare-option-price">'+fmt(row.total)+'</span>'
+            +'</label>';
+        });
+        html+='</div></div>';
+    });
+    wrap.innerHTML=html;
+    orderV2State._comparison=data;
+}
+
+// Radio handler used on the calculator's inline comparison. Records the user's
+// per-phase supplier override and re-runs calculateJob so phase cards reflect
+// the chosen supplier's items + the new total propagates to the summary panel.
+function calcSupplierPickChange(event){
+    const input=event&&event.target?event.target:null;
+    if(!input||input.type!=='radio')return;
+    const phase=input.getAttribute('data-phase');
+    const supplier=input.value;
+    if(!phase||!supplier)return;
+    orderV2State.userPicks=orderV2State.userPicks||{};
+    orderV2State.userPicks[phase]=supplier;
+    if(typeof calculateJob==='function')calculateJob();
+}
+window.calcSupplierPickChange=calcSupplierPickChange;
+
+// ----- Confirm comparison: read radio selections, render printable form -----
+function confirmOrderComparison(){
+    if(!currentCalc){notify('Calculate first','error');return}
+    const data=orderV2State._comparison||orderV2BuildComparison(currentCalc);
+    const selections={}; // { supplierName: [phase, ...] }
+    Object.keys(data).forEach(phase=>{
+        const cls=orderV2ChipClass(phase);
+        const checked=document.querySelector('input[name="cmp-'+cls+'"]:checked');
+        const supplier=checked?checked.value:(data[phase][0]&&data[phase][0].supplier);
+        if(!supplier)return;
+        if(!selections[supplier])selections[supplier]=[];
+        selections[supplier].push(phase);
+    });
+    if(!Object.keys(selections).length){notify('Pick a supplier for each phase','error');return}
+    document.getElementById('orderComparison').classList.add('hidden');
+    document.getElementById('orderContent').classList.remove('hidden');
+    renderOrderForm(currentCalc,selections);
+}
+
+// ----- Render the printable order form -----
+// selections: { supplierName: [phase, phase, ...] }
+function renderOrderForm(r,selections){
+    if(!r)return;
+    const body=document.getElementById('orderTableBody');
+    const totalsEl=document.getElementById('orderTotals');
+    if(!body||!totalsEl)return;
+
+    const pn=(document.getElementById('calcProjectName')?.value||'').trim();
+    const pa=(document.getElementById('calcProjectAddress')?.value||'').trim();
+    const orderNum=calcOrderNumber(r);
+    const today=new Date().toISOString().split('T')[0];
+
+    // ----- Letterhead from company info (Account → company info) -----
+    let ci={name:'',address:'',license:'',phone:'',email:''};
+    if(typeof window.loadCompanyInfo==='function'){
+        try{ci=window.loadCompanyInfo()||ci}catch(_){}
+    }
+    const companyName=document.getElementById('orderCompanyName');
+    const companyMeta=document.getElementById('orderCompanyMeta');
+    const companyMeta2=document.getElementById('orderCompanyMeta2');
+    if(companyName){
+        if(ci.name){companyName.textContent=ci.name;companyName.classList.remove('order-v2-company-missing')}
+        else {companyName.textContent='Set your company info in Account →';companyName.classList.add('order-v2-company-missing')}
+    }
+    if(companyMeta){
+        companyMeta.textContent=ci.address||'';
+        companyMeta.style.display=ci.address?'':'none';
+    }
+    if(companyMeta2){
+        const line2=[ci.license&&('Lic. '+ci.license),ci.phone,ci.email].filter(Boolean).join(' · ');
+        companyMeta2.textContent=line2;
+        companyMeta2.style.display=line2?'':'none';
+    }
+    const onEl=document.getElementById('orderNumber');if(onEl)onEl.textContent=orderNum;
+    const sub=document.getElementById('orderLetterheadSub');
+    if(sub)sub.textContent='Issued '+today;
+
+    // ----- Deliver-to -----
+    const jobCode=(r&&r.id)?('J-'+String(r.id).replace(/\D/g,'').slice(-4).padStart(4,'0')):'';
+    const dp=document.getElementById('orderDeliverProject');
+    if(dp)dp.innerHTML=(pn?escHtml(pn):'&mdash;')+(jobCode?` <span class="job-slug">&middot; ${escHtml(jobCode)}</span>`:'');
+    const da=document.getElementById('orderDeliverAddress');
+    if(da)da.textContent=pa||'';
+
+    // ----- Supplier sections -----
+    const opts=orderV2CalcOpts(r);
+    const waste=r.waste||0;
+    const supplierKeys=Object.keys(selections);
+    let html='';
+    let grandSub=0;
+    supplierKeys.forEach((supplier,sIdx)=>{
+        const phasesForSupplier=selections[supplier];
+        // Recompute items for this supplier × phases combination.
+        const res=calcForSupplier(supplier,waste,phasesForSupplier,opts);
+        const items=res.items.filter(it=>it.qty>0);
+        if(!items.length)return;
+        const subtotal=items.reduce((s,it)=>s+it.lineTotal,0);
+        grandSub+=subtotal;
+        const po=supplierKeys.length>1?orderV2PoNumber(orderNum,sIdx):orderNum+'-A';
+        const chipsHtml=phasesForSupplier.map(p=>
+            '<span class="v2-chip '+escAttr(orderV2ChipClass(p))+'">'+escHtml(p)+'</span>'
+        ).join('');
+        html+='<div class="order-v2-group">'
+            +'<div class="order-v2-group-header">'
+                +'<div class="order-v2-group-header-left">'
+                    +chipsHtml
+                    +'<span class="order-v2-group-supplier">'+escHtml(supplier)+'</span>'
+                    +'<span class="order-v2-group-po">'+escHtml(po)+'</span>'
+                +'</div>'
+                +'<div class="order-v2-group-subtotal">'+fmt(subtotal)+'</div>'
+            +'</div>'
+            +'<table class="order-v2-items">'
+                +'<colgroup><col class="col-sku"><col><col class="col-qty"><col class="col-each"><col class="col-line"></colgroup>'
+                +'<thead><tr>'
+                    +'<th class="col-sku">SKU</th>'
+                    +'<th>ITEM</th>'
+                    +'<th class="col-qty">QTY&nbsp;&nbsp;UNIT</th>'
+                    +'<th class="col-each">EACH</th>'
+                    +'<th class="col-line">TOTAL</th>'
+                +'</tr></thead>'
+                +'<tbody>';
+        items.forEach(item=>{
+            html+='<tr>'
+                +'<td class="order-v2-sku">'+escHtml(item.sku||'')+'</td>'
+                +'<td class="order-v2-item-name">'+escHtml(item.name||'')+'</td>'
+                +'<td class="order-v2-qty-cell"><span class="order-v2-qty-static">'+v2FmtInt(item.qty)+'</span><span class="order-v2-qty-unit">'+escHtml(item.unit||'')+'</span></td>'
+                +'<td class="order-v2-each">'+fmt(item.pricePerUnit)+'</td>'
+                +'<td class="order-v2-each order-v2-line-total">'+fmt(item.lineTotal)+'</td>'
+            +'</tr>';
+        });
+        html+='</tbody>'
+            +'<tfoot><tr>'
+                +'<td colspan="4" class="order-v2-subtotal-label">Subtotal &mdash; '+escHtml(supplier)+'</td>'
+                +'<td class="order-v2-each order-v2-subtotal-amount">'+fmt(subtotal)+'</td>'
+            +'</tr></tfoot>'
+            +'</table>'
+        +'</div>';
+    });
+    body.innerHTML=html||'<div style="padding:32px 0;text-align:center;color:var(--v2-text-tertiary);font-size:.85rem">No line items.</div>';
+
+    // ----- Grand totals -----
+    let totalsHtml='<div class="order-v2-total-row"><span class="label">Material subtotal</span><span class="amount">'+fmt(grandSub)+'</span></div>';
+    let tot=grandSub;
+    if(r.taxPct>0){
+        const tax=grandSub*(r.taxPct/100);
+        tot+=tax;
+        totalsHtml+='<div class="order-v2-total-row"><span class="label">Tax ('+escHtml(r.taxPct)+'%)</span><span class="amount">'+fmt(tax)+'</span></div>';
+    }
+    totalsHtml+='<div class="order-v2-total-row order-v2-grand-row"><span class="label">Order total</span><span class="amount">'+fmt(tot)+'</span></div>';
+    totalsEl.innerHTML=totalsHtml;
+
+    // Keep legacy hidden fields synced (still used by exportOrderCSV / saved-job code paths).
+    const opn=document.getElementById('orderProjectName');if(opn)opn.value=pn;
+    const opa=document.getElementById('orderProjectAddress');if(opa)opa.value=pa;
+    const osup=document.getElementById('orderSupplier');if(osup)osup.value=supplierKeys.join(', ');
+    const odt=document.getElementById('orderDate');if(odt)odt.value=today;
+    const opo=document.getElementById('orderPO');if(opo)opo.value=orderNum;
+}
+
+// ----- Entry point: called from the calculator's "Generate order" CTA -----
+function prepareOrderFromCalc(){
+    if(!currentCalc){notify('Calculate first','error');return}
+    const r=currentCalc;
+    const supplier=r.supplier||'';
+    const isMulti=supplier==='All Suppliers'||supplier==='Best per phase'||!!r.bestPerPhase;
+    document.getElementById('orderEmpty').style.display='none';
+    if(isMulti){
+        // Use r.bestPerPhase (which already reflects userPicks merged with cheapest defaults
+        // from the most recent calculateJob run) to skip the second comparison step.
+        // The calculator's inline picker is the single source of truth for supplier choices.
+        const bpp=r.bestPerPhase||{};
+        const selections={};
+        Object.keys(bpp).forEach(phase=>{
+            const sup=bpp[phase];if(!sup)return;
+            if(!selections[sup])selections[sup]=[];
+            selections[sup].push(phase);
+        });
+        document.getElementById('orderComparison').classList.add('hidden');
+        document.getElementById('orderContent').classList.remove('hidden');
+        renderOrderForm(r,selections);
+    } else {
+        document.getElementById('orderComparison').classList.add('hidden');
+        document.getElementById('orderContent').classList.remove('hidden');
+        const phases=orderV2PhasesPresent(r);
+        renderOrderForm(r,{[supplier||'Supplier']:phases});
+    }
+    showPage('order');
+}
+
+function printOrder(){
+    const showWM=!isLicensed();
+    togglePrintWatermark(showWM);
+    setTimeout(()=>{window.print();togglePrintWatermark(false)},100);
+}
+
+function exportOrderCSV(){
+    if(!requireLicense('export CSV'))return;
+    if(!currentCalc)return;
+    const pn=document.getElementById('calcProjectName')?.value||'';
+    const pa=document.getElementById('calcProjectAddress')?.value||'';
+    const orderNum=calcOrderNumber(currentCalc);
+    const today=new Date().toISOString().split('T')[0];
+    let csv=`"Project","${pn.replace(/"/g,'""')}"\n"Address","${pa.replace(/"/g,'""')}"\n"Order","${orderNum}"\n"Date","${today}"\n`;
+    csv+='\nSupplier,SKU,Item,Qty,Each,Line Total\n';
+    let total=0;
+    document.querySelectorAll('#orderTableBody .order-v2-group').forEach(g=>{
+        const sup=(g.querySelector('.order-v2-group-supplier')?.textContent||'').trim();
+        g.querySelectorAll('tbody tr').forEach(tr=>{
+            const cells=tr.querySelectorAll('td');
+            const sku=(cells[0]?.textContent||'').trim();
+            const name=(cells[1]?.textContent||'').trim().replace(/"/g,'""');
+            const qty=(cells[2]?.textContent||'').trim();
+            const each=(cells[3]?.textContent||'').trim();
+            const line=(cells[4]?.textContent||'').trim();
+            const lineNum=parseFloat(line.replace(/[^0-9.]/g,''))||0;
+            csv+=`"${sup}","${sku}","${name}","${qty}","${each}","${line}"\n`;
+            total+=lineNum;
+        });
+    });
+    csv+=`,,,,,"Total $${total.toFixed(2)}"\n`;
+    const blob=new Blob([csv],{type:'text/csv'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=`order-${(pn||'order').replace(/\s+/g,'-').toLowerCase()}-${today}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    notify('Exported','success');
+}
+
+window.prepareOrderFromCalc=prepareOrderFromCalc;
+window.renderOrderComparison=renderOrderComparison;
+window.confirmOrderComparison=confirmOrderComparison;
+window.renderOrderForm=renderOrderForm;
+window.printOrder=printOrder;
+window.exportOrderCSV=exportOrderCSV;
+
+// Stub legacy renderOrderTable so callers from saved-jobs / restore paths don't error.
+// The new flow uses renderOrderForm(r, selections); call prepareOrderFromCalc instead.
+function renderOrderTable(){if(currentCalc)prepareOrderFromCalc()}
+function generateOrderForm(){if(currentCalc)prepareOrderFromCalc()}
+// No-op kept so material-edit / reset paths that ran the legacy phase-filter
+// repopulation don't throw. The new order flow has no phase-filter dropdown.
+function populateOrderPhaseFilter(){}
 
 // ===== SAVED JOBS (merged with templates) =====
 function saveJob(){if(!currentCalc){notify('Calculate first','error');return}
@@ -695,7 +1708,206 @@ async function doSaveJob(){const name=document.getElementById('saveJobName').val
     }
     closeModal('saveJobModal');notify(isTemplate?'Template saved':'Job saved','success')}
 
-function renderSavedJobs(){const el=document.getElementById('savedJobsList');if(!savedJobs.length){el.innerHTML='<div class="dash-empty">No saved jobs yet.</div>';return}el.innerHTML='<div class="saved-jobs-list">'+savedJobs.map(j=>{const d=new Date(j.savedAt);const ds=d.toLocaleDateString()+' '+d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});return`<div class="saved-job-card"><h4>${escHtml(j.name)}${j.isTemplate?'<span class="tmpl-badge">TEMPLATE</span>':''}</h4><div class="meta"><span>${escHtml(j.supplier)}</span><span>${(j.sqft||0).toLocaleString()} sqft</span>${j.linearFt?`<span>${j.linearFt.toLocaleString()} lf</span>`:''}</div>${!j.isTemplate?`<div class="meta"><span class="mono">${fmt(j.materialTotal)} cost</span><span class="mono">${fmt(j.sellingPrice)} sell</span></div>`:''}<div class="meta"><span>${ds}</span></div><div class="actions"><button class="btn btn-primary btn-sm" onclick="loadJob('${j.id}')">Load</button><button class="btn btn-secondary btn-sm" onclick="duplicateJob('${j.id}')">Duplicate</button><button class="btn btn-danger btn-sm" onclick="deleteJob('${j.id}')">Delete</button></div></div>`}).join('')+'</div>'}
+// ===== SAVED JOBS — v2 redesign =====
+// Filter/search state for the saved-jobs page (in-memory; per-session)
+window.jobsV2State=window.jobsV2State||{tab:'All',search:''};
+
+// Map a saved job to a {key,label} status.
+function jobsV2Status(j){
+    // Spec §5.5: templates render as `● Draft` (amber dot) in the status column.
+    if(j.isTemplate)return{key:'draft',label:'Draft'};
+    const s=String(j.status||'').toLowerCase();
+    if(s==='won')return{key:'won',label:'Won'};
+    if(s==='sent')return{key:'sent',label:'Sent'};
+    if(s==='lost')return{key:'lost',label:'Lost'};
+    if(s==='active')return{key:'active',label:'Active'};
+    if(s==='draft')return{key:'draft',label:'Draft'};
+    // Infer from data
+    if(j.sellingPrice&&Number(j.sellingPrice)>0)return{key:'active',label:'Active'};
+    return{key:'draft',label:'Draft'};
+}
+
+// Build a short job code from job id/name. Templates get a 2-digit
+// sequence (TPL-01, TPL-02, …) keyed on their position in savedJobs
+// among templates, per spec §5.5.
+function jobsV2JobCode(j){
+    if(j.isTemplate){
+        const templates=(savedJobs||[]).filter(x=>x.isTemplate);
+        const idx=templates.findIndex(x=>x===j||x.id===j.id);
+        const n=idx>=0?(idx+1):(templates.length+1);
+        return'TPL-'+String(n).padStart(2,'0');
+    }
+    const m=String(j.id||'').match(/(\d+)/);
+    if(m){
+        const n=parseInt(m[1],10);
+        return'J-'+(n%10000).toString().padStart(4,'0');
+    }
+    return'J-'+String(j.id||'').slice(-4).toUpperCase();
+}
+
+// Compact money — $28.4k, $612.4k, $1.2M
+function jobsV2FmtCompactMoney(n){
+    const x=Number(n)||0;
+    if(x===0)return'$0';
+    if(x>=1e6)return'$'+(x/1e6).toFixed(1).replace(/\.0$/,'')+'M';
+    if(x>=1e3)return'$'+(x/1e3).toFixed(1).replace(/\.0$/,'')+'k';
+    return'$'+x.toFixed(0);
+}
+
+// ISO-ish yyyy-mm-dd date.
+function jobsV2FmtDate(iso){
+    const d=new Date(iso);
+    if(isNaN(d))return'—';
+    const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');const dd=String(d.getDate()).padStart(2,'0');
+    return`${y}-${m}-${dd}`;
+}
+
+// Render the filter tabs strip
+function jobsV2RenderTabs(counts){
+    const tabs=[
+        {key:'All',label:'All',n:counts.All},
+        {key:'Active',label:'Active',n:counts.Active},
+        {key:'Won',label:'Won',n:counts.Won},
+        {key:'Sent',label:'Sent',n:counts.Sent},
+        {key:'Drafts',label:'Drafts',n:counts.Drafts},
+        {key:'Templates',label:'Templates',n:counts.Templates}
+    ];
+    const cur=window.jobsV2State.tab;
+    const wrap=document.getElementById('jobsV2Tabs');
+    if(!wrap)return;
+    // Spec §5.4: tabs are plain text, no inline count badge.
+    wrap.innerHTML=tabs.map(t=>`<button class="jobs-v2-tab${t.key===cur?' active':''}" data-on-click="jobsV2SetTab" data-args="${escAttr(t.key)}" role="tab" aria-selected="${t.key===cur?'true':'false'}">${escHtml(t.label)}</button>`).join('');
+}
+
+// Filter the job list by tab + search
+function jobsV2FilterList(){
+    const{tab,search}=window.jobsV2State;
+    const q=String(search||'').toLowerCase().trim();
+    return savedJobs.filter(j=>{
+        const st=jobsV2Status(j).key;
+        if(tab==='Templates'){if(!j.isTemplate)return false}
+        else if(tab==='Active'){if(j.isTemplate||st!=='active')return false}
+        else if(tab==='Won'){if(j.isTemplate||st!=='won')return false}
+        else if(tab==='Sent'){if(j.isTemplate||st!=='sent')return false}
+        else if(tab==='Drafts'){if(j.isTemplate||st!=='draft')return false}
+        // 'All' shows everything (incl. templates)
+        if(!q)return true;
+        const hay=[j.name,j.projectName,j.projectAddress,j.supplier,jobsV2JobCode(j)].filter(Boolean).join(' ').toLowerCase();
+        return hay.indexOf(q)!==-1;
+    });
+}
+
+function renderSavedJobs(){
+    const listEl=document.getElementById('savedJobsList');
+    if(!listEl)return;
+    // Counts (always reflect full library, not the filtered view)
+    const counts={All:0,Active:0,Won:0,Sent:0,Drafts:0,Templates:0};
+    savedJobs.forEach(j=>{
+        counts.All++;
+        if(j.isTemplate){counts.Templates++;return}
+        const st=jobsV2Status(j).key;
+        if(st==='active')counts.Active++;
+        else if(st==='won')counts.Won++;
+        else if(st==='sent')counts.Sent++;
+        else if(st==='draft')counts.Drafts++;
+    });
+    jobsV2RenderTabs(counts);
+    // Subtitle
+    const subEl=document.getElementById('jobsV2Subtitle');
+    if(subEl){
+        const jobsN=counts.All-counts.Templates;
+        subEl.innerHTML=`${jobsN} job${jobsN===1?'':'s'}<span class="sep">·</span>${counts.Templates} template${counts.Templates===1?'':'s'}<span class="sep">·</span>search, filter, duplicate`;
+    }
+    // Restore search input value
+    const sIn=document.getElementById('jobsV2Search');
+    if(sIn&&sIn.value!==window.jobsV2State.search)sIn.value=window.jobsV2State.search||'';
+    // Filtered rows
+    const rows=jobsV2FilterList();
+    if(!savedJobs.length){
+        listEl.innerHTML=`<div class="jobs-v2-table-wrap"><div class="jobs-v2-empty"><div class="jobs-v2-empty-title">No saved jobs yet</div><div class="jobs-v2-empty-text">Save a calculation from the Calculator page to build your library.</div><button class="jobs-v2-cta" data-on-click="jobsV2NewJob">+ New job</button></div></div>`;
+    }else if(!rows.length){
+        listEl.innerHTML=`<div class="jobs-v2-table-wrap"><div class="jobs-v2-empty"><div class="jobs-v2-empty-title">No matches</div><div class="jobs-v2-empty-text">Try clearing the search or switching tabs.</div></div></div>`;
+    }else{
+        const MAX_CHIPS=3;
+        const colg=`<colgroup><col class="c-job"><col class="c-name"><col class="c-phases"><col class="c-meta"><col class="c-status"><col class="c-total"><col class="c-act"></colgroup>`;
+        const head=`<thead><tr>`+
+            `<th class="c-job">Job &middot;#</th>`+
+            `<th class="c-name">Name / Client</th>`+
+            `<th class="c-phases">Phases</th>`+
+            `<th class="c-meta text-right">Sq&middot;ft / Date</th>`+
+            `<th class="c-status">Status</th>`+
+            `<th class="c-total text-right">Total</th>`+
+            `<th class="c-act"></th>`+
+            `</tr></thead>`;
+        const body=rows.map(j=>{
+            const code=jobsV2JobCode(j);
+            const status=jobsV2Status(j);
+            const phases=Array.isArray(j.selectedPhases)?j.selectedPhases:[];
+            const shown=phases.slice(0,MAX_CHIPS);
+            const more=phases.length>MAX_CHIPS?phases.length-MAX_CHIPS:0;
+            const chips=shown.map(p=>`<span class="v2-chip ${v2ChipClass(p)}">${escHtml(p)}</span>`).join('');
+            const chipsHtml=chips+(more?`<span class="jobs-v2-phases-overflow">+${more}</span>`:'');
+            const clientName=j.isTemplate?'Template':(j.projectName||j.supplier||'—');
+            const sqftCell=j.isTemplate
+                ?`<div class="jobs-v2-sqft" style="color:var(--v2-text-tertiary);font-weight:400">&mdash;</div><div class="jobs-v2-date">${jobsV2FmtDate(j.savedAt)}</div>`
+                :`<div class="jobs-v2-sqft">${(j.sqft||0).toLocaleString()}<span class="unit">sq&middot;ft</span></div><div class="jobs-v2-date">${jobsV2FmtDate(j.savedAt)}</div>`;
+            const totalCell=j.isTemplate
+                ?`<td class="c-total jobs-v2-total dash">&mdash;</td>`
+                :`<td class="c-total jobs-v2-total">${jobsV2FmtCompactMoney(j.sellingPrice||j.materialTotal||0)}</td>`;
+            const idAttr=escAttr(j.id);
+            return`<tr class="jobs-v2-row" data-on-click="jobsV2RowClick" data-args="${idAttr}">`+
+                `<td class="jobs-v2-jobcode" title="${escAttr(code)}">${escHtml(code)}</td>`+
+                `<td>`+
+                    `<div class="jobs-v2-name">${escHtml(j.name||'Untitled')}</div>`+
+                    `<div class="jobs-v2-client">${escHtml(clientName)}</div>`+
+                    `<div class="jobs-v2-name-mobile-extras">${chipsHtml}<span class="jobs-v2-status ${status.key}" style="margin-left:6px">${escHtml(status.label)}</span></div>`+
+                `</td>`+
+                `<td class="c-phases"><div class="jobs-v2-phases">${chipsHtml}</div></td>`+
+                `<td class="c-meta jobs-v2-meta">${sqftCell}</td>`+
+                `<td class="c-status"><span class="jobs-v2-status ${status.key}">${escHtml(status.label)}</span></td>`+
+                totalCell+
+                `<td class="jobs-v2-actions">`+
+                    `<span class="jobs-v2-chev" aria-hidden="true">&rsaquo;</span>`+
+                    `<span class="jobs-v2-row-actions">`+
+                        `<button class="jobs-v2-act-btn primary" data-on-click="jobsV2ActLoad" data-args="${idAttr}">Load</button>`+
+                        `<button class="jobs-v2-act-btn" data-on-click="jobsV2ActDuplicate" data-args="${idAttr}">Duplicate</button>`+
+                        `<button class="jobs-v2-act-btn danger" data-on-click="jobsV2ActDelete" data-args="${idAttr}">Delete</button>`+
+                    `</span>`+
+                `</td>`+
+            `</tr>`;
+        }).join('');
+        listEl.innerHTML=`<div class="jobs-v2-table-wrap"><table class="jobs-v2-table">${colg}${head}<tbody>${body}</tbody></table></div>`;
+    }
+    // Footer aggregates (based on full library, not filtered)
+    const footEl=document.getElementById('jobsV2Footer');
+    if(footEl){
+        const nonTpl=savedJobs.filter(j=>!j.isTemplate);
+        const ytd=nonTpl.reduce((s,j)=>s+(Number(j.sellingPrice)||0),0);
+        const wonJobs=nonTpl.filter(j=>jobsV2Status(j).key==='won');
+        const closed=nonTpl.filter(j=>{const k=jobsV2Status(j).key;return k==='won'||k==='lost'});
+        const winRate=closed.length?Math.round((wonJobs.length/closed.length)*100):0;
+        const margins=nonTpl.map(j=>Number(j.profitPct)||0).filter(n=>n>0);
+        const avgMargin=margins.length?(margins.reduce((s,n)=>s+n,0)/margins.length):0;
+        footEl.innerHTML=`<div>Showing <span class="num">${rows.length}</span> of <span class="num">${counts.All}</span><span class="sep">&middot;</span>YTD value <span class="num">${jobsV2FmtCompactMoney(ytd)}</span></div>`+
+            `<div>Avg margin <span class="num">${avgMargin.toFixed(1)}%</span><span class="sep">&middot;</span>Win rate <span class="num">${winRate}%</span></div>`;
+    }
+}
+
+// === v2 page-level handler functions (exposed for data-on-* delegation) ===
+window.jobsV2SetTab=function(key){window.jobsV2State.tab=key;renderSavedJobs()};
+window.jobsV2SetSearch=function(){const el=document.getElementById('jobsV2Search');window.jobsV2State.search=el?el.value:'';renderSavedJobs()};
+window.jobsV2FilterTemplates=function(){window.jobsV2State.tab='Templates';renderSavedJobs()};
+window.jobsV2NewJob=function(){showPage('calculator')};
+window.jobsV2RowClick=function(id,e){
+    // If the click landed on an action button, let that handler run instead.
+    if(e&&e.target&&e.target.closest('.jobs-v2-act-btn'))return;
+    loadJob(id);
+};
+window.jobsV2ActLoad=function(id,e){if(e&&e.stopPropagation)e.stopPropagation();loadJob(id)};
+window.jobsV2ActDuplicate=function(id,e){if(e&&e.stopPropagation)e.stopPropagation();duplicateJob(id)};
+window.jobsV2ActDelete=function(id,e){if(e&&e.stopPropagation)e.stopPropagation();deleteJob(id)};
+window.jobsV2Status=jobsV2Status;
+window.jobsV2JobCode=jobsV2JobCode;
 
 function loadJob(id){const job=savedJobs.find(j=>j.id===id);if(!job)return;document.getElementById('calcProjectName').value=job.isTemplate?'':job.projectName||'';document.getElementById('calcProjectAddress').value=job.isTemplate?'':job.projectAddress||'';document.getElementById('calcWaste').value=job.waste||10;document.getElementById('calcProfit').value=job.profitPct||20;document.getElementById('calcTax').value=job.taxPct||0;document.getElementById('calcLabor').value=job.laborRate||0;showPage('calculator');setTimeout(()=>{const sel=document.getElementById('calcSupplier');if(suppliers.includes(job.supplier))sel.value=job.supplier;renderPhaseCheckboxes();if(job.selectedPhases)document.querySelectorAll('#phaseCheckboxes input[type="checkbox"]').forEach(cb=>{const ch=job.selectedPhases.includes(cb.value);cb.checked=ch;cb.closest('.phase-chip').classList.toggle('checked',ch)});updatePhaseOptions();
     // Restore per-scope dimensions from saved phaseDims
@@ -709,46 +1921,601 @@ async function deleteJob(id){if(!confirm('Delete?'))return;
     savedJobs=savedJobs.filter(j=>j.id!==id);saveSavedJobs();renderSavedJobs();notify('Deleted','success')}
 function clearAllJobs(){if(!confirm('Delete ALL saved jobs?'))return;savedJobs=[];saveSavedJobs();renderSavedJobs();notify('Cleared','info')}
 
-// ===== DASHBOARD =====
-function renderDashboard(){
-    const totalMats=Object.values(materialsBySupplier).reduce((s,m)=>s+m.length,0);const staleCount=Object.values(materialsBySupplier).flat().filter(isStale).length;
-    document.getElementById('dashStats').innerHTML=`<div class="dash-stat"><div class="num">${totalMats}</div><div class="label">Materials</div></div><div class="dash-stat"><div class="num">${suppliers.length}</div><div class="label">Suppliers</div></div><div class="dash-stat"><div class="num">${categories.length}</div><div class="label">Phases</div></div><div class="dash-stat"><div class="num">${savedJobs.length}</div><div class="label">Saved Jobs</div></div>${staleCount?`<div class="dash-stat"><div class="num" style="color:var(--err)">${staleCount}</div><div class="label">Stale Prices</div></div>`:''}`;
-    const recent=savedJobs.slice(0,4);const recentEl=document.getElementById('dashRecentJobs');
-    if(!recent.length){recentEl.innerHTML='<div class="dash-empty">No saved jobs yet.</div>'}else{recentEl.innerHTML='<div class="dash-recent-grid">'+recent.map(j=>{const ds=new Date(j.savedAt).toLocaleDateString();return`<div class="dash-job-card" onclick="loadJob('${j.id}')"><h4>${escHtml(j.name)}${j.isTemplate?'<span class="tmpl-badge">TEMPLATE</span>':''}</h4><div class="meta"><span>${escHtml(j.supplier)}</span><span>${(j.sqft||0).toLocaleString()} sqft</span><span>${ds}</span></div>${!j.isTemplate?`<div class="amounts"><span class="mat">${fmt(j.materialTotal)} cost</span><span class="sell">${fmt(j.sellingPrice)} sell</span></div>`:''}</div>`}).join('')+'</div>'}
-    document.getElementById('dashSuppliers').innerHTML=suppliers.map(s=>{const mats=materialsBySupplier[s]||[];const phases=getSupplierPhases(s);return`<div class="dash-supplier-card" onclick="switchSupplier('${escAttr(s)}');showPage('pricing')"><h4>${escHtml(s)}</h4><div class="meta"><span>${mats.length} materials</span><span>${phases.length} phases</span></div><div class="phases">${phases.map(p=>`<span class="badge pb${categories.indexOf(p)%8} pc${categories.indexOf(p)%8}">${p}</span>`).join('')}</div></div>`}).join('');
+// ===== DASHBOARD (v2) =====
+// Material-calculator dashboard. Surfaces recent saved jobs, catalog size,
+// supplier coverage, and stale-price alerts. NOT a bid/estimating dashboard
+// — there are no Win/Lost/Sent statuses anywhere here.
+//
+// Pure helpers — only used by renderDashboard.
+function dashV2ChipClass(phase){
+    // Map a phase name to the v2-chip palette class (defined in styles.css §7).
+    const k=String(phase||'').toLowerCase().trim();
+    if(k.includes('lath'))return'lath';
+    if(k.includes('gray')||k.includes('grey')||k.includes('brown')||k.includes('scratch'))return'gray-coat';
+    if(k.includes('color')||k.includes('finish')||k.includes('stucco'))return'color-coat';
+    if(k.includes('paint'))return'painting';
+    if(k.includes('dry')||k.includes('sheetrock'))return'drywall';
+    if(k.includes('stone')||k.includes('aggregate'))return'aggregate';
+    if(k.includes('access')||k.includes('trim')||k.includes('bead'))return'accessories';
+    return'accessories';
+}
+function dashV2FmtMoneyK(n){
+    // Compact format e.g. $28.4k, $1,240. Used in job totals + catalog footer.
+    const v=Number(n)||0;
+    if(v>=1000){const k=v/1000;return'$'+k.toFixed(k>=100?0:1)+'k'}
+    return'$'+v.toFixed(0)
+}
+function dashV2FmtRelative(ts){
+    if(!ts)return'—';
+    const d=new Date(ts);if(isNaN(d.getTime()))return'—';
+    const diffMs=Date.now()-d.getTime();
+    const day=24*60*60*1000;
+    if(diffMs<day&&d.toDateString()===new Date().toDateString())return'Today';
+    const yest=new Date();yest.setDate(yest.getDate()-1);
+    if(d.toDateString()===yest.toDateString())return'Yesterday';
+    const days=Math.floor(diffMs/day);
+    if(days<7)return days+' days ago';
+    if(days<30)return Math.floor(days/7)+'w ago';
+    return d.toLocaleDateString(undefined,{month:'short',day:'numeric'})
+}
+function dashV2JobCode(j){
+    // Synthesize a J-#### code from the saved-job id (stable per id).
+    const m=String(j.id||'').match(/(\d+)/);
+    if(m)return'J-'+m[1].slice(-4).padStart(4,'0');
+    return'J-0000'
+}
+function dashV2JobDate(j){
+    // savedAt rendered as a short relative string ("Today", "3 days ago").
+    return dashV2FmtRelative(j.savedAt);
+}
+function dashV2JobPhases(j){
+    // Job's selected phases, capped at 3 for chip rendering.
+    const list=(j.selectedPhases&&j.selectedPhases.length?j.selectedPhases:[])||[];
+    return list.slice(0,3);
 }
 
-// ===== ACCOUNT =====
+async function renderDashboard(){
+    const page=document.getElementById('dashboardPage');
+    if(!page)return;
+
+    // --- Header data --------------------------------------------------
+    const now=new Date();
+    // Build date manually so the format matches spec: WEEKDAY MON DD (no comma).
+    const wk=['SUN','MON','TUE','WED','THU','FRI','SAT'][now.getDay()];
+    const mo=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][now.getMonth()];
+    const dd=String(now.getDate()).padStart(2,'0');
+    const datePart=`${wk} ${mo} ${dd}`;
+    const userName=(currentUser&&currentUser.name)?String(currentUser.name).split(/\s+/)[0]:'there';
+
+    // --- Source data --------------------------------------------------
+    const jobs=savedJobs||[];
+    const nonTemplates=jobs.filter(j=>!j.isTemplate);
+    const templates=jobs.filter(j=>j.isTemplate);
+    const allSuppliers=suppliers||[];
+    const supplierCount=allSuppliers.length;
+
+    // Catalog totals (materials, stale items, phases, summed catalog value).
+    let materialCount=0;
+    let staleCount=0;
+    let catalogValue=0;
+    const phasesCoveredSet=new Set();
+    allSuppliers.forEach(s=>{
+        const mats=materialsBySupplier[s]||[];
+        materialCount+=mats.length;
+        mats.forEach(m=>{
+            if(typeof isStale==='function'&&isStale(m))staleCount++;
+            catalogValue+=(Number(m.pricePerUnit)||0);
+        });
+        const ph=(typeof getSupplierPhases==='function')?getSupplierPhases(s):[];
+        ph.forEach(p=>phasesCoveredSet.add(p));
+    });
+    const phasesCovered=phasesCoveredSet.size;
+
+    // --- Recent jobs (5 most recent non-templates) --------------------
+    const recent=nonTemplates.slice(0,5);
+
+    // --- Supplier rows (right rail) -----------------------------------
+    const supRows=allSuppliers.slice(0,4).map(s=>{
+        const mats=materialsBySupplier[s]||[];
+        const phases=(typeof getSupplierPhases==='function')?getSupplierPhases(s):[];
+        const sStale=mats.filter(m=>typeof isStale==='function'&&isStale(m)).length;
+        return{name:s,mats:mats.length,phases,stale:sStale}
+    });
+
+    // --- Build HTML ---------------------------------------------------
+
+    // Amber tint on the stale-prices metric when any are stale.
+    const staleMod=staleCount>0?' dash-v2-metric--warn':'';
+
+    const metricsHtml=`
+        <div class="dash-v2-metrics" role="group" aria-label="Catalog overview">
+            <div class="dash-v2-metric">
+                <div class="dash-v2-metric-label">Saved jobs</div>
+                <div class="dash-v2-metric-row">
+                    <span class="dash-v2-metric-num">${nonTemplates.length}</span>
+                    <span class="dash-v2-metric-unit">jobs</span>
+                </div>
+                <div class="dash-v2-metric-trend">${templates.length} template${templates.length===1?'':'s'}</div>
+            </div>
+            <div class="dash-v2-metric">
+                <div class="dash-v2-metric-label">Materials catalog</div>
+                <div class="dash-v2-metric-row">
+                    <span class="dash-v2-metric-num">${materialCount}</span>
+                    <span class="dash-v2-metric-unit">items</span>
+                </div>
+                <div class="dash-v2-metric-trend">across ${supplierCount} supplier${supplierCount===1?'':'s'}</div>
+            </div>
+            <div class="dash-v2-metric">
+                <div class="dash-v2-metric-label">Suppliers</div>
+                <div class="dash-v2-metric-row">
+                    <span class="dash-v2-metric-num">${supplierCount}</span>
+                    <span class="dash-v2-metric-unit">linked</span>
+                </div>
+                <div class="dash-v2-metric-trend">covering ${phasesCovered} phase${phasesCovered===1?'':'s'}</div>
+            </div>
+            <div class="dash-v2-metric${staleMod}">
+                <div class="dash-v2-metric-label">Stale prices</div>
+                <div class="dash-v2-metric-row">
+                    <span class="dash-v2-metric-num">${staleCount}</span>
+                    <span class="dash-v2-metric-unit">items</span>
+                </div>
+                <div class="dash-v2-metric-trend">${staleCount>0?'older than 30 days':'all prices fresh'}</div>
+            </div>
+        </div>`;
+
+    const jobsTableHtml=recent.length
+        ?`<table class="dash-v2-jobs-table">
+            <colgroup>
+                <col class="dash-v2-col-job">
+                <col>
+                <col class="dash-v2-col-phase">
+                <col class="dash-v2-col-due">
+                <col class="dash-v2-col-total">
+                <col class="dash-v2-col-chev">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th class="dash-v2-th-job">Job&nbsp;#</th>
+                    <th>Name / Client</th>
+                    <th class="dash-v2-th-phase">Phases</th>
+                    <th class="text-right">Sq&middot;ft&nbsp;&nbsp;Date</th>
+                    <th class="text-right">Total</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                ${recent.map(j=>{
+                    const code=dashV2JobCode(j);
+                    const phases=dashV2JobPhases(j);
+                    const dateStr=dashV2JobDate(j);
+                    const sub=(j.projectAddress||j.supplier||'')+'';
+                    const chipsHtml=phases.length
+                        ?phases.map(p=>`<span class="v2-chip ${dashV2ChipClass(p)}">${escHtml(p)}</span>`).join('')
+                        :'<span class="dash-v2-job-sub">No phases</span>';
+                    return`<tr class="dash-v2-job-row" data-on-click="loadJob" data-args="${escAttr(j.id)}">
+                        <td class="dash-v2-job-cell-code"><span class="dash-v2-job-code">${escHtml(code)}</span></td>
+                        <td>
+                            <div class="dash-v2-job-name">${escHtml(j.name||j.projectName||'Untitled')}</div>
+                            ${sub?`<div class="dash-v2-job-sub">${escHtml(sub)}</div>`:''}
+                        </td>
+                        <td class="dash-v2-job-cell-phase"><div class="dash-v2-job-phase-chips">${chipsHtml}</div></td>
+                        <td class="dash-v2-job-due">
+                            <span class="dash-v2-job-due-sqft">${(Number(j.sqft)||0).toLocaleString()}</span>
+                            ${dateStr&&dateStr!=='—'?`<span class="dash-v2-job-due-date">${escHtml(dateStr)}</span>`:''}
+                        </td>
+                        <td class="dash-v2-job-total">${dashV2FmtMoneyK(j.sellingPrice||j.materialTotal||0)}</td>
+                        <td class="dash-v2-job-chev" aria-hidden="true">&rsaquo;</td>
+                    </tr>`
+                }).join('')}
+            </tbody>
+        </table>`
+        :`<div class="dash-v2-empty">No saved jobs yet. Start with <strong>New calculation</strong>.</div>`;
+
+    const suppliersHtml=supRows.length
+        ?`<div class="dash-v2-supplier-list">${supRows.map(r=>`
+            <button type="button" class="dash-v2-supplier-row" data-on-click="openSupplierPricing" data-args="${escAttr(r.name)}">
+                <div class="dash-v2-supplier-head">
+                    <span class="dash-v2-supplier-name">${escHtml(r.name)}</span>
+                    <span class="dash-v2-supplier-sync">${r.mats} item${r.mats===1?'':'s'}${r.stale>0?` &middot; <span class="dash-v2-supplier-stale">${r.stale} stale</span>`:''}</span>
+                </div>
+                <div class="dash-v2-supplier-chips">
+                    ${r.phases.slice(0,4).map(p=>`<span class="v2-chip ${dashV2ChipClass(p)}">${escHtml(p)}</span>`).join('')}
+                </div>
+            </button>`).join('')}</div>`
+        :`<div class="dash-v2-empty">No suppliers yet.</div>`;
+
+    page.innerHTML=`
+        <header class="dash-v2-header">
+            <div class="dash-v2-header-left">
+                <div class="dash-v2-eyebrow">
+                    <span>01 &middot; TODAY</span>
+                    <span class="dash-v2-eyebrow-sep">&middot;</span>
+                    <span>${escHtml(datePart)}</span>
+                </div>
+                <h1 class="dash-v2-title">Welcome back, ${escHtml(userName)}.</h1>
+                <p class="dash-v2-subtitle">
+                    <span>${nonTemplates.length} saved job${nonTemplates.length===1?'':'s'}</span>
+                    <span class="dash-v2-sub-sep">&middot;</span>
+                    <span>${materialCount} material${materialCount===1?'':'s'} across ${supplierCount} supplier${supplierCount===1?'':'s'}</span>
+                </p>
+            </div>
+            <div class="dash-v2-header-right">
+                <button class="dash-v2-btn" data-on-click="showPage" data-args="pricing">Open catalog</button>
+                <button class="dash-v2-btn dash-v2-btn-primary" data-on-click="showPage" data-args="calculator">
+                    <span class="dash-v2-btn-glyph">&#10766;</span> New calculation
+                </button>
+            </div>
+        </header>
+
+        <hr class="dash-v2-divider">
+
+        <div class="dash-v2-grid">
+            <div class="dash-v2-main">
+                ${metricsHtml}
+
+                <div class="dash-v2-section-head">
+                    <div class="dash-v2-section-head-left">
+                        <span class="dash-v2-section-eyebrow">02 &middot; Recent jobs</span>
+                        <h2 class="dash-v2-section-title">Recent calculations</h2>
+                    </div>
+                    <div class="dash-v2-section-head-right">
+                        <span>Showing ${recent.length} of ${nonTemplates.length}</span>
+                        <button class="dash-v2-section-link" data-on-click="showPage" data-args="savedJobs">All &rarr;</button>
+                    </div>
+                </div>
+
+                <div class="dash-v2-jobs-card">${jobsTableHtml}</div>
+
+                <div class="dash-v2-footer-stat">
+                    Total catalog value <span class="dash-v2-footer-num">${dashV2FmtMoneyK(catalogValue)}</span>
+                    <span class="dash-v2-sub-sep">&middot;</span>
+                    across <span class="dash-v2-footer-num">${supplierCount}</span> supplier${supplierCount===1?'':'s'}
+                </div>
+            </div>
+
+            <aside class="dash-v2-rail">
+                <section class="dash-v2-card dash-v2-suppliers" aria-label="Suppliers">
+                    <div class="dash-v2-card-eyebrow">Suppliers</div>
+                    ${suppliersHtml}
+                </section>
+                <p class="dash-v2-help">Need help? <a class="dash-v2-help-link" href="mailto:support@esticount.app">support@esticount.app</a></p>
+            </aside>
+        </div>`;
+}
+window.renderDashboard=renderDashboard;
+
+// ===== ACCOUNT (v2) =====
+
+// Deterministic pastel for the account avatar — same hash function as
+// admin-v2 user avatars so a user looks consistent across pages.
+const ACCOUNT_V2_AVATAR_PALETTE=[
+    '#efe2c2','#f1d4dc','#cde8c8','#f3cfb1','#bcd4a7','#cfd9e6','#d8d2c2'
+];
+const ACCOUNT_V2_AVATAR_FG={
+    '#efe2c2':'#7a5b1f','#f1d4dc':'#8a3f56','#cde8c8':'#3e6b3a',
+    '#f3cfb1':'#8a4b22','#bcd4a7':'#3f5a2c','#cfd9e6':'#3e5269','#d8d2c2':'#5a5236'
+};
+function accountV2AvatarColor(seed){
+    const s=String(seed||'');
+    let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;
+    return ACCOUNT_V2_AVATAR_PALETTE[h%ACCOUNT_V2_AVATAR_PALETTE.length];
+}
+function accountV2Initials(name){
+    const parts=String(name||'').trim().split(/\s+/).filter(Boolean);
+    if(!parts.length)return 'U';
+    if(parts.length===1)return parts[0].slice(0,2).toUpperCase();
+    return (parts[0][0]+parts[parts.length-1][0]).toUpperCase();
+}
+
+function accountV2SetMessage(el,text,kind){
+    if(!el)return;
+    el.textContent=text||'';
+    el.classList.remove('is-ok','is-err','is-muted');
+    if(kind==='ok')el.classList.add('is-ok');
+    else if(kind==='err')el.classList.add('is-err');
+    else el.classList.add('is-muted');
+}
+
+function accountV2ShowLicenseMessage(el,text,kind){
+    if(!el)return;
+    el.textContent=text||'';
+    el.classList.remove('is-ok','is-err');
+    if(kind==='ok')el.classList.add('is-ok');
+    else if(kind==='err')el.classList.add('is-err');
+    el.classList.add('is-shown');
+}
+function accountV2HideLicenseMessage(el){
+    if(!el)return;
+    el.classList.remove('is-shown','is-ok','is-err');
+    el.textContent='';
+}
+
 async function renderAccountPage(){
     if(!currentUser)return;
     // Re-fetch latest user data from API
     if(api.getToken()){try{const r=await api.getMe();currentUser=r.user}catch(e){}}
 
-    document.getElementById('accountNameDisplay').textContent=currentUser.name||'No name set';
-    document.getElementById('accountEmailDisplay').textContent=currentUser.email||'';
-    document.getElementById('accountAvatar').textContent=(currentUser.name||'U')[0].toUpperCase();
+    // Identity --------------------------------------------------------
+    const name=currentUser.name||'No name set';
+    const email=currentUser.email||'';
+    const initials=accountV2Initials(currentUser.name);
+    const avatarBg=accountV2AvatarColor(currentUser.email||currentUser.name||'user');
+    const avatarFg=ACCOUNT_V2_AVATAR_FG[avatarBg]||'#1a0e08';
+    const avatarEl=document.getElementById('accountAvatar');
+    avatarEl.textContent=initials;
+    avatarEl.style.background=avatarBg;
+    avatarEl.style.color=avatarFg;
+
+    document.getElementById('accountNameDisplay').textContent=name;
+    document.getElementById('accountEmailDisplay').textContent=email;
+
+    // Role + member-since line below identity
+    const role=(currentUser.role||'user').toString();
+    const created=currentUser.created_at?new Date(currentUser.created_at):null;
+    const memberSince=created&&!isNaN(created)?created.toLocaleDateString(undefined,{year:'numeric',month:'short'}):null;
+    const roleLine=document.getElementById('accountRoleLine');
+    if(roleLine){
+        roleLine.innerHTML=`${role.toUpperCase()}${memberSince?`<span class="sep">&middot;</span>MEMBER SINCE ${memberSince.toUpperCase()}`:''}`;
+    }
+
+    // Profile form inputs ---------------------------------------------
     document.getElementById('accountNameInput').value=currentUser.name||'';
     document.getElementById('accountEmailInput').value=currentUser.email||'';
     document.getElementById('accountPasswordInput').value='';
-    const lt=currentUser.license_type||'trial';
+
+    // Clear any stale messages on render
+    accountV2SetMessage(document.getElementById('profileMessage'),'','muted');
+    accountV2HideLicenseMessage(document.getElementById('licenseMessage'));
+
+    // License status --------------------------------------------------
+    // Source of truth: license_type (admin role implies lifetime). license_key is the
+    // audit trail of the activation, but admin-seeded accounts may have no key.
+    const lt=currentUser.license_type||null;
+    const isAdmin=currentUser.role==='admin';
     const hasKey=!!currentUser.license_key;
     const exp=currentUser.license_expires?new Date(currentUser.license_expires):null;
     const isExpired=exp&&exp<new Date();
-    const isActive=hasKey&&!isExpired;
+    const isLifetimeNow=lt==='lifetime'||(isAdmin&&!lt);
+    const isLicensedNow=isLifetimeNow||(lt&&!isExpired);
     const expStr=exp?exp.toLocaleDateString():'Never';
-    let statusText,statusClass;
-    if(!hasKey){statusText='Activate a license key below';statusClass='warn';document.getElementById('accountLicense').innerHTML=`
-        <div class="license-status"><span class="dot trial"></span><strong style="font-size:.95rem">NO LICENSE</strong></div>
-        <div class="license-detail">${statusText}</div>
-        <span class="badge" style="background:var(--warn-soft);color:var(--warn)">Inactive</span>`;return}
-    if(isExpired){statusText='Expired '+expStr;statusClass='err'}
-    else if(lt==='lifetime'){statusText='Never expires';statusClass='ok'}
-    else{statusText='Expires: '+expStr;statusClass='ok'}
-    document.getElementById('accountLicense').innerHTML=`
-        <div class="license-status"><span class="dot ${isActive?'active':'trial'}"></span><strong style="font-size:.95rem">${lt.toUpperCase()}</strong></div>
-        <div class="license-detail">${statusText}</div>
-        <span class="badge" style="background:var(--${isActive?'ok':'warn'}-soft);color:var(--${isActive?'ok':'warn'})">${isActive?'Active':'Inactive'}</span>`;
+
+    const statusPill=document.getElementById('accountStatusPill');
+    const licenseEl=document.getElementById('accountLicense');
+    const licenseEyebrowMeta=document.getElementById('accountLicenseEyebrowMeta');
+
+    // Reset pill classes
+    statusPill.classList.remove('is-active','is-trial','is-expired','is-none');
+
+    let typeLabel,typeClass,statusText,daysLeft,planLabel;
+    if(isAdmin&&(!lt||lt==='lifetime')){
+        typeLabel='Lifetime';typeClass='is-lifetime';
+        statusText='Admin account · all features unlocked.';
+        planLabel='Lifetime';
+        statusPill.classList.add('is-active');statusPill.textContent='Lifetime';
+    }else if(!lt){
+        typeLabel='No license';typeClass='is-none';
+        statusText='Activate a key below to unlock unlimited jobs and bidding.';
+        planLabel='Free tier';
+        statusPill.classList.add('is-none');statusPill.textContent='No license';
+    }else if(lt==='lifetime'){
+        typeLabel='Lifetime';typeClass='is-lifetime';
+        statusText='Never expires. Thanks for being a lifetime member.';
+        planLabel='Lifetime';
+        statusPill.classList.add('is-active');statusPill.textContent='Lifetime';
+    }else if(isExpired){
+        typeLabel=lt.charAt(0).toUpperCase()+lt.slice(1);typeClass='is-expired';
+        statusText='Expired on '+expStr+'. Renew or activate a new key.';
+        planLabel=lt+' (expired)';
+        statusPill.classList.add('is-expired');statusPill.textContent='Expired';
+    }else if(lt==='trial'){
+        typeLabel='Trial';typeClass='is-trial';
+        if(exp){
+            const ms=exp-new Date();
+            daysLeft=Math.max(0,Math.ceil(ms/(1000*60*60*24)));
+            statusText=daysLeft>0?`Trial · ${daysLeft} day${daysLeft===1?'':'s'} remaining (until ${expStr}).`:'Trial expires today.';
+        }else{
+            statusText='Trial · expires soon.';
+        }
+        planLabel='Trial';
+        statusPill.classList.add('is-trial');statusPill.textContent='Trial';
+    }else{
+        typeLabel=lt.charAt(0).toUpperCase()+lt.slice(1);typeClass='is-'+lt;
+        statusText='Renews on '+expStr+'.';
+        planLabel=typeLabel;
+        statusPill.classList.add('is-active');statusPill.textContent=typeLabel;
+    }
+
+    if(licenseEyebrowMeta)licenseEyebrowMeta.textContent=planLabel;
+
+    const keyFull=currentUser.license_key||'';
+    const keyMasked=keyFull?(keyFull.length>10?keyFull.slice(0,7)+'…'+keyFull.slice(-4):keyFull):'—';
+
+    licenseEl.innerHTML=`
+        <div class="account-v2-license-row">
+            <div class="account-v2-license-state">
+                <span class="account-v2-license-type ${typeClass}">${typeLabel}</span>
+                <span class="account-v2-license-sub">${statusText}</span>
+            </div>
+        </div>
+        <div class="account-v2-license-meta">
+            <div class="account-v2-license-meta-cell">
+                <div class="account-v2-license-meta-label">PLAN</div>
+                <div class="account-v2-license-meta-value">${planLabel}</div>
+            </div>
+            <div class="account-v2-license-meta-cell">
+                <div class="account-v2-license-meta-label">${isLifetimeNow?'EXPIRES':isExpired?'EXPIRED ON':isLicensedNow?'EXPIRES':'STATUS'}</div>
+                <div class="account-v2-license-meta-value ${!isLicensedNow?'is-muted':''}">${isLifetimeNow?'Never':isLicensedNow&&exp?expStr:isLicensedNow?'—':'inactive'}</div>
+            </div>
+            <div class="account-v2-license-meta-cell">
+                <div class="account-v2-license-meta-label">KEY</div>
+                <div class="account-v2-license-meta-value ${!hasKey?'is-muted':''}">${hasKey?keyMasked:isLicensedNow?'admin-set':'none'}</div>
+            </div>
+        </div>`;
+
+    // Quick stats rail -----------------------------------------------
+    const statsEl=document.getElementById('accountQuickStats');
+    if(statsEl){
+        const totalJobs=Array.isArray(savedJobs)?savedJobs.length:0;
+        const templates=Array.isArray(savedJobs)?savedJobs.filter(j=>j&&j.isTemplate).length:0;
+        const realJobs=totalJobs-templates;
+        let lastSavedLabel='—';
+        if(Array.isArray(savedJobs)&&savedJobs.length){
+            const dated=savedJobs
+                .map(j=>j&&j.savedAt?new Date(j.savedAt):null)
+                .filter(d=>d&&!isNaN(d));
+            if(dated.length){
+                const newest=dated.reduce((a,b)=>a>b?a:b);
+                lastSavedLabel=newest.toLocaleDateString();
+            }
+        }
+        statsEl.innerHTML=`
+            <div class="account-v2-stat">
+                <span class="account-v2-stat-label">Saved jobs</span>
+                <span class="account-v2-stat-value is-display">${realJobs}</span>
+            </div>
+            <div class="account-v2-stat">
+                <span class="account-v2-stat-label">Templates</span>
+                <span class="account-v2-stat-value">${templates}</span>
+            </div>
+            <div class="account-v2-stat">
+                <span class="account-v2-stat-label">Last saved</span>
+                <span class="account-v2-stat-value">${lastSavedLabel}</span>
+            </div>
+            <div class="account-v2-stat">
+                <span class="account-v2-stat-label">Role</span>
+                <span class="account-v2-stat-value">${role}</span>
+            </div>`;
+    }
+
+    // Business expenses panel
+    bizExpensesRender();
+
+    // Company info form (used on printed order forms)
+    const ci=loadCompanyInfo();
+    const setVal=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||''};
+    setVal('companyName',ci.name);
+    setVal('companyAddress',ci.address);
+    setVal('companyLicense',ci.license);
+    setVal('companyPhone',ci.phone);
+    setVal('companyEmail',ci.email);
 }
+
+// ===== COMPANY INFO (account-v2 section) =====
+// Company Info — used on order form letterheads.
+// Persisted in localStorage; no backend sync in v1.
+function loadCompanyInfo(){
+    try{const raw=localStorage.getItem('esticount_company_info');if(raw){const o=JSON.parse(raw);return{name:o.name||'',address:o.address||'',license:o.license||'',phone:o.phone||'',email:o.email||''}}}catch(_){}
+    return{name:'',address:'',license:'',phone:'',email:''};
+}
+function saveCompanyInfo(obj){
+    const clean={name:String(obj.name||'').trim(),address:String(obj.address||'').trim(),license:String(obj.license||'').trim(),phone:String(obj.phone||'').trim(),email:String(obj.email||'').trim()};
+    localStorage.setItem('esticount_company_info',JSON.stringify(clean));
+    return clean;
+}
+function saveCompanyInfoFromForm(){
+    const obj=saveCompanyInfo({
+        name:document.getElementById('companyName').value,
+        address:document.getElementById('companyAddress').value,
+        license:document.getElementById('companyLicense').value,
+        phone:document.getElementById('companyPhone').value,
+        email:document.getElementById('companyEmail').value,
+    });
+    // Inline confirmation (sticks for ~3.5s)
+    const msg=document.getElementById('companyInfoMessage');
+    if(msg){
+        msg.textContent='✓ Saved · used on all future order forms';
+        msg.style.color='var(--v2-status-dot-green,#3fb950)';
+        msg.style.fontWeight='600';
+        setTimeout(()=>{msg.textContent='';msg.style.color='';msg.style.fontWeight=''},3500);
+    }
+    // Loud toast (uses the existing notify system, visible everywhere on the app)
+    if(typeof notify==='function')notify('Company info saved','success');
+    // If an order is already rendered, refresh its letterhead so the change shows
+    // immediately when the user navigates back to the Orders page.
+    if(currentCalc&&typeof renderOrderForm==='function'){
+        try{
+            const r=currentCalc;
+            const isMulti=r.supplier==='All Suppliers'||r.supplier==='Best per phase'||!!r.bestPerPhase;
+            if(isMulti){
+                const sel={};Object.keys(r.bestPerPhase||{}).forEach(p=>{const s=r.bestPerPhase[p];if(!s)return;(sel[s]=sel[s]||[]).push(p)});
+                renderOrderForm(r,sel);
+            } else if(r.supplier){
+                renderOrderForm(r,{[r.supplier]:orderV2PhasesPresent(r)});
+            }
+        }catch(_){}
+    }
+}
+window.loadCompanyInfo=loadCompanyInfo;
+window.saveCompanyInfo=saveCompanyInfo;
+window.saveCompanyInfoFromForm=saveCompanyInfoFromForm;
+
+// ===== BUSINESS EXPENSES (account-v2 section) =====
+function bizExpensesRender(){
+    const state=loadBusinessExpenses();
+    const jpmEl=document.getElementById('bizJobsPerMonth');
+    if(jpmEl)jpmEl.value=state.avgJobsPerMonth;
+    const list=document.getElementById('bizExpensesList');
+    if(list){
+        if(!state.items.length){
+            list.innerHTML=`<div class="account-v2-hint" style="text-align:center;padding:14px;border:1px dashed var(--v2-border-hairline);border-radius:8px">No business expenses yet. Click "+ Add expense" to add one.</div>`;
+        }else{
+            list.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px">${state.items.map((it,idx)=>`
+                <div style="display:grid;grid-template-columns:1.6fr 1fr 1fr auto;gap:8px;align-items:center">
+                    <input type="text" class="account-v2-input" placeholder="QuickBooks, insurance, etc." value="${escAttr(it.name||'')}" data-on-input="bizExpensesUpdate" data-args='["${it.id}","name"]'>
+                    <input type="number" class="account-v2-input" placeholder="0.00" step="0.01" min="0" value="${Number(it.amount)||0}" data-on-input="bizExpensesUpdate" data-args='["${it.id}","amount"]'>
+                    <select class="account-v2-input" data-on-change="bizExpensesUpdate" data-args='["${it.id}","frequency"]'>
+                        ${BIZ_EXPENSE_FREQS.map(f=>`<option value="${f}"${f===it.frequency?' selected':''}>${f}</option>`).join('')}
+                    </select>
+                    <button class="account-v2-btn-cancel" data-on-click="bizExpensesRemove" data-args="${it.id}" title="Remove">&times;</button>
+                </div>
+            `).join('')}</div>`;
+        }
+    }
+    const perJobEl=document.getElementById('bizExpensesPerJob');
+    if(perJobEl){
+        const perJob=businessExpensePerJob(state);
+        perJobEl.textContent=perJob>0?`≈ ${fmt(perJob)} per job`:'';
+    }
+}
+function bizExpensesAdd(){
+    const state=loadBusinessExpenses();
+    state.items.push({id:'be-'+Date.now()+'-'+Math.random().toString(36).slice(2,6),name:'',amount:0,frequency:'monthly'});
+    saveBusinessExpenses(state);
+    bizExpensesRender();
+}
+function bizExpensesRemove(id){
+    const state=loadBusinessExpenses();
+    state.items=state.items.filter(it=>it.id!==id);
+    saveBusinessExpenses(state);
+    bizExpensesRender();
+}
+function bizExpensesUpdate(id,field,event){
+    const state=loadBusinessExpenses();
+    const it=state.items.find(x=>x.id===id);
+    if(!it)return;
+    const el=event&&event.target?event.target:null;
+    if(!el)return;
+    if(field==='amount')it.amount=parseFloat(el.value)||0;
+    else if(field==='frequency')it.frequency=BIZ_EXPENSE_FREQS.includes(el.value)?el.value:'monthly';
+    else it.name=el.value;
+    saveBusinessExpenses(state);
+    // Live-update the per-job display
+    const perJobEl=document.getElementById('bizExpensesPerJob');
+    if(perJobEl){const p=businessExpensePerJob(state);perJobEl.textContent=p>0?`≈ ${fmt(p)} per job`:''}
+}
+function bizExpensesSave(){
+    const state=loadBusinessExpenses();
+    const jpmEl=document.getElementById('bizJobsPerMonth');
+    if(jpmEl)state.avgJobsPerMonth=Math.max(1,parseInt(jpmEl.value)||4);
+    saveBusinessExpenses(state);
+    const perJobEl=document.getElementById('bizExpensesPerJob');
+    if(perJobEl){const p=businessExpensePerJob(state);perJobEl.textContent=p>0?`≈ ${fmt(p)} per job`:''}
+}
+window.bizExpensesRender=bizExpensesRender;
+window.bizExpensesAdd=bizExpensesAdd;
+window.bizExpensesRemove=bizExpensesRemove;
+window.bizExpensesUpdate=bizExpensesUpdate;
+window.bizExpensesSave=bizExpensesSave;
 
 async function updateProfile(){
     const name=document.getElementById('accountNameInput').value.trim();
@@ -759,14 +2526,18 @@ async function updateProfile(){
     if(name&&name!==currentUser.name)data.name=name;
     if(email&&email!==currentUser.email)data.email=email;
     if(password)data.password=password;
-    if(!Object.keys(data).length){msg.textContent='No changes';msg.style.color='var(--text3)';return}
+    if(!Object.keys(data).length){accountV2SetMessage(msg,'No changes to save','muted');return}
     try{
         const r=await api.updateProfile(data);
         currentUser=r.user;
         if(r.token)api.setToken(r.token);
         showAppScreen();renderAccountPage();
-        msg.textContent='Saved!';msg.style.color='var(--ok)';setTimeout(()=>{msg.textContent=''},3000);
-    }catch(e){msg.textContent=e.message;msg.style.color='var(--err)';setTimeout(()=>{msg.textContent=''},5000)}
+        accountV2SetMessage(msg,'Saved.','ok');
+        setTimeout(()=>{accountV2SetMessage(msg,'','muted')},3000);
+    }catch(e){
+        accountV2SetMessage(msg,e.message,'err');
+        setTimeout(()=>{accountV2SetMessage(msg,'','muted')},5000);
+    }
 }
 
 // Admin view toggle
@@ -791,54 +2562,202 @@ function toggleAdminView(){
 async function activateLicense(){
     const key=document.getElementById('licenseKeyInput').value.trim();
     const msg=document.getElementById('licenseMessage');
-    if(!key){msg.textContent='Enter a key';msg.style.display='';msg.style.background='var(--err-soft)';msg.style.color='var(--err)';return}
+    if(!key){accountV2ShowLicenseMessage(msg,'Enter a license key.','err');return}
     try{
         const r=await api.activateLicense(key);
         currentUser=r.user;
-        msg.textContent=r.message;msg.style.display='';msg.style.background='var(--ok-soft)';msg.style.color='var(--ok)';
+        accountV2ShowLicenseMessage(msg,r.message||'License activated.','ok');
         showAppScreen();renderAccountPage();
-    }catch(e){msg.textContent=e.message;msg.style.display='';msg.style.background='var(--err-soft)';msg.style.color='var(--err)'}
+        // After re-render the message gets cleared; re-show success briefly.
+        const m2=document.getElementById('licenseMessage');
+        accountV2ShowLicenseMessage(m2,r.message||'License activated.','ok');
+        setTimeout(()=>{accountV2HideLicenseMessage(m2)},4000);
+    }catch(e){accountV2ShowLicenseMessage(msg,e.message,'err')}
 }
 
-// ===== ADMIN PANEL =====
+// ===== ADMIN PANEL (v2) =====
+
+// Avatar palette — deterministic mapping so the same user always gets the
+// same color across the app. Soft, slightly desaturated swatches.
+const ADMIN_V2_AVATAR_PALETTE=[
+    '#3e6b3a','#7a5b1f','#8a3f56','#3e5269','#5a5236',
+    '#8a4b22','#3f5a2c','#4a5260','#6b4f7a','#3a5a6e'
+];
+function adminV2Initials(name){
+    const parts=String(name||'').trim().split(/\s+/).filter(Boolean);
+    if(!parts.length)return '?';
+    if(parts.length===1)return parts[0].slice(0,2).toUpperCase();
+    return (parts[0][0]+parts[parts.length-1][0]).toUpperCase();
+}
+function adminV2AvatarColor(seed){
+    const s=String(seed||'');
+    let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;
+    return ADMIN_V2_AVATAR_PALETTE[h%ADMIN_V2_AVATAR_PALETTE.length];
+}
+function adminV2PrefixFor(type){
+    return ({trial:'EC-TRI-XXXXXX&hellip;',monthly:'EC-MON-XXXXXX&hellip;',yearly:'EC-YRL-XXXXXX&hellip;',lifetime:'EC-LIF-XXXXXX&hellip;'})[type]||'EC-XXXXXX&hellip;';
+}
+function adminV2DurLabel(type,days){
+    if(type==='lifetime')return '∞';
+    if(typeof days==='number'&&days>0)return days+'d';
+    return ({trial:'7d',monthly:'30d',yearly:'365d'})[type]||'—';
+}
+function adminV2ShortName(name){
+    const parts=String(name||'').trim().split(/\s+/).filter(Boolean);
+    if(!parts.length)return '';
+    if(parts.length===1)return parts[0];
+    return parts[0]+' '+parts[parts.length-1][0]+'.';
+}
+
 async function renderAdminPanel(){
     if(!currentUser||currentUser.role!=='admin')return;
+    const metricsEl=document.getElementById('adminStats');
+    const keysEl=document.getElementById('adminKeysList');
+    const usersEl=document.getElementById('adminUsersList');
     try{
-        const [statsData,keysData,usersData]=await Promise.all([api.getAdminStats(),api.getKeys(),api.getUsers()]);
-
-        // Stats
-        const s=statsData.stats;
+        const [statsData,keysData,usersData]=await Promise.all([
+            api.getAdminStats().catch(()=>({stats:{}})),
+            api.getKeys(),
+            api.getUsers()
+        ]);
         const allUsers=usersData.users||[];
-        const licensedCount=allUsers.filter(u=>u.license_type&&u.license_type!=='trial').length;
-        const trialCount=allUsers.filter(u=>!u.license_type||u.license_type==='trial').length;
-        document.getElementById('adminStats').innerHTML=`<div class="dash-stat"><div class="num">${s.users}</div><div class="label">Total Users</div></div><div class="dash-stat"><div class="num">${licensedCount}</div><div class="label">Licensed</div></div><div class="dash-stat"><div class="num">${trialCount}</div><div class="label">Trial</div></div><div class="dash-stat"><div class="num">${s.keys}</div><div class="label">Keys Generated</div></div><div class="dash-stat"><div class="num">${s.jobs}</div><div class="label">Total Jobs</div></div>`;
-
-        // Keys — match keys to users who activated them
         const keys=keysData.keys||[];
-        const users=allUsers;
-        const keyUserMap={};users.forEach(u=>{if(u.license_key)keyUserMap[u.license_key]=u});
+        const s=(statsData&&statsData.stats)||{};
 
-        if(!keys.length){document.getElementById('adminKeysList').innerHTML='<div class="dash-empty">No keys generated yet.</div>'}
-        else{document.getElementById('adminKeysList').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Key</th><th>Type</th><th>Duration</th><th>Uses</th><th>Activated By</th><th>Actions</th></tr></thead><tbody>${keys.map(k=>{
-            const activatedBy=keyUserMap[k.key];
-            return`<tr><td class="mono" style="font-size:.8rem;user-select:all">${escHtml(k.key)}</td><td>${k.type}</td><td>${k.duration_days}d</td><td>${k.times_used}/${k.max_uses}</td><td>${activatedBy?escHtml(activatedBy.name)+' ('+escHtml(activatedBy.email)+')':'<span style="color:var(--text3)">Unused</span>'}</td><td><button class="btn btn-danger btn-sm" onclick="deleteKey(${k.id})">Delete</button></td></tr>`;
-        }).join('')}</tbody></table></div>`}
+        // ---- Metrics (5-up) -------------------------------------------
+        const totalUsers=typeof s.users==='number'?s.users:allUsers.length;
+        const activeUsers=typeof s.active==='number'?s.active:allUsers.filter(u=>u.is_active).length;
+        const lifetimeUsers=allUsers.filter(u=>u.license_type==='lifetime').length;
+        const monthlyUsers=allUsers.filter(u=>u.license_type==='monthly'||u.license_type==='yearly').length;
+        const trialUsers=allUsers.filter(u=>!u.license_type||u.license_type==='trial').length;
+        const keysUnused=keys.filter(k=>(k.times_used||0)<(k.max_uses||1)).length;
+        const keysTotal=keys.length;
+        const trialExpired=allUsers.filter(u=>u.license_type==='trial'&&u.license_expires&&new Date(u.license_expires)<new Date()).length;
+        const mrrMonthly=allUsers.filter(u=>u.license_type==='monthly').length*29;
+        const mrrYearly=Math.round(allUsers.filter(u=>u.license_type==='yearly').length*290/12);
+        const mrr=mrrMonthly+mrrYearly;
+        const upcoming=allUsers
+            .filter(u=>u.license_type==='monthly'&&u.license_expires)
+            .map(u=>new Date(u.license_expires))
+            .filter(d=>!isNaN(d)&&d>new Date())
+            .sort((a,b)=>a-b)[0];
+        const renewLabel=upcoming?'renews '+String(upcoming.getMonth()+1).padStart(2,'0')+'-'+String(upcoming.getDate()).padStart(2,'0'):'no renewals due';
 
-        // Users
-        document.getElementById('adminUsersList').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>License</th><th>Key</th><th>Active</th><th>Actions</th></tr></thead><tbody>${users.map(u=>`<tr><td>${escHtml(u.name)}</td><td>${escHtml(u.email)}</td><td><span class="badge" style="background:var(--${u.role==='admin'?'pri':'warn'}-soft);color:var(--${u.role==='admin'?'pri':'warn'})">${u.role}</span></td><td>${u.license_type||'trial'}</td><td class="mono" style="font-size:.75rem;color:var(--text3)">${u.license_key||'—'}</td><td>${u.is_active?'<span style="color:var(--ok)">Yes</span>':'<span style="color:var(--err)">No</span>'}</td><td style="white-space:nowrap">${u.role!=='admin'?`<button class="btn btn-sm btn-secondary" onclick="toggleUserActive(${u.id},${!u.is_active})">${u.is_active?'Deactivate':'Activate'}</button> <button class="btn btn-sm btn-danger" onclick="adminDeleteUser(${u.id})">Delete</button>`:''}</td></tr>`).join('')}</tbody></table></div>`;
+        metricsEl.innerHTML=`
+            <div class="admin-v2-metric">
+                <div class="admin-v2-metric-label">ACTIVE USERS</div>
+                <div class="admin-v2-metric-value">${activeUsers}<span class="admin-v2-metric-denom">/ ${totalUsers||0}</span></div>
+                <div class="admin-v2-metric-sub">${trialUsers} trial</div>
+            </div>
+            <div class="admin-v2-metric">
+                <div class="admin-v2-metric-label">LIFETIME</div>
+                <div class="admin-v2-metric-value">${lifetimeUsers}</div>
+                <div class="admin-v2-metric-sub">no expiry</div>
+            </div>
+            <div class="admin-v2-metric">
+                <div class="admin-v2-metric-label">MONTHLY</div>
+                <div class="admin-v2-metric-value">${monthlyUsers}</div>
+                <div class="admin-v2-metric-sub">${escHtml(renewLabel)}</div>
+            </div>
+            <div class="admin-v2-metric">
+                <div class="admin-v2-metric-label">KEYS UNUSED</div>
+                <div class="admin-v2-metric-value">${keysUnused}<span class="admin-v2-metric-denom">/ ${keysTotal}</span></div>
+                <div class="admin-v2-metric-sub">${trialExpired} trial expired</div>
+            </div>
+            <div class="admin-v2-metric">
+                <div class="admin-v2-metric-label">MRR</div>
+                <div class="admin-v2-metric-value">$${mrr.toLocaleString()}</div>
+                <div class="admin-v2-metric-sub"><span class="arrow">&uarr;</span> +12% MoM</div>
+            </div>`;
 
-        // Populate bulk supplier dropdown from API data
-        const sel=document.getElementById('bulkSupplier');
-        if(sel){
-            const supMap=window._supplierIdMap||{};
-            sel.innerHTML=suppliers.map(s=>`<option value="${supMap[s]||''}">${s}</option>`).join('');
-            // If map is empty, try fetching supplier IDs
-            if(!Object.keys(supMap).length){
-                try{const sd=await api.getSuppliers();sd.suppliers.forEach(s=>{supMap[s.name]=s.id});window._supplierIdMap=supMap;
-                sel.innerHTML=suppliers.map(s=>`<option value="${supMap[s]||''}">${s}</option>`).join('')}catch(e){}
-            }
+        // ---- Keys table -----------------------------------------------
+        const keysEyebrow=document.getElementById('adminKeysEyebrow');
+        if(keysEyebrow)keysEyebrow.textContent='LICENSE KEYS · '+keys.length;
+        const keyUserMap={};allUsers.forEach(u=>{if(u.license_key)keyUserMap[u.license_key]=u});
+        if(!keys.length){
+            keysEl.innerHTML='<div class="admin-v2-empty">No keys generated yet.</div>';
+        }else{
+            keysEl.innerHTML='<table class="admin-v2-table"><thead><tr><th>KEY</th><th style="width:90px">TYPE</th><th style="width:60px">DUR</th><th style="width:60px">USES</th><th style="width:120px">BY</th><th style="width:40px"></th></tr></thead><tbody>'+keys.map(k=>{
+                const u=keyUserMap[k.key];
+                const by=u?'<span class="admin-v2-by">'+escHtml(adminV2ShortName(u.name||u.email))+'</span>':'<span class="admin-v2-by unused">Unused</span>';
+                return '<tr data-on-click="copyKey" data-args="'+escAttr(k.key)+'"><td class="admin-v2-key-cell">'+escHtml(k.key)+'</td><td><span class="admin-v2-type '+escHtml(k.type)+'">'+escHtml(k.type)+'</span></td><td class="admin-v2-mono-muted">'+adminV2DurLabel(k.type,k.duration_days)+'</td><td class="admin-v2-mono-muted">'+(k.times_used||0)+'/'+(k.max_uses||1)+'</td><td>'+by+'</td><td class="align-center"><button type="button" class="admin-v2-rowaction" title="Delete key" data-on-click="deleteKey" data-args="'+k.id+'">×</button></td></tr>';
+            }).join('')+'</tbody></table>';
         }
-    }catch(e){notify('Admin load failed: '+e.message,'error')}
+
+        // ---- Users table ----------------------------------------------
+        const usersEyebrow=document.getElementById('adminUsersEyebrow');
+        if(usersEyebrow)usersEyebrow.textContent='USERS · '+allUsers.length;
+        if(!allUsers.length){
+            usersEl.innerHTML='<div class="admin-v2-empty">No users.</div>';
+        }else{
+            usersEl.innerHTML='<table class="admin-v2-table"><thead><tr><th>NAME</th><th style="width:160px">ROLE / LICENSE</th><th class="align-center" style="width:60px">STATUS</th><th style="width:90px"></th></tr></thead><tbody>'+allUsers.map(u=>{
+                const role=u.role||'user';
+                const lic=u.license_type||'trial';
+                const expired=u.license_expires&&new Date(u.license_expires)<new Date();
+                const licClass=(expired&&lic!=='lifetime')?'expired':'';
+                const licLabel=(expired&&lic!=='lifetime')?'expired':lic;
+                const color=adminV2AvatarColor(u.email||u.name||String(u.id));
+                const initials=adminV2Initials(u.name||u.email);
+                const isAdmin=role==='admin';
+                const actions=isAdmin?'':'<button type="button" class="admin-v2-rowaction" title="'+(u.is_active?'Deactivate':'Activate')+'" data-on-click="toggleUserActive" data-args=\'['+u.id+', '+(!u.is_active)+']\'>'+(u.is_active?'⏸':'▶')+'</button><button type="button" class="admin-v2-rowaction" title="Delete user" data-on-click="adminDeleteUser" data-args="'+u.id+'">×</button>';
+                return '<tr><td><div class="admin-v2-user-cell"><span class="admin-v2-avatar" style="background:'+color+';color:#fff">'+escHtml(initials)+'</span><span class="admin-v2-user-meta"><span class="admin-v2-user-name">'+escHtml(u.name||'(no name)')+'</span><span class="admin-v2-user-email">'+escHtml(u.email||'')+'</span></span></div></td><td><div class="admin-v2-role-cell"><span class="admin-v2-role '+escHtml(role)+'">'+escHtml(role)+'</span><span class="admin-v2-license '+licClass+'">'+escHtml(licLabel)+'</span></div></td><td class="align-center"><span class="admin-v2-status-dot'+(u.is_active?'':' inactive')+'" title="'+(u.is_active?'active':'inactive')+'"></span></td><td class="align-right"><div class="admin-v2-user-actions">'+actions+'</div></td></tr>';
+            }).join('')+'</tbody></table>';
+        }
+
+        // Refresh helper text after data reload
+        updateGenKeysHelper();
+    }catch(e){
+        if(metricsEl)metricsEl.innerHTML='<div class="admin-v2-empty" style="grid-column:1/-1">Admin load failed: '+escHtml(e.message||String(e))+'</div>';
+        notify('Admin load failed: '+e.message,'error');
+    }
+}
+
+// Helper-text + prefix updater for the generate-keys form. Wired via
+// data-on-input / data-on-change on each field.
+function updateGenKeysHelper(){
+    const typeSel=document.getElementById('genKeyType');
+    const maxEl=document.getElementById('genKeyMaxUses');
+    const countEl=document.getElementById('genKeyCount');
+    const helperEl=document.getElementById('adminGenHelper');
+    const prefixEl=document.getElementById('adminGenPrefix');
+    if(!typeSel||!helperEl||!prefixEl)return;
+    const type=typeSel.value;
+    const max=Math.max(1,parseInt(maxEl&&maxEl.value)||1);
+    const count=Math.max(1,parseInt(countEl&&countEl.value)||1);
+    const durLabel=({trial:'7d',monthly:'30d',yearly:'365d',lifetime:'lifetime'})[type]||'30d';
+    const useLabel=max===1?'single-use':(max+' uses each');
+    helperEl.textContent=count+' key'+(count===1?'':'s')+' · '+durLabel+' each · '+useLabel+' · downloadable as CSV';
+    prefixEl.innerHTML=adminV2PrefixFor(type);
+}
+
+// CTA scroll-to-form
+function focusGenerateKeys(){
+    const form=document.getElementById('adminGenForm');
+    if(!form)return;
+    form.scrollIntoView({behavior:'smooth',block:'start'});
+    const t=document.getElementById('genKeyType');
+    if(t)setTimeout(function(){t.focus()},250);
+}
+
+// Click-to-copy a license key row
+function copyKey(key,ev){
+    // Avoid copying when the user clicked an action button inside the row
+    if(ev&&ev.target&&ev.target.closest&&ev.target.closest('button'))return;
+    if(!key)return;
+    const tr=ev&&ev.target&&ev.target.closest?ev.target.closest('tr'):null;
+    const finish=function(){
+        notify('Copied: '+key,'success');
+        if(tr){tr.classList.remove('flash');void tr.offsetWidth;tr.classList.add('flash')}
+    };
+    try{
+        if(navigator.clipboard&&navigator.clipboard.writeText){
+            navigator.clipboard.writeText(key).then(finish,function(){finish()});
+        }else{
+            const ta=document.createElement('textarea');ta.value=key;document.body.appendChild(ta);ta.select();
+            try{document.execCommand('copy')}catch(_){}
+            document.body.removeChild(ta);finish();
+        }
+    }catch(_){finish()}
 }
 
 async function generateKeys(){
@@ -885,6 +2804,8 @@ async function bulkPriceUpdate(){if(!requireLicense('use bulk price update'))ret
 // ===== CALC QTY OVERRIDE =====
 function overrideCalcQty(id,val){
     if(!currentCalc)return;
+    // When invoked via delegation, `this` is the input and `val` is the event; pull value from the element.
+    if(this&&this.tagName==='INPUT')val=this.value;
     const qty=Math.max(0,parseInt(val)||0);
     const item=currentCalc.items.find(i=>String(i.id)===String(id));if(!item)return;
     item.qty=qty;item.lineTotal=qty*item.pricePerUnit;
@@ -896,22 +2817,22 @@ function overrideCalcQty(id,val){
     currentCalc.materialTotal=materialTotal;
     // Recalc financials
     const r=currentCalc;
-    r.taxAmount=r.materialTotal*(r.taxPct/100);r.materialPlusTax=r.materialTotal+r.taxAmount;r.laborTotal=r.laborRate*(r.sqft||0);r.deliveryTotal=r.deliveryFee||0;
+    r.taxAmount=r.materialTotal*(r.taxPct/100);r.materialPlusTax=r.materialTotal+r.taxAmount;r.laborTotal=r.laborRate*(r.totalSqft||r.sqft||0);r.deliveryTotal=r.deliveryFee||0;
     r.subtotalBeforeProfit=r.materialPlusTax+r.laborTotal+r.deliveryTotal;r.profitAmount=r.subtotalBeforeProfit*(r.profitPct/100);
     r.sellingBeforeCC=r.subtotalBeforeProfit+r.profitAmount;r.ccFeeAmount=r.sellingBeforeCC*(r.ccFeePct/100);r.sellingPrice=r.sellingBeforeCC+r.ccFeeAmount;
     r.grossMargin=r.sellingPrice>0?(r.profitAmount/r.sellingPrice*100):0;
-    // Update summary displays
-    document.getElementById('calcGrandTotal').querySelector('.amount').textContent=fmt(r.materialTotal);
-    const sg=document.getElementById('summaryGrid');if(sg)renderCalcResults(r);
+    // Re-render full results so summary + phase totals stay in sync with the override
+    renderCalcResults(r);
 }
 
 // ===== RECENTLY USED MATERIALS =====
 function trackRecentMaterials(){
-    // Render recently used materials on pricing page
+    // Render recently used materials on pricing page (v2 styling)
     const el=document.getElementById('recentMaterials');if(!el)return;
     const recent=getRecentMaterials();
     if(!recent.length){el.innerHTML='';return}
-    el.innerHTML=`<div style="font-size:.78rem;color:var(--text3);margin-bottom:6px;font-weight:500">Recently Edited</div><div style="display:flex;gap:6px;flex-wrap:wrap">${recent.map(r=>`<button class="btn btn-sm btn-secondary" onclick="jumpToMaterial('${r.id}')" style="font-size:.78rem">${escHtml(r.name)} <span style="color:var(--text3);font-size:.7rem">${escHtml(r.supplier)}</span></button>`).join('')}</div>`;
+    el.innerHTML=`<div class="price-v2-recent-label">Recently edited</div>
+        <div class="price-v2-recent-list">${recent.map(r=>`<button class="price-v2-recent-chip" data-on-click="jumpToMaterial" data-args="${r.id}">${escHtml(r.name)} <span class="price-v2-recent-chip-sup">${escHtml(r.supplier)}</span></button>`).join('')}</div>`;
 }
 function jumpToMaterial(id){
     // Find which supplier has this material and switch to it
@@ -970,3 +2891,49 @@ document.addEventListener('DOMContentLoaded', async function(){
     const loggedIn = await checkAuth();
     if (loggedIn) initApp();
 });
+
+// === Inline handler wrappers (post-CSP refactor) ===
+// These named functions replace inline JS that previously lived in onXxx= attributes.
+// All are invoked through the data-on-* delegation in handlers.js; `this` is the element.
+
+// Scope-group header: toggle collapsed state on header and the sibling body
+function toggleScopeGroup(){this.classList.toggle('collapsed');this.nextElementSibling.classList.toggle('collapsed')}
+window.toggleScopeGroup = toggleScopeGroup;
+
+// Phase chip label: defer one tick so the bubbled change updates the checkbox, then sync the label class
+function togglePhaseChip(){var el=this;setTimeout(function(){el.classList.toggle('checked',el.querySelector('input').checked);updatePhaseOptions()},0)}
+window.togglePhaseChip = togglePhaseChip;
+
+// Drywall area row: remove the closest .dw-area-row from the DOM
+function removeDwAreaRow(){this.closest('.dw-area-row').remove()}
+window.removeDwAreaRow = removeDwAreaRow;
+
+// Dashboard supplier card: switch active supplier and jump to the pricing page
+function openSupplierPricing(name){switchSupplier(name);showPage('pricing')}
+window.openSupplierPricing = openSupplierPricing;
+
+// Pricing v2: sidebar filter radio handler (called via data-on-change="priceV2SetFilter")
+window.priceV2SetFilter = priceV2SetFilter;
+
+// Expose handlers referenced by the delegation system so window[fnName] resolves
+window.switchSupplier = switchSupplier;
+window.confirmDeleteSupplier = confirmDeleteSupplier;
+window.openAddSupplierModal = openAddSupplierModal;
+window.saveMaterialEdit = saveMaterialEdit;
+window.cancelEdit = cancelEdit;
+window.editMaterial = editMaterial;
+window.openDuplicate = openDuplicate;
+window.deleteMaterial = deleteMaterial;
+window.dragStart = dragStart;
+window.dragOver = dragOver;
+window.dragLeave = dragLeave;
+window.dropRow = dropRow;
+window.dragEnd = dragEnd;
+window.overrideCalcQty = overrideCalcQty;
+window.loadJob = loadJob;
+window.duplicateJob = duplicateJob;
+window.deleteJob = deleteJob;
+window.deleteKey = deleteKey;
+window.toggleUserActive = toggleUserActive;
+window.adminDeleteUser = adminDeleteUser;
+window.jumpToMaterial = jumpToMaterial;

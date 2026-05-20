@@ -157,7 +157,12 @@ router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
-    const { data: user } = await supabase.from('users').select('*').eq('email', email).single();
+    const { data: user, error: lookupError } = await supabase.from('users').select('*').eq('email', email).single();
+    // PGRST116 = .single() found no rows. Anything else is an upstream failure, not a credential issue.
+    if (lookupError && lookupError.code !== 'PGRST116') {
+      console.error('[login] Supabase lookup failed:', lookupError);
+      return res.status(503).json({ error: 'Authentication service is temporarily unavailable. Please try again shortly.' });
+    }
     if (!user) return res.status(401).json({ error: 'Invalid email or password' });
     if (!bcrypt.compareSync(password, user.password_hash)) return res.status(401).json({ error: 'Invalid email or password' });
     if (!user.is_active) return res.status(403).json({ error: 'Account is deactivated. Contact support.' });

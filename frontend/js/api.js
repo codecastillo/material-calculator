@@ -16,7 +16,9 @@ const api = {
         if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
         try {
             const res = await fetch(API_BASE + endpoint, { ...options, headers });
-            if (res.status === 401) {
+            // Only treat 401 as session-expiry when we actually had a token. A 401 from
+            // /auth/login means wrong credentials, not an expired session.
+            if (res.status === 401 && authToken) {
                 api.setToken(null); currentUser = null; showLoginScreen();
                 throw new Error('Session expired. Please log in again.');
             }
@@ -139,7 +141,10 @@ function showAppScreen() {
     document.getElementById('loginScreen').classList.remove('visible');
     document.getElementById('appContainer').style.display = '';
     if (currentUser) {
-        document.getElementById('userName').textContent = currentUser.name || currentUser.email;
+        // v2 avatar shows initials only; fall back to first email char
+        const rawName = currentUser.name || currentUser.email || 'U';
+        const initials = rawName.split(/[\s@._-]+/).filter(Boolean).slice(0,2).map(p=>p.charAt(0).toUpperCase()).join('') || 'U';
+        document.getElementById('userName').textContent = initials;
         // Show/hide admin nav link
         const adminLink = document.getElementById('adminNavLink');
         if (adminLink) adminLink.style.display = currentUser.role === 'admin' ? '' : 'none';

@@ -8,431 +8,922 @@
     <meta name="theme-color" content="#4493f8">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Russo+One&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/dashboard-v2.css">
+    <link rel="stylesheet" href="css/pricing-v2.css">
+    <link rel="stylesheet" href="css/orders-v2.css">
+    <link rel="stylesheet" href="css/jobs-v2.css">
+    <link rel="stylesheet" href="css/admin-v2.css">
+    <link rel="stylesheet" href="css/login-v2.css">
+    <link rel="stylesheet" href="css/account-v2.css">
+    <link rel="stylesheet" href="css/mobile-v2.css">
 </head>
 <body>
 
 <!-- LOGIN SCREEN -->
-<div id="loginScreen" class="login-screen">
-    <div class="login-card">
-        <img src="assets/logo.png" alt="EstiCount" class="login-logo">
-        <h1>EstiCount</h1>
-        <p class="login-subtitle">Material Estimating & Order Management</p>
+<div id="loginScreen" class="login-screen login-v2">
+    <div class="login-v2-screen">
+        <!-- LEFT: editorial / marketing column -->
+        <aside class="login-v2-left">
+            <a href="#" class="login-v2-brand" aria-label="EstiCount">
+                <span class="login-v2-brand-mark" aria-hidden="true"><img src="assets/logo.png" alt="" class="login-v2-brand-img"></span>
+                <span class="login-v2-brand-word">esticount</span>
+            </a>
 
-        <div id="loginForm">
-            <div class="field"><label>Email</label><input type="email" class="input" id="loginEmail" placeholder="admin@example.com"></div>
-            <div class="field"><label>Password</label><input type="password" class="input" id="loginPassword" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()"></div>
-            <div id="loginError" class="login-error" style="display:none"></div>
-            <button class="btn btn-primary btn-lg" style="width:100%" onclick="doLogin()">Sign In</button>
-            <p class="login-switch">Don't have an account? <a href="#" onclick="showRegister();return false">Create one</a></p>
-            <p class="login-switch"><a href="#" onclick="showForgotPassword();return false">Forgot password?</a></p>
-        </div>
+            <div class="login-v2-editorial">
+                <p class="login-v2-eyebrow">MATERIAL ESTIMATING &middot; V4</p>
+                <h1 class="login-v2-headline">
+                    <span>Bid faster.</span>
+                    <span>Order tighter.</span>
+                    <span class="login-v2-accent-phrase">Build margin.</span>
+                </h1>
+                <p class="login-v2-lede">The estimating tool stucco, stone, drywall &amp; paint contractors actually keep open all day. Catalog &rarr; calculator &rarr; bid &rarr; order &rarr; profit.</p>
 
-        <div id="registerForm" style="display:none">
-            <div class="field"><label>Name</label><input type="text" class="input" id="registerName" placeholder="Your name"></div>
-            <div class="field"><label>Email</label><input type="email" class="input" id="registerEmail" placeholder="you@company.com"></div>
-            <div class="field"><label>Password</label><input type="password" class="input" id="registerPassword" placeholder="Min 6 characters" onkeydown="if(event.key==='Enter')doRegister()"></div>
-            <div id="registerError" class="login-error" style="display:none"></div>
-            <button class="btn btn-primary btn-lg" style="width:100%" onclick="doRegister()">Create Account</button>
-            <p class="login-switch">Already have an account? <a href="#" onclick="showLogin();return false">Sign in</a></p>
-        </div>
+                <div class="login-v2-stats">
+                    <div class="login-v2-stat">
+                        <div class="login-v2-stat-num">38m</div>
+                        <div class="login-v2-stat-label">AVG BID TIME</div>
+                        <div class="login-v2-stat-sub">down from 3h</div>
+                    </div>
+                    <div class="login-v2-stat">
+                        <div class="login-v2-stat-num">2.4&times;</div>
+                        <div class="login-v2-stat-label">JOBS / MONTH</div>
+                        <div class="login-v2-stat-sub">per estimator</div>
+                    </div>
+                    <div class="login-v2-stat">
+                        <div class="login-v2-stat-num">$612k</div>
+                        <div class="login-v2-stat-label">YTD BID</div>
+                        <div class="login-v2-stat-sub">across 38 jobs</div>
+                    </div>
+                </div>
+            </div>
 
-        <div id="forgotForm" style="display:none">
-            <div class="field"><label>Email</label><input type="email" class="input" id="forgotEmail" placeholder="Enter your email" onkeydown="if(event.key==='Enter')doForgotPassword()"></div>
-            <div id="forgotError" class="login-error" style="display:none"></div>
-            <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center" onclick="doForgotPassword()">Send Reset Code</button>
-            <p class="login-switch"><a href="#" onclick="showLogin();return false">Back to sign in</a></p>
-        </div>
+            <div class="login-v2-leftfoot">
+                <span>&copy; 2026 EstiCount</span>
+            </div>
+        </aside>
 
-        <div id="resetForm" style="display:none">
-            <input type="hidden" id="resetEmail">
-            <div class="field"><label>Reset Code</label><input type="text" class="input" id="resetCode" placeholder="000000" maxlength="6" style="text-align:center;font-size:1.3rem;font-family:'JetBrains Mono',monospace;letter-spacing:.2em" onkeydown="if(event.key==='Enter')doResetPassword()"></div>
-            <div class="field"><label>New Password</label><input type="password" class="input" id="resetPassword" placeholder="Min 6 characters" onkeydown="if(event.key==='Enter')doResetPassword()"></div>
-            <div id="resetError" class="login-error" style="display:none"></div>
-            <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center" onclick="doResetPassword()">Reset Password</button>
-            <p class="login-switch"><a href="#" onclick="showLogin();return false">Back to sign in</a></p>
-        </div>
+        <!-- RIGHT: form column -->
+        <section class="login-v2-right">
+            <div class="login-v2-topright">
+                <span>New here?</span>
+                <a href="#" data-on-click="showRegister">Create account &rarr;</a>
+            </div>
+
+            <div class="login-v2-formwrap">
+                <!-- SIGN-IN form -->
+                <div id="loginForm">
+                    <p class="login-v2-eyebrow">01 &middot; SIGN IN</p>
+                    <h2 class="login-v2-title">Welcome back.</h2>
+                    <p class="login-v2-subtitle">Sign in to your EstiCount workspace.</p>
+
+                    <div class="login-v2-form">
+                        <div class="login-v2-field">
+                            <label class="login-v2-label" for="loginEmail">EMAIL</label>
+                            <input type="email" class="login-v2-input" id="loginEmail" placeholder="you@company.com" autocomplete="email">
+                        </div>
+                        <div class="login-v2-field">
+                            <label class="login-v2-label" for="loginPassword">
+                                <span>PASSWORD</span>
+                                <a href="#" class="login-v2-label-link" data-on-click="showForgotPassword">FORGOT?</a>
+                            </label>
+                            <input type="password" class="login-v2-input" id="loginPassword" placeholder="Enter password" autocomplete="current-password" data-on-keydown-enter="doLogin">
+                        </div>
+
+                        <div class="login-v2-remember">
+                            <label class="login-v2-check">
+                                <input type="checkbox" id="loginRemember" checked>
+                                <span>Stay signed in on this device</span>
+                            </label>
+                            <span class="login-v2-remember-note">30 days</span>
+                        </div>
+
+                        <div id="loginError" class="login-v2-error" style="display:none"></div>
+
+                        <button class="login-v2-cta" data-on-click="doLogin">
+                            <span>Sign in</span>
+                            <span class="login-v2-cta-arrow" aria-hidden="true">&rarr;</span>
+                        </button>
+                    </div>
+
+                    <div class="login-v2-divider"><span>OR</span></div>
+
+                    <div class="login-v2-activate">
+                        <p class="login-v2-activate-eyebrow">ACTIVATE WITH LICENSE KEY</p>
+                        <div class="login-v2-activate-row">
+                            <input type="text" class="login-v2-input login-v2-input--mono" id="loginLicenseKeyInput" placeholder="EC-LIF-XXXXXXXXXXXXXXXX" autocomplete="off" spellcheck="false" data-on-keydown-enter="activateLicenseFromLogin">
+                            <button class="login-v2-activate-btn" data-on-click="activateLicenseFromLogin">Activate</button>
+                        </div>
+                        <p id="loginLicenseMessage" class="login-v2-activate-help">Trial keys give 7 days &middot; monthly keys renew &middot; lifetime keys never expire.</p>
+                    </div>
+                </div>
+
+                <!-- REGISTER form -->
+                <div id="registerForm" style="display:none">
+                    <p class="login-v2-eyebrow">01 &middot; CREATE ACCOUNT</p>
+                    <h2 class="login-v2-title">Start estimating.</h2>
+                    <p class="login-v2-subtitle">Create your EstiCount workspace in under a minute.</p>
+
+                    <div class="login-v2-form">
+                        <div class="login-v2-field">
+                            <label class="login-v2-label" for="registerName">NAME</label>
+                            <input type="text" class="login-v2-input" id="registerName" placeholder="Your name" autocomplete="name">
+                        </div>
+                        <div class="login-v2-field">
+                            <label class="login-v2-label" for="registerEmail">EMAIL</label>
+                            <input type="email" class="login-v2-input" id="registerEmail" placeholder="you@company.com" autocomplete="email">
+                        </div>
+                        <div class="login-v2-field">
+                            <label class="login-v2-label" for="registerPassword">PASSWORD</label>
+                            <input type="password" class="login-v2-input" id="registerPassword" placeholder="Min 6 characters" autocomplete="new-password" data-on-keydown-enter="doRegister">
+                        </div>
+
+                        <div id="registerError" class="login-v2-error" style="display:none"></div>
+
+                        <button class="login-v2-cta" data-on-click="doRegister">
+                            <span>Create account</span>
+                            <span class="login-v2-cta-arrow" aria-hidden="true">&rarr;</span>
+                        </button>
+                    </div>
+
+                    <p class="login-v2-switch">Already have an account? <a href="#" data-on-click="showLogin">Sign in</a></p>
+                </div>
+
+                <!-- FORGOT PASSWORD form -->
+                <div id="forgotForm" style="display:none">
+                    <p class="login-v2-eyebrow">01 &middot; FORGOT PASSWORD</p>
+                    <h2 class="login-v2-title">Reset your password.</h2>
+                    <p class="login-v2-subtitle">Enter your email and we'll send a 6-digit reset code.</p>
+
+                    <div class="login-v2-form">
+                        <div class="login-v2-field">
+                            <label class="login-v2-label" for="forgotEmail">EMAIL</label>
+                            <input type="email" class="login-v2-input" id="forgotEmail" placeholder="you@company.com" autocomplete="email" data-on-keydown-enter="doForgotPassword">
+                        </div>
+
+                        <div id="forgotError" class="login-v2-error" style="display:none"></div>
+
+                        <button class="login-v2-cta" data-on-click="doForgotPassword">
+                            <span>Send reset code</span>
+                            <span class="login-v2-cta-arrow" aria-hidden="true">&rarr;</span>
+                        </button>
+                    </div>
+
+                    <p class="login-v2-switch"><a href="#" data-on-click="showLogin">&larr; Back to sign in</a></p>
+                </div>
+
+                <!-- RESET PASSWORD form -->
+                <div id="resetForm" style="display:none">
+                    <p class="login-v2-eyebrow">01 &middot; RESET PASSWORD</p>
+                    <h2 class="login-v2-title">Enter your code.</h2>
+                    <p class="login-v2-subtitle">Use the 6-digit code we just emailed and set a new password.</p>
+
+                    <input type="hidden" id="resetEmail">
+                    <div class="login-v2-form">
+                        <div class="login-v2-field">
+                            <label class="login-v2-label" for="resetCode">RESET CODE</label>
+                            <input type="text" class="login-v2-input login-v2-input--code" id="resetCode" placeholder="000000" maxlength="6" autocomplete="one-time-code" data-on-keydown-enter="doResetPassword">
+                        </div>
+                        <div class="login-v2-field">
+                            <label class="login-v2-label" for="resetPassword">NEW PASSWORD</label>
+                            <input type="password" class="login-v2-input" id="resetPassword" placeholder="Min 6 characters" autocomplete="new-password" data-on-keydown-enter="doResetPassword">
+                        </div>
+
+                        <div id="resetError" class="login-v2-error" style="display:none"></div>
+
+                        <button class="login-v2-cta" data-on-click="doResetPassword">
+                            <span>Reset password</span>
+                            <span class="login-v2-cta-arrow" aria-hidden="true">&rarr;</span>
+                        </button>
+                    </div>
+
+                    <p class="login-v2-switch"><a href="#" data-on-click="showLogin">&larr; Back to sign in</a></p>
+                </div>
+            </div>
+
+            <div class="login-v2-rightfoot">
+                <span>Need help? <a href="mailto:support@esticount.app">support@esticount.app</a></span>
+                <span class="login-v2-rightfoot-version">v4.2.0</span>
+            </div>
+        </section>
     </div>
 </div>
 
 <!-- APP (hidden until logged in) -->
 <!-- VERIFY EMAIL SCREEN -->
-<div id="verifyScreen" class="login-screen">
-    <div class="login-card">
-        <img src="assets/logo.png" alt="EstiCount" class="login-logo">
-        <h1>Check your email</h1>
-        <p class="login-subtitle">We sent a 6-digit code to <strong id="verifyEmail"></strong></p>
-        <div class="field" style="text-align:left">
-            <label>Verification Code</label>
-            <input type="text" class="input" id="verifyCodeInput" placeholder="000000" maxlength="6"
-                style="text-align:center;font-size:1.5rem;font-family:'JetBrains Mono',monospace;letter-spacing:.3em"
-                onkeydown="if(event.key==='Enter')doVerify()">
-        </div>
-        <div id="verifyError" class="login-error" style="display:none"></div>
-        <button class="btn btn-primary btn-lg" style="width:100%" onclick="doVerify()">Verify</button>
-        <p class="login-switch">Didn't get the code? <a href="#" onclick="doResendCode();return false">Resend</a></p>
-        <p class="login-switch"><a href="#" onclick="doLogout();return false">Use a different email</a></p>
+<div id="verifyScreen" class="login-screen login-v2">
+    <div class="login-v2-screen">
+        <aside class="login-v2-left">
+            <a href="#" class="login-v2-brand" aria-label="EstiCount">
+                <span class="login-v2-brand-mark" aria-hidden="true"><img src="assets/logo.png" alt="" class="login-v2-brand-img"></span>
+                <span class="login-v2-brand-word">esticount</span>
+            </a>
+
+            <div class="login-v2-editorial">
+                <p class="login-v2-eyebrow">MATERIAL ESTIMATING &middot; V4</p>
+                <h1 class="login-v2-headline">
+                    <span>One last step.</span>
+                    <span>Confirm your email.</span>
+                    <span class="login-v2-accent-phrase">Then build margin.</span>
+                </h1>
+                <p class="login-v2-lede">We sent a 6-digit code to verify it's really you. Codes expire in 10 minutes &mdash; check spam if you don't see it.</p>
+            </div>
+
+            <div class="login-v2-leftfoot">
+                <span>&copy; 2026 EstiCount</span>
+            </div>
+        </aside>
+
+        <section class="login-v2-right">
+            <div class="login-v2-topright">
+                <a href="#" data-on-click="doLogout">Use a different email &rarr;</a>
+            </div>
+
+            <div class="login-v2-verify-wrap">
+                <p class="login-v2-eyebrow">10 &middot; VERIFY EMAIL</p>
+                <h2 class="login-v2-title">Check your email.</h2>
+                <p class="login-v2-subtitle">We sent a 6-digit code to <strong id="verifyEmail" style="color:var(--v2-text-primary);font-weight:500"></strong>.</p>
+
+                <div class="login-v2-form">
+                    <div class="login-v2-field">
+                        <label class="login-v2-label" for="verifyCodeInput">VERIFICATION CODE</label>
+                        <input type="text" class="login-v2-input login-v2-input--verify" id="verifyCodeInput" placeholder="000000" maxlength="6" autocomplete="one-time-code" inputmode="numeric" data-on-keydown-enter="doVerify">
+                    </div>
+
+                    <div id="verifyError" class="login-v2-error" style="display:none"></div>
+
+                    <button class="login-v2-cta" data-on-click="doVerify">
+                        <span>Verify</span>
+                        <span class="login-v2-cta-arrow" aria-hidden="true">&rarr;</span>
+                    </button>
+                </div>
+
+                <p class="login-v2-switch">Didn't get the code? <a href="#" data-on-click="doResendCode">Resend</a></p>
+            </div>
+
+            <div class="login-v2-rightfoot">
+                <span>Need help? <a href="mailto:support@esticount.app">support@esticount.app</a></span>
+                <span class="login-v2-rightfoot-version">v4.2.0</span>
+            </div>
+        </section>
     </div>
 </div>
 
 <div id="loadingScreen" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg)"><img src="assets/logo.png" alt="" style="width:48px;height:48px;opacity:.5;animation:pulse 1.5s infinite"></div>
 <div id="appContainer" style="display:none">
 
-<!-- TOP NAV -->
-<nav class="topnav">
-    <div class="topnav-inner">
-        <div class="topnav-left">
-            <button class="mobile-menu-btn" onclick="toggleMobileMenu()">&#9776;</button>
-            <a href="#" class="topnav-brand" onclick="showPage('dashboard');return false">
-                <img src="assets/logo.png" alt="EstiCount" class="brand-logo">
-                <span class="brand-name">EstiCount</span>
+<!-- TOP NAV (v2) -->
+<nav class="topnav v2-topnav">
+    <div class="topnav-inner v2-topnav-inner">
+        <div class="topnav-left v2-topnav-left">
+            <button class="mobile-menu-btn" data-on-click="toggleMobileMenu">&#9776;</button>
+            <a href="#" class="v2-brand" data-on-click="showPage" data-args="dashboard">
+                <span class="v2-brand-mark" aria-hidden="true"><img src="assets/logo.png" alt="" class="v2-brand-img"></span>
+                <span class="v2-brand-word">esticount</span>
             </a>
         </div>
-        <div class="topnav-links" id="topnavLinks">
-            <button class="nav-link active" data-page="dashboard" onclick="showPage('dashboard');closeMobileMenu()">Dashboard</button>
-            <button class="nav-link" data-page="pricing" onclick="showPage('pricing');closeMobileMenu()">Pricing</button>
-            <button class="nav-link" data-page="calculator" onclick="showPage('calculator');closeMobileMenu()">Calculator</button>
-            <button class="nav-link" data-page="order" onclick="showPage('order');closeMobileMenu()">Orders</button>
-            <button class="nav-link" data-page="bid" onclick="showPage('bid');closeMobileMenu()">Bids</button>
-            <button class="nav-link" data-page="savedJobs" onclick="showPage('savedJobs');closeMobileMenu()">Saved</button>
-            <button class="nav-link" data-page="admin" id="adminNavLink" onclick="showPage('admin');closeMobileMenu()" style="display:none">Admin</button>
-            <button class="nav-link" data-page="account" onclick="showPage('account');closeMobileMenu()">Account</button>
+        <div class="topnav-links v2-topnav-links" id="topnavLinks">
+            <button class="nav-link v2-nav-link" data-page="dashboard" data-on-click="navDashboard">Dashboard</button>
+            <button class="nav-link v2-nav-link" data-page="calculator" data-on-click="navCalculator">Calculator</button>
+            <button class="nav-link v2-nav-link" data-page="pricing" data-on-click="navPricing">Pricing</button>
+            <button class="nav-link v2-nav-link" data-page="order" data-on-click="navOrder">Orders</button>
+            <button class="nav-link v2-nav-link" data-page="savedJobs" data-on-click="navSavedJobs">Saved Jobs</button>
         </div>
-        <div class="topnav-right">
-            <span class="license-badge trial" id="licenseBadge">TRIAL</span>
-            <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
-            <div class="user-dropdown" id="userBadge">
-                <button class="user-dropdown-toggle" onclick="toggleUserMenu()">
-                    <span id="userName"></span>
-                    <svg class="user-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="topnav-right v2-topnav-right">
+            <label class="v2-topnav-search" aria-label="Search">
+                <span class="v2-topnav-search-icon" aria-hidden="true">&#9906;</span>
+                <input type="text" placeholder="Search jobs, SKUs&hellip;" autocomplete="off">
+                <span class="v2-topnav-kbd">&#8984;K</span>
+            </label>
+            <div class="user-dropdown v2-user-dropdown" id="userBadge">
+                <button class="user-dropdown-toggle v2-avatar-btn" data-on-click="toggleUserMenu" title="Account">
+                    <span class="v2-avatar"><span id="userName"></span></span>
                 </button>
                 <div class="user-dropdown-menu" id="userDropdownMenu">
-                    <button onclick="doLogout();toggleUserMenu()">Logout</button>
+                    <div class="user-dropdown-row">
+                        <span class="license-badge trial" id="licenseBadge">TRIAL</span>
+                    </div>
+                    <button data-on-click="navAccountFromMenu">Account</button>
+                    <button id="adminNavLink" data-on-click="navAdminFromMenu" style="display:none">Admin</button>
+                    <div class="user-dropdown-row">
+                        <span class="user-dropdown-label">Theme</span>
+                        <button class="theme-toggle" data-on-click="toggleTheme" title="Toggle theme"></button>
+                    </div>
+                    <button data-on-click="logoutAndCloseMenu">Logout</button>
                 </div>
             </div>
         </div>
     </div>
 </nav>
-<div class="mobile-menu-overlay" id="mobileOverlay" onclick="closeMobileMenu()"></div>
+<div class="mobile-menu-overlay" id="mobileOverlay" data-on-click="closeMobileMenu"></div>
 
 <!-- PAGE HEADER (back button + title) -->
 <div class="page-header" id="pageHeader" style="display:none">
     <div class="page-header-inner">
-        <button class="back-btn" onclick="goBack()">&#8592; Back</button>
+        <button class="back-btn" data-on-click="goBack">&#8592; Back</button>
         <h2 id="pageTitle"></h2>
     </div>
 </div>
 
 <main class="main-container">
 
-<!-- ===== DASHBOARD ===== -->
-<div class="page active" id="dashboardPage">
-    <div class="dash-hero">
-        <img src="assets/logo.png" alt="EstiCount" class="dash-logo">
-        <h2>EstiCount</h2>
-        <p>Material Estimating & Order Management</p>
-    </div>
-    <div class="dash-stats" id="dashStats"></div>
-    <div class="dash-actions">
-        <button class="dash-card primary" onclick="showPage('calculator')">
-            <div class="dash-card-icon">&#9998;</div>
-            <div class="dash-card-text"><strong>New Calculation</strong><span>Estimate materials for a job</span></div>
-        </button>
-        <button class="dash-card" onclick="showPage('pricing')">
-            <div class="dash-card-icon">&#9776;</div>
-            <div class="dash-card-text"><strong>Material Pricing</strong><span>Manage materials & suppliers</span></div>
-        </button>
-        <button class="dash-card" onclick="showPage('order')">
-            <div class="dash-card-icon">&#9993;</div>
-            <div class="dash-card-text"><strong>Order Form</strong><span>Generate & print orders</span></div>
-        </button>
-        <button class="dash-card" onclick="showPage('savedJobs')">
-            <div class="dash-card-icon">&#9733;</div>
-            <div class="dash-card-text"><strong>Saved Jobs</strong><span>Load previous estimates</span></div>
-        </button>
-    </div>
-    <div class="dash-section"><h3>Recent Jobs</h3><div id="dashRecentJobs"></div></div>
-    <div class="dash-section"><h3>Suppliers</h3><div id="dashSuppliers" class="dash-suppliers-grid"></div></div>
-</div>
+<!-- ===== DASHBOARD (v2) ===== -->
+<!-- Material-calculator dashboard. renderDashboard() in app.js fills this
+     region entirely; layout/structure lives in dashboard-v2.css. -->
+<div class="page active dash-v2-page" id="dashboardPage"></div>
 
-<!-- ===== PRICING ===== -->
-<div class="page" id="pricingPage">
-    <div class="supplier-pills" id="supplierTabs"></div>
+<!-- ===== PRICING (v2) ===== -->
+<div class="page price-v2-page" id="pricingPage">
+    <!-- Sidebar: suppliers + filter (rendered by renderSupplierTabs) -->
+    <aside class="price-v2-sidebar" id="supplierTabs"></aside>
 
-    <div class="toolbar">
-        <div class="toolbar-group">
-            <button class="btn btn-sm btn-primary" onclick="document.getElementById('csvFileInput').click()">Import CSV</button>
-            <button class="btn btn-sm btn-secondary" onclick="exportCSV()">Export CSV</button>
-            <input type="file" id="csvFileInput" accept=".csv" onchange="handleCSVImport(event)" style="display:none">
-        </div>
-        <div class="toolbar-group">
-            <select class="toolbar-select" id="categoryFilter" onchange="renderMaterialTable()">
-                <option value="All">All Phases</option>
-            </select>
-        </div>
-        <div class="toolbar-spacer"></div>
-        <div class="toolbar-group">
-            <input type="text" class="toolbar-search" id="materialSearch" placeholder="Search..." oninput="renderMaterialTable()">
-        </div>
-        <div class="toolbar-group">
-            <button class="btn btn-sm btn-success" onclick="addMaterial()">+ Material</button>
-            <button class="btn btn-sm btn-success" onclick="openModal('addCategoryModal')">+ Phase</button>
-            <button class="btn btn-sm btn-secondary" onclick="openDeleteCategoryModal()">- Phase</button>
-            <button class="btn btn-sm btn-secondary" onclick="resetToDefaults()">Reset</button>
-        </div>
-    </div>
+    <!-- Main column -->
+    <div class="price-v2-main">
+        <!-- Header zone -->
+        <header class="price-v2-header">
+            <div class="price-v2-header-left">
+                <div class="price-v2-eyebrow"><span>03 &middot; PRICING</span><span class="price-v2-eyebrow-sep">&middot;</span><span id="priceV2Slug">CATALOG</span></div>
+                <h1 class="price-v2-title">Material catalog</h1>
+                <p class="price-v2-subtitle" id="priceV2Subtitle">
+                    <span class="price-v2-sub-text" id="priceV2SkuCount">0 SKUs</span>
+                    <span class="price-v2-sub-sep">&middot;</span>
+                    <span class="price-v2-sub-text" id="priceV2PhaseCount">0 phases</span>
+                    <span class="price-v2-sub-sep">&middot;</span>
+                    <span class="price-v2-sub-text">Price history tracked</span>
+                </p>
+            </div>
+            <div class="price-v2-header-right">
+                <button class="price-v2-text-link" data-on-click="triggerCsvImport">Import CSV</button>
+                <button class="price-v2-text-link" data-on-click="exportCSV">Export</button>
+                <input type="file" id="csvFileInput" accept=".csv" data-on-change="handleCSVImport" style="display:none">
+                <button class="price-v2-cta" data-on-click="addMaterial">+ New item</button>
+            </div>
+        </header>
 
-    <div class="scope-groups" id="scopeGroups"></div>
-    <div id="recentMaterials" style="margin-top:14px"></div>
-    <div class="stats-bar" id="statsBar"></div>
-</div>
+        <hr class="price-v2-divider">
 
-<!-- ===== CALCULATOR ===== -->
-<div class="page" id="calculatorPage">
-    <div class="calc-section">
-        <h3 class="calc-section-title">Project Info</h3>
-        <div class="form-row-2">
-            <div class="field"><label>Project Name</label><input type="text" class="input" id="calcProjectName" placeholder="e.g. Smith Residence"></div>
-            <div class="field"><label>Project Address</label><input type="text" class="input" id="calcProjectAddress" placeholder="e.g. 123 Main St, City, ST"></div>
-        </div>
-    </div>
-
-    <div class="calc-section">
-        <h3 class="calc-section-title">Job Details</h3>
-        <div class="form-row-3">
-            <div class="field"><label>Supplier</label><select class="input" id="calcSupplier" onchange="renderPhaseCheckboxes()"></select></div>
-            <div class="field"><label>Waste %</label><input type="number" class="input" id="calcWaste" value="10" min="0" max="50"></div>
-            <div class="field"><label>Markup %</label><input type="number" class="input" id="calcProfit" value="20" min="0" max="300"></div>
-        </div>
-    </div>
-
-    <div class="calc-section">
-        <h3 class="calc-section-title">Phases to Include</h3>
-        <div class="phase-selector" id="phaseCheckboxes"></div>
-    </div>
-
-    <!-- Per-scope dimensions -->
-    <div class="calc-section hidden" id="optStucco">
-        <h3 class="calc-section-title">Stucco Dimensions</h3>
-        <div class="form-row-2">
-            <div class="field"><label>Wall Area (sqft)</label><input type="number" class="input" id="calcStuccoSqft" placeholder="0" min="0"></div>
-            <div class="field"><label>Linear Feet (trim/corners)</label><input type="number" class="input" id="calcStuccoLinearFt" placeholder="0" min="0"><span class="hint">Weep screed, corner aid, casing bead</span></div>
-        </div>
-    </div>
-    <div class="calc-section hidden" id="optStone">
-        <h3 class="calc-section-title">Stone Dimensions</h3>
-        <div class="form-row-2">
-            <div class="field"><label>Stone Area (sqft)</label><input type="number" class="input" id="calcStoneSqft" placeholder="0" min="0"></div>
-            <div class="field"><label>Linear Feet (corners)</label><input type="number" class="input" id="calcStoneLinearFt" placeholder="0" min="0"><span class="hint">Stone corners</span></div>
-        </div>
-    </div>
-    <div class="calc-section hidden" id="optDrywall">
-        <h3 class="calc-section-title">Drywall Areas</h3>
-        <span class="hint" style="margin-bottom:10px;display:block">Add areas with their sheet type and dimensions. Accessories calculate from total sqft.</span>
-        <div id="drywallAreaRows"></div>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="addDrywallArea()" style="margin-top:8px">+ Add Area</button>
-    </div>
-    <div class="calc-section hidden" id="optPainting">
-        <h3 class="calc-section-title">Painting Dimensions</h3>
-        <div class="form-row-2">
-            <div class="field"><label>Paint Area (sqft)</label><input type="number" class="input" id="calcPaintSqft" placeholder="0" min="0"></div>
-            <div class="field"><label>Paint Coats</label><select class="input" id="calcPaintCoats"><option value="1">1 Coat</option><option value="2">2 Coats</option><option value="3">3 Coats</option></select></div>
-        </div>
-    </div>
-
-    <div class="calc-section">
-        <h3 class="calc-section-title">Costs & Fees</h3>
-        <div class="form-row-4">
-            <div class="field">
-                <label>Sales Tax <button class="btn-icon" onclick="addCurrentTaxToFavorites()" title="Add current selection to favorites" style="font-size:.75rem;padding:2px 4px">★</button></label>
-                <select class="input" id="calcTaxState" onchange="applyStateTax()">
-                    <option value="0">No Tax</option>
+        <!-- Toolbar -->
+        <div class="price-v2-toolbar">
+            <div class="price-v2-toolbar-left">
+                <div class="price-v2-search-wrap">
+                    <span class="price-v2-search-icon">&#9906;</span>
+                    <input type="text" class="price-v2-search" id="materialSearch" placeholder="Search SKU, name, unit&hellip;" data-on-input="renderMaterialTable">
+                </div>
+            </div>
+            <div class="price-v2-toolbar-right">
+                <div class="price-v2-toolbar-group price-v2-undo-group">
+                    <button type="button" class="price-v2-undo-btn" id="undoBtn" data-on-click="undo" title="Undo last change (e.g., CSV import)" aria-label="Undo">&#x21B6;</button>
+                    <button type="button" class="price-v2-undo-btn" id="redoBtn" data-on-click="redo" title="Redo" aria-label="Redo">&#x21B7;</button>
+                </div>
+                <div class="price-v2-toolbar-group">
+                    <span class="price-v2-toolbar-label">SORT</span>
+                    <select class="price-v2-sort-select" id="priceV2Sort" data-on-change="priceV2SetSort">
+                        <option value="name-asc">name &darr;</option>
+                        <option value="name-desc">name &uarr;</option>
+                        <option value="price-asc">price &darr;</option>
+                        <option value="price-desc">price &uarr;</option>
+                        <option value="trend-asc">30D &darr;</option>
+                        <option value="trend-desc">30D &uarr;</option>
+                    </select>
+                </div>
+                <div class="price-v2-toolbar-group">
+                    <span class="price-v2-toolbar-label">VIEW</span>
+                    <div class="price-v2-view-toggle" role="group" aria-label="Row density">
+                        <button type="button" class="price-v2-view-btn active" id="priceV2ViewDense" data-on-click="priceV2SetView" data-args="dense">dense</button>
+                        <button type="button" class="price-v2-view-btn" id="priceV2ViewComfy" data-on-click="priceV2SetView" data-args="comfortable">comfortable</button>
+                    </div>
+                </div>
+                <!-- Legacy phase select kept for back-compat with code paths that
+                     still read #categoryFilter (e.g. CSV import flow). Hidden. -->
+                <select id="categoryFilter" data-on-change="renderMaterialTable" style="display:none">
+                    <option value="All">All phases</option>
                 </select>
-                <input type="number" class="input" id="calcTax" value="0" min="0" max="25" step="0.1" style="display:none;margin-top:6px" placeholder="Tax rate %">
-            </div>
-            <div class="field"><label>Labor ($/sqft)</label><input type="number" class="input" id="calcLabor" value="0" min="0" step="0.25"></div>
-            <div class="field"><label>Delivery Fee ($)</label><input type="number" class="input" id="calcDelivery" value="0" min="0" step="1"><span class="hint">Per order</span></div>
-            <div class="field">
-                <label><input type="checkbox" id="calcCCFeeToggle" onchange="document.getElementById('calcCCFee').disabled=!this.checked"> Credit Card Fee %</label>
-                <input type="number" class="input" id="calcCCFee" value="3" min="0" max="10" step="0.1">
-                <span class="hint">Surcharge for card payments</span>
             </div>
         </div>
-    </div>
 
-    <div class="calc-actions">
-        <button class="btn btn-primary btn-lg" onclick="calculateJob()">Calculate</button>
-    </div>
+        <!-- Catalog table (rendered by renderMaterialTable into #scopeGroups) -->
+        <div class="scope-groups" id="scopeGroups"></div>
 
-    <div id="calcResults" class="hidden">
-        <div class="phase-cards" id="phaseCards"></div>
-        <div id="calcBreakdown"></div>
-        <div class="total-card" id="calcGrandTotal"></div>
-        <div class="summary-grid" id="summaryGrid"></div>
-        <div id="comparisonSection"></div>
-        <div class="calc-result-actions">
-            <button class="btn btn-success" onclick="generateOrderForm()">Generate Order</button>
-            <button class="btn btn-secondary" onclick="generateBidSummary()">Bid Summary</button>
-            <button class="btn btn-secondary" onclick="saveJob()">Save Job</button>
+        <!-- Recent + stats -->
+        <div class="price-v2-recent" id="recentMaterials"></div>
+        <div class="price-v2-stats" id="statsBar"></div>
+    </div>
+</div>
+
+<!-- ===== CALCULATOR (v2) ===== -->
+<div class="page calc-v2-page" id="calculatorPage">
+    <header class="calc-v2-header">
+        <div class="calc-v2-header-left">
+            <div class="calc-v2-eyebrow"><span>02 &middot; CALCULATOR</span><span class="calc-v2-eyebrow-sep">|</span><span id="calcV2JobCode">JOB J-2419</span></div>
+            <h1 class="calc-v2-title" id="calcV2Title">New Estimate</h1>
+            <p class="calc-v2-subtitle" id="calcV2Subtitle"><span id="calcV2SubAddress" class="calc-v2-sub-text">Add an address</span><span class="calc-v2-sub-sep">&middot;</span><span class="calc-v2-sub-text" id="calcV2SubScope">Stucco re-coat</span><span class="calc-v2-sub-sep">&middot;</span><span class="calc-v2-sub-text" id="calcV2SubArea">Enter dimensions</span></p>
         </div>
+        <div class="calc-v2-header-right">
+            <span class="calc-v2-status" id="calcV2Status"><span class="calc-v2-status-dot"></span>Draft</span>
+            <button class="calc-v2-text-link" data-on-click="duplicateCurrentJob">Duplicate</button>
+            <button class="calc-v2-text-link" data-on-click="saveTemplate">Save template</button>
+            <button class="calc-v2-cta" data-on-click="prepareOrderFromCalc">Generate order <span class="calc-v2-cta-arrow">&rarr;</span></button>
+        </div>
+    </header>
+
+    <hr class="calc-v2-divider">
+
+    <div class="calc-v2-grid">
+        <div class="calc-v2-main">
+            <!-- Metrics strip -->
+            <div class="calc-v2-metrics calc-v2-metrics-single" id="calcV2Metrics">
+                <div class="calc-v2-metric" id="calcV2MetricSupplier">
+                    <div class="calc-v2-metric-label">Supplier</div>
+                    <div class="calc-v2-metric-value calc-v2-metric-supplier"><select class="calc-v2-supplier-select" id="calcSupplier" data-on-change="renderPhaseCheckboxes"></select></div>
+                </div>
+            </div>
+
+            <!-- Inputs panel (project info, dimensions, costs) -->
+            <section class="calc-v2-panel">
+                <div class="calc-v2-panel-head"><span>Project</span></div>
+                <div class="calc-v2-panel-body">
+                    <div class="calc-v2-form-row">
+                        <div class="calc-v2-field"><label>Project Name</label><input type="text" class="calc-v2-input" id="calcProjectName" placeholder="e.g. Smith Residence" data-on-input="updateCalcHeader"></div>
+                        <div class="calc-v2-field"><label>Project Address</label><input type="text" class="calc-v2-input" id="calcProjectAddress" placeholder="e.g. 123 Main St, City, ST" data-on-input="updateCalcHeader"></div>
+                    </div>
+                    <div class="calc-v2-form-row calc-v2-form-row-3">
+                        <div class="calc-v2-field"><label>Waste %</label><input type="number" class="calc-v2-input" id="calcWaste" value="10" min="0" max="50"></div>
+                        <div class="calc-v2-field"><label>Markup %</label><input type="number" class="calc-v2-input" id="calcProfit" value="20" min="0" max="300"></div>
+                        <div class="calc-v2-field"><label>Labor ($/sqft)</label><input type="number" class="calc-v2-input" id="calcLabor" value="0" min="0" step="0.25"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="calc-v2-panel">
+                <div class="calc-v2-panel-head"><span>Phases</span></div>
+                <div class="calc-v2-panel-body">
+                    <div class="phase-selector calc-v2-phase-selector" id="phaseCheckboxes"></div>
+                </div>
+            </section>
+
+            <!-- Per-scope dimension panels -->
+            <section class="calc-v2-panel hidden" id="optStucco">
+                <div class="calc-v2-panel-head"><span>Stucco Dimensions</span></div>
+                <div class="calc-v2-panel-body">
+                    <div class="calc-v2-form-row">
+                        <div class="calc-v2-field"><label>Wall Area (sqft)</label><input type="number" class="calc-v2-input" id="calcStuccoSqft" placeholder="0" min="0"></div>
+                        <div class="calc-v2-field"><label>Linear Feet (trim/corners)</label><input type="number" class="calc-v2-input" id="calcStuccoLinearFt" placeholder="0" min="0"><span class="hint">Weep screed, corner aid, casing bead</span></div>
+                    </div>
+                </div>
+            </section>
+            <section class="calc-v2-panel hidden" id="optStone">
+                <div class="calc-v2-panel-head"><span>Stone Dimensions</span></div>
+                <div class="calc-v2-panel-body">
+                    <div class="calc-v2-form-row">
+                        <div class="calc-v2-field"><label>Stone Area (sqft)</label><input type="number" class="calc-v2-input" id="calcStoneSqft" placeholder="0" min="0"></div>
+                        <div class="calc-v2-field"><label>Linear Feet (corners)</label><input type="number" class="calc-v2-input" id="calcStoneLinearFt" placeholder="0" min="0"><span class="hint">Stone corners</span></div>
+                    </div>
+                </div>
+            </section>
+            <section class="calc-v2-panel hidden" id="optDrywall">
+                <div class="calc-v2-panel-head"><span>Drywall Areas</span></div>
+                <div class="calc-v2-panel-body">
+                    <span class="hint" style="margin-bottom:10px;display:block">Add areas with their sheet type and dimensions. Accessories calculate from total sqft.</span>
+                    <div id="drywallAreaRows"></div>
+                    <button type="button" class="calc-v2-btn calc-v2-btn-secondary calc-v2-btn-sm" data-on-click="addDrywallArea" style="margin-top:8px">+ Add Area</button>
+                </div>
+            </section>
+            <section class="calc-v2-panel hidden" id="optPainting">
+                <div class="calc-v2-panel-head"><span>Painting Dimensions</span></div>
+                <div class="calc-v2-panel-body">
+                    <div class="calc-v2-form-row">
+                        <div class="calc-v2-field"><label>Paint Area (sqft)</label><input type="number" class="calc-v2-input" id="calcPaintSqft" placeholder="0" min="0"></div>
+                        <div class="calc-v2-field"><label>Paint Coats</label><select class="calc-v2-input" id="calcPaintCoats"><option value="1">1 Coat</option><option value="2">2 Coats</option><option value="3">3 Coats</option></select></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="calc-v2-panel">
+                <div class="calc-v2-panel-head"><span>Costs &amp; Fees</span></div>
+                <div class="calc-v2-panel-body">
+                    <div class="calc-v2-form-row calc-v2-form-row-3">
+                        <div class="calc-v2-field">
+                            <label>Sales Tax <button class="calc-v2-btn-icon" data-on-click="addCurrentTaxToFavorites" title="Add current selection to favorites">&#9733;</button></label>
+                            <select class="calc-v2-input" id="calcTaxState" data-on-change="applyStateTax"><option value="0">No Tax</option></select>
+                            <input type="number" class="calc-v2-input" id="calcTax" value="0" min="0" max="25" step="0.1" style="display:none;margin-top:6px" placeholder="Tax rate %">
+                        </div>
+                        <div class="calc-v2-field"><label>Delivery Fee ($)</label><input type="number" class="calc-v2-input" id="calcDelivery" value="0" min="0" step="1"><span class="hint">Per order</span></div>
+                        <div class="calc-v2-field">
+                            <label><input type="checkbox" id="calcCCFeeToggle" data-on-change="toggleCCFeeInput"> Credit Card Fee %</label>
+                            <input type="number" class="calc-v2-input" id="calcCCFee" value="3" min="0" max="10" step="0.1">
+                            <span class="hint">Surcharge for card payments</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="calc-v2-actions-row">
+                <button class="calc-v2-btn calc-v2-btn-primary" data-on-click="calculateJob">Calculate</button>
+            </div>
+
+            <!-- Phase result cards -->
+            <div id="calcResults" class="hidden">
+                <div id="comparisonSection" class="calc-v2-compare"></div>
+                <div class="calc-v2-phases" id="phaseCards"></div>
+                <div id="calcBreakdown" class="hidden"></div>
+            </div>
+        </div>
+
+        <aside class="calc-v2-summary" id="calcV2Summary">
+            <div class="calc-v2-summary-card" id="calcV2SummaryCard">
+                <div class="calc-v2-eyebrow calc-v2-summary-eyebrow"><span>Summary</span></div>
+                <div class="calc-v2-summary-empty" id="calcV2SummaryEmpty">
+                    <p>Run a calculation to see your bid in this panel.</p>
+                </div>
+                <div class="calc-v2-summary-content hidden" id="calcV2SummaryContent">
+                    <div class="calc-v2-cprice-block">
+                        <div class="calc-v2-eyebrow"><span>Customer Price</span></div>
+                        <div class="calc-v2-cprice" id="calcV2CustomerPrice">$0</div>
+                        <div class="calc-v2-cprice-sub"><span>per sqft</span><span class="calc-v2-mono" id="calcV2PerSqft">$0.00</span></div>
+                    </div>
+
+                    <div class="calc-v2-cost-stack" id="calcV2CostStack"></div>
+
+                    <div class="calc-v2-profit-block">
+                        <div class="calc-v2-eyebrow"><span>Profit</span></div>
+                        <div class="calc-v2-profit-row">
+                            <div class="calc-v2-profit-amount" id="calcV2ProfitAmount">$0</div>
+                            <div class="calc-v2-profit-pct" id="calcV2ProfitPct">0%</div>
+                        </div>
+                        <div class="calc-v2-progress">
+                            <div class="calc-v2-progress-track">
+                                <div class="calc-v2-progress-fill" id="calcV2ProgressFill" style="width:0%"></div>
+                                <div class="calc-v2-progress-tick" style="left:56%"></div>
+                            </div>
+                            <div class="calc-v2-progress-labels">
+                                <span>0%</span>
+                                <span class="calc-v2-progress-target">target 28%</span>
+                                <span>50%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="calc-v2-summary-ctas">
+                        <button class="calc-v2-btn calc-v2-btn-primary calc-v2-btn-block" data-on-click="prepareOrderFromCalc">Generate order <span class="calc-v2-cta-arrow">&rarr;</span></button>
+                    </div>
+                </div>
+            </div>
+        </aside>
     </div>
 </div>
 
 <!-- ===== ORDER FORM ===== -->
-<div class="page" id="orderPage">
-    <div class="print-header"><h1>Material Order Form</h1><p>Generated by EstiCount</p></div>
-    <div id="orderEmpty" class="empty-state"><p>No order generated yet.</p><button class="btn btn-primary" onclick="showPage('calculator')">Go to Calculator</button></div>
-    <div id="orderContent" class="hidden">
-        <div class="order-controls no-print">
-            <div class="field" style="width:200px"><label>Phase</label><select class="input" id="orderPhaseFilter" onchange="renderOrderTable()"><option value="All">All Phases</option></select></div>
-            <div class="toolbar-spacer"></div>
-            <button class="btn btn-primary btn-sm" onclick="printOrder()">Print</button>
-            <button class="btn btn-secondary btn-sm" onclick="exportOrderCSV()">Export CSV</button>
-        </div>
-        <div class="order-form-layout">
-            <div class="order-info-grid">
-                <div class="order-info-card">
-                    <div class="field"><label>Project Name</label><input type="text" class="input" id="orderProjectName" readonly></div>
-                    <div class="field"><label>Project Address</label><input type="text" class="input" id="orderProjectAddress" readonly></div>
-                </div>
-                <div class="order-info-card">
-                    <div class="field"><label>Supplier</label><input type="text" class="input" id="orderSupplier" readonly></div>
-                    <div class="order-info-row">
-                        <div class="field"><label>Date</label><input type="date" class="input" id="orderDate"></div>
-                        <div class="field"><label>PO #</label><input type="text" class="input" id="orderPO" placeholder="Optional"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="table-wrap"><table id="orderTable"><thead><tr><th>SKU</th><th>Material</th><th class="text-center">Qty</th><th>Unit</th><th class="text-right">Price</th><th class="text-right">Total</th></tr></thead><tbody id="orderTableBody"></tbody></table></div>
-            <div class="field no-print" style="margin-top:16px"><label>Notes / Special Instructions</label><textarea class="input" id="orderNotes" rows="3" placeholder="Delivery instructions, jobsite access..."></textarea></div>
-            <div class="order-notes-print" id="orderNotesPrint" style="display:none"></div>
+<div class="page order-v2-page" id="orderPage">
+    <div class="print-header no-print"><h1>Material Order Form</h1><p>Generated by EstiCount</p></div>
+
+    <!-- Empty state -->
+    <div id="orderEmpty" class="order-v2-empty"><p>No order generated yet.</p><button class="order-v2-btn order-v2-btn-primary" style="display:inline-flex;width:auto;padding:0 24px" data-on-click="showPage" data-args="calculator">Go to Calculator</button></div>
+
+    <!-- Comparison view (shown only when current calc used "All Suppliers") -->
+    <div id="orderComparison" class="hidden order-v2-compare">
+        <header class="order-v2-compare-head">
+            <div class="order-v2-eyebrow">04 &middot; ORDER &middot; COMPARE</div>
+            <h1 class="order-v2-compare-title">Pick a supplier per phase</h1>
+            <p class="order-v2-compare-sub" id="orderCompareSub">Cheapest supplier is pre-selected for each phase. Adjust if you prefer a different vendor, then generate the printable order.</p>
+        </header>
+        <div class="order-v2-compare-table" id="orderCompareTable"></div>
+        <div class="order-v2-compare-ctas">
+            <button class="order-v2-btn order-v2-btn-link" data-on-click="showPage" data-args="calculator">&larr; Back to calculator</button>
+            <button class="order-v2-btn order-v2-btn-primary" data-on-click="confirmOrderComparison" style="display:inline-flex;width:auto;padding:0 24px">Generate order <span class="order-v2-cta-arrow">&rarr;</span></button>
         </div>
     </div>
-</div>
 
-<!-- ===== BID SUMMARY ===== -->
-<div class="page" id="bidPage">
-    <div id="bidEmpty" class="empty-state"><p>No calculation yet.</p><button class="btn btn-primary" onclick="showPage('calculator')">Go to Calculator</button></div>
-    <div id="bidContent" class="hidden">
-        <div class="bid-paper" id="bidSummary"></div>
-        <div class="calc-result-actions no-print"><button class="btn btn-primary" onclick="printBid()">Print Bid</button></div>
+    <!-- Printable order content -->
+    <div id="orderContent" class="hidden">
+        <div class="order-v2-paper-wrap">
+            <section class="order-v2-paper" id="orderPaper">
+                <!-- Letterhead -->
+                <header class="order-v2-letterhead">
+                    <div class="order-v2-letterhead-left">
+                        <div class="order-v2-brand-row">
+                            <span class="order-v2-brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+                            <span class="order-v2-company" id="orderCompanyName">&nbsp;</span>
+                        </div>
+                        <div class="order-v2-company-meta" id="orderCompanyMeta">&nbsp;</div>
+                        <div class="order-v2-company-meta" id="orderCompanyMeta2">&nbsp;</div>
+                    </div>
+                    <div class="order-v2-letterhead-right">
+                        <div class="order-v2-eyebrow">ORDER</div>
+                        <div class="order-v2-order-num" id="orderNumber">O-0000</div>
+                        <div class="order-v2-letterhead-sub" id="orderLetterheadSub">&nbsp;</div>
+                    </div>
+                </header>
+
+                <!-- Deliver-to -->
+                <div class="order-v2-meta-row order-v2-meta-row-single">
+                    <div class="order-v2-meta-block">
+                        <div class="order-v2-eyebrow">DELIVER TO</div>
+                        <div class="order-v2-deliver-to-line1" id="orderDeliverProject">&mdash;</div>
+                        <div class="order-v2-deliver-to-line" id="orderDeliverAddress">&nbsp;</div>
+                        <div class="order-v2-deliver-to-line" id="orderDeliverContact" hidden>&nbsp;</div>
+                    </div>
+                </div>
+
+                <!-- Per-supplier sections (renderOrderForm writes here) -->
+                <div class="order-v2-groups" id="orderTableBody"></div>
+
+                <!-- Order totals -->
+                <div class="order-v2-totals" id="orderTotals"></div>
+
+                <!-- Notes printed -->
+                <div class="order-v2-notes-print" id="orderNotesPrint" style="display:none"></div>
+
+                <!-- Hidden fields preserved so legacy renderers / CSV export keep working. -->
+                <div class="order-v2-rail-fields" hidden>
+                    <input type="text" id="orderProjectName" readonly>
+                    <input type="text" id="orderProjectAddress" readonly>
+                    <input type="text" id="orderSupplier" readonly>
+                    <input type="date" id="orderDate">
+                    <input type="text" id="orderPO" placeholder="Optional">
+                    <select id="orderPhaseFilter"><option value="All">All Phases</option></select>
+                    <textarea id="orderNotes"></textarea>
+                </div>
+            </section>
+
+            <!-- Actions row (print only) -->
+            <div class="order-v2-actions no-print">
+                <button class="order-v2-btn order-v2-btn-primary" data-on-click="printOrder">Print <span class="order-v2-cta-arrow">&rarr;</span></button>
+                <button class="order-v2-btn order-v2-btn-link" data-on-click="exportOrderCSV">Export CSV</button>
+            </div>
+        </div>
     </div>
 </div>
 
 <!-- ===== SAVED JOBS ===== -->
 <div class="page" id="savedJobsPage">
-    <div class="page-intro">
-        <p>Click a job to load it into the calculator. Save with "as template" to reuse settings for similar jobs.</p>
-        <button class="btn btn-danger btn-sm" onclick="clearAllJobs()">Clear All</button>
+    <div class="jobs-v2-page">
+        <header class="jobs-v2-header">
+            <div class="jobs-v2-header-left">
+                <div class="jobs-v2-eyebrow">06 · Saved Jobs</div>
+                <h1 class="jobs-v2-title">Library</h1>
+                <p class="jobs-v2-subtitle" id="jobsV2Subtitle">— jobs<span class="sep">·</span>— templates<span class="sep">·</span>search, filter, duplicate</p>
+            </div>
+            <div class="jobs-v2-header-right">
+                <button class="jobs-v2-link" data-on-click="jobsV2FilterTemplates">Templates</button>
+                <button class="jobs-v2-cta" data-on-click="jobsV2NewJob">+ New job</button>
+            </div>
+        </header>
+        <div class="jobs-v2-divider"></div>
+        <div class="jobs-v2-controls">
+            <label class="jobs-v2-search">
+                <span class="jobs-v2-search-icon" aria-hidden="true">⌕</span>
+                <input type="text" id="jobsV2Search" placeholder="Search by job, client, address…" autocomplete="off" data-on-input="jobsV2SetSearch">
+            </label>
+            <div class="jobs-v2-tabs" id="jobsV2Tabs" role="tablist"></div>
+        </div>
+        <div id="savedJobsList"></div>
+        <div class="jobs-v2-footer" id="jobsV2Footer"></div>
     </div>
-    <div id="savedJobsList"></div>
 </div>
 
 <!-- ===== ACCOUNT ===== -->
-<div class="page" id="accountPage">
-    <div style="max-width:700px;margin:0 auto">
-        <div class="account-card">
-            <div class="account-avatar" id="accountAvatar">A</div>
-            <div class="account-info">
-                <h2 id="accountNameDisplay"></h2>
-                <p id="accountEmailDisplay" style="color:var(--text3)"></p>
-            </div>
+<div class="page account-v2-page" id="accountPage">
+    <!-- Header -->
+    <header class="account-v2-header">
+        <div class="account-v2-header-left">
+            <div class="account-v2-eyebrow">10<span class="sep">&middot;</span>ACCOUNT<span class="sep">&middot;</span>PROFILE</div>
+            <h1 class="account-v2-title">Account</h1>
+            <div class="account-v2-subtitle">Manage your profile, license, and workspace preferences.</div>
+        </div>
+        <div class="account-v2-header-right">
+            <span class="account-v2-status-pill is-none" id="accountStatusPill">License</span>
+        </div>
+    </header>
+
+    <!-- Two-column body -->
+    <div class="account-v2-body">
+        <!-- Main column -->
+        <div class="account-v2-main">
+
+            <!-- Identity card -->
+            <section class="account-v2-identity" aria-label="Profile identity">
+                <div class="account-v2-avatar" id="accountAvatar">A</div>
+                <div class="account-v2-identity-meta">
+                    <h2 class="account-v2-identity-name" id="accountNameDisplay">&nbsp;</h2>
+                    <div class="account-v2-identity-email" id="accountEmailDisplay"></div>
+                    <div class="account-v2-identity-role" id="accountRoleLine"></div>
+                </div>
+            </section>
+
+            <!-- Profile form card -->
+            <section class="account-v2-card" aria-label="Profile form">
+                <div class="account-v2-card-eyebrow"><span>PROFILE</span><span class="meta">Update your name, email, and password</span></div>
+                <div class="account-v2-form">
+                    <div class="account-v2-form-row">
+                        <div class="account-v2-field">
+                            <label for="accountNameInput">NAME</label>
+                            <input type="text" class="account-v2-input" id="accountNameInput" autocomplete="name">
+                        </div>
+                        <div class="account-v2-field">
+                            <label for="accountEmailInput">EMAIL</label>
+                            <input type="email" class="account-v2-input" id="accountEmailInput" autocomplete="email">
+                        </div>
+                    </div>
+                    <div class="account-v2-field">
+                        <label for="accountPasswordInput">NEW PASSWORD</label>
+                        <input type="password" class="account-v2-input" id="accountPasswordInput" placeholder="Leave blank to keep current" autocomplete="new-password">
+                        <div class="account-v2-hint">Minimum 6 characters. Only fill if you want to change it.</div>
+                    </div>
+                    <div class="account-v2-form-actions">
+                        <button type="button" class="account-v2-cta" data-on-click="updateProfile">Save changes <span class="arr">&rarr;</span></button>
+                        <span class="account-v2-form-message is-muted" id="profileMessage"></span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Company info card -->
+            <section class="account-v2-card" aria-label="Company info">
+                <div class="account-v2-card-eyebrow"><span>COMPANY INFO</span></div>
+                <p class="account-v2-help-line">Used on your printed order forms.</p>
+
+                <div class="account-v2-form" style="margin-top:14px">
+                    <div class="account-v2-form-row">
+                        <div class="account-v2-field">
+                            <label class="account-v2-label" for="companyName">COMPANY NAME</label>
+                            <input type="text" class="account-v2-input" id="companyName" placeholder="Your Company LLC">
+                        </div>
+                        <div class="account-v2-field">
+                            <label class="account-v2-label" for="companyLicense">LICENSE NUMBER</label>
+                            <input type="text" class="account-v2-input" id="companyLicense" placeholder="C-35 1042918">
+                        </div>
+                    </div>
+                    <div class="account-v2-form-row">
+                        <div class="account-v2-field" style="grid-column: span 2">
+                            <label class="account-v2-label" for="companyAddress">ADDRESS</label>
+                            <textarea class="account-v2-input" id="companyAddress" rows="2" placeholder="2204 Foothill Rd, Suite C&#10;Pasadena CA 91103"></textarea>
+                        </div>
+                    </div>
+                    <div class="account-v2-form-row">
+                        <div class="account-v2-field">
+                            <label class="account-v2-label" for="companyPhone">PHONE</label>
+                            <input type="tel" class="account-v2-input" id="companyPhone" placeholder="(555) 555-0100">
+                        </div>
+                        <div class="account-v2-field">
+                            <label class="account-v2-label" for="companyEmail">BUSINESS EMAIL</label>
+                            <input type="email" class="account-v2-input" id="companyEmail" placeholder="orders@yourcompany.com">
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
+                    <button class="account-v2-cta" data-on-click="saveCompanyInfoFromForm">Save company info</button>
+                    <span class="account-v2-message" id="companyInfoMessage"></span>
+                </div>
+            </section>
+
+            <!-- License status card -->
+            <section class="account-v2-card" aria-label="License status">
+                <div class="account-v2-card-eyebrow"><span>LICENSE STATUS</span><span class="meta" id="accountLicenseEyebrowMeta"></span></div>
+                <div class="account-v2-license" id="accountLicense"></div>
+            </section>
+
+            <!-- Activate license key card -->
+            <section class="account-v2-card" aria-label="Activate license key">
+                <div class="account-v2-card-eyebrow"><span>ACTIVATE WITH LICENSE KEY</span></div>
+                <div class="account-v2-activate-row">
+                    <input type="text" class="account-v2-input is-mono" id="licenseKeyInput" placeholder="EC-LIF-XXXXXXXXXXXXXXXX" autocomplete="off" spellcheck="false">
+                    <button type="button" class="account-v2-cta" data-on-click="activateLicense">Activate</button>
+                </div>
+                <div class="account-v2-hint" style="margin-top:10px">Trial keys give 7 days &middot; monthly keys renew &middot; lifetime keys never expire.</div>
+                <div class="account-v2-message" id="licenseMessage"></div>
+            </section>
+
+            <!-- Business Expenses (folded into each job's overhead) -->
+            <section class="account-v2-card" aria-label="Business expenses">
+                <div class="account-v2-card-eyebrow"><span>BUSINESS EXPENSES</span></div>
+                <p class="account-v2-help-line">Recurring overhead (QuickBooks, insurance, phone, etc.) gets amortized into each job's overhead based on your average jobs per month.</p>
+                <div class="account-v2-form-row" style="margin-top:12px">
+                    <div class="account-v2-field">
+                        <label class="account-v2-label" for="bizJobsPerMonth">AVERAGE JOBS PER MONTH</label>
+                        <input type="number" class="account-v2-input" id="bizJobsPerMonth" min="1" step="1" value="4" data-on-input="bizExpensesSave">
+                    </div>
+                </div>
+                <div id="bizExpensesList" style="margin-top:14px"></div>
+                <div style="margin-top:12px;display:flex;gap:10px;align-items:center;justify-content:space-between">
+                    <button type="button" class="account-v2-cta" data-on-click="bizExpensesAdd">+ Add expense</button>
+                    <div id="bizExpensesPerJob" class="account-v2-hint" style="font-family:var(--v2-font-mono);"></div>
+                </div>
+            </section>
         </div>
 
-        <div class="calc-section">
-            <h3 class="calc-section-title">Profile</h3>
-            <div class="form-row-2">
-                <div class="field"><label>Name</label><input type="text" class="input" id="accountNameInput"></div>
-                <div class="field"><label>Email</label><input type="email" class="input" id="accountEmailInput"></div>
-            </div>
-            <div class="field"><label>New Password (leave blank to keep current)</label><input type="password" class="input" id="accountPasswordInput" placeholder="Min 6 characters"></div>
-            <button class="btn btn-primary" onclick="updateProfile()">Save Changes</button>
-            <span id="profileMessage" style="margin-left:12px;font-size:.88rem"></span>
-        </div>
-
-        <div class="calc-section">
-            <h3 class="calc-section-title">License Status</h3>
-            <div class="account-license-card" id="accountLicense"></div>
-        </div>
-
-        <div class="calc-section">
-            <h3 class="calc-section-title">Activate License Key</h3>
-            <p style="color:var(--text3);font-size:.88rem;margin-bottom:12px">Enter the license key provided by your administrator to activate your account.</p>
-            <div style="display:flex;gap:10px;align-items:flex-start">
-                <input type="text" class="input" id="licenseKeyInput" placeholder="EC-MON-XXXXXXXX" style="flex:1;text-transform:uppercase;font-family:'JetBrains Mono',monospace;letter-spacing:.05em">
-                <button class="btn btn-primary" onclick="activateLicense()">Activate</button>
-            </div>
-            <div id="licenseMessage" style="display:none;margin-top:10px;padding:12px 16px;border-radius:8px;font-size:.88rem"></div>
-        </div>
+        <!-- Right rail -->
+        <aside class="account-v2-rail" aria-label="Account sidebar">
+            <section class="account-v2-card" aria-label="Quick stats">
+                <div class="account-v2-card-eyebrow"><span>QUICK STATS</span></div>
+                <div id="accountQuickStats"></div>
+            </section>
+            <section class="account-v2-card" aria-label="Help and support">
+                <div class="account-v2-card-eyebrow"><span>HELP &amp; SUPPORT</span></div>
+                <p class="account-v2-help-line">Questions, key issues, or feature requests? We answer within one business day.</p>
+                <p class="account-v2-help-line"><a class="account-v2-help-link" href="mailto:support@esticount.app">support@esticount.app</a></p>
+                <div class="account-v2-help-meta" id="accountVersionLine">EstiCount &middot; v4.2.0</div>
+            </section>
+        </aside>
     </div>
 </div>
 
 <!-- ===== ADMIN PANEL ===== -->
-<div class="page" id="adminPage">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-        <div></div>
-        <button class="btn btn-ghost btn-sm" id="adminViewToggle" onclick="toggleAdminView()">View as User</button>
-    </div>
-
-    <div class="dash-stats" id="adminStats"></div>
-
-    <div class="calc-section">
-        <h3 class="calc-section-title">Generate License Keys</h3>
-        <div class="form-row-3" style="margin-bottom:12px">
-            <div class="field"><label>Type</label><select class="input" id="genKeyType"><option value="trial">Trial (7 days)</option><option value="monthly">Monthly (30 days)</option><option value="yearly">Yearly (365 days)</option><option value="lifetime">Lifetime</option></select></div>
-            <div class="field"><label>Max Uses</label><input type="number" class="input" id="genKeyMaxUses" value="1" min="1"></div>
-            <div class="field"><label>Quantity</label><input type="number" class="input" id="genKeyCount" value="1" min="1" max="50"></div>
+<div class="page admin-v2-page" id="adminPage">
+    <!-- Header -->
+    <header class="admin-v2-header">
+        <div class="admin-v2-header-left">
+            <div class="admin-v2-eyebrow">07<span class="sep">&middot;</span>ADMIN<span class="sep">&middot;</span>OPERATOR CONSOLE</div>
+            <h1 class="admin-v2-title">License &amp; user management</h1>
+            <div class="admin-v2-subtitle">EstiCount is your SaaS &mdash; manage trial keys, lifetime licenses, and active accounts.</div>
         </div>
-        <button class="btn btn-success" onclick="generateKeys()">Generate Keys</button>
-    </div>
-
-    <div class="calc-section">
-        <h3 class="calc-section-title">License Keys</h3>
-        <div id="adminKeysList"></div>
-    </div>
-
-    <div class="calc-section">
-        <h3 class="calc-section-title">Users</h3>
-        <div id="adminUsersList"></div>
-    </div>
-
-    <div class="calc-section">
-        <h3 class="calc-section-title">Bulk Price Update</h3>
-        <div class="form-row-2" style="margin-bottom:12px">
-            <div class="field"><label>Supplier</label><select class="input" id="bulkSupplier"></select></div>
-            <div class="field"><label>Adjust by %</label><input type="number" class="input" id="bulkPercent" value="5" step="0.5" placeholder="+5 or -3"></div>
+        <div class="admin-v2-header-right">
+            <button type="button" class="admin-v2-link" id="adminViewToggle" data-on-click="toggleAdminView">View as user</button>
+            <button type="button" class="admin-v2-cta" data-on-click="focusGenerateKeys">Generate keys <span class="arr">&rarr;</span></button>
         </div>
-        <button class="btn btn-primary" onclick="bulkPriceUpdate()">Update Prices</button>
-        <span class="hint" style="margin-left:12px">Positive = increase, negative = decrease</span>
-    </div>
+    </header>
+
+    <!-- 5-up metric strip -->
+    <section class="admin-v2-metrics" id="adminStats" aria-label="Admin metrics"></section>
+
+    <!-- Generate keys form -->
+    <section class="admin-v2-genform" id="adminGenForm">
+        <div class="admin-v2-card-eyebrow">
+            <span>GENERATE LICENSE KEYS</span>
+            <span class="meta" id="adminGenHint">Set type, max uses &amp; quantity</span>
+        </div>
+        <div class="admin-v2-genform-row">
+            <div class="admin-v2-field">
+                <label for="genKeyType">TYPE</label>
+                <select class="admin-v2-select" id="genKeyType" data-on-change="updateGenKeysHelper">
+                    <option value="trial">Trial &middot; 7 days</option>
+                    <option value="monthly">Monthly &middot; 30 days</option>
+                    <option value="yearly">Yearly &middot; 365 days</option>
+                    <option value="lifetime">Lifetime</option>
+                </select>
+            </div>
+            <div class="admin-v2-field">
+                <label for="genKeyMaxUses">MAX USES</label>
+                <input type="number" class="admin-v2-input" id="genKeyMaxUses" value="1" min="1" data-on-input="updateGenKeysHelper">
+            </div>
+            <div class="admin-v2-field">
+                <label for="genKeyCount">QUANTITY</label>
+                <input type="number" class="admin-v2-input" id="genKeyCount" value="5" min="1" max="50" data-on-input="updateGenKeysHelper">
+            </div>
+            <div class="admin-v2-field">
+                <label>PREFIX</label>
+                <div class="admin-v2-prefix" id="adminGenPrefix">EC-TRI-XXXXXX&hellip;</div>
+            </div>
+            <button type="button" class="admin-v2-cta" data-on-click="generateKeys">Generate</button>
+        </div>
+        <div class="admin-v2-genform-helper" id="adminGenHelper">5 keys &middot; 7d each &middot; single-use &middot; downloadable as CSV</div>
+    </section>
+
+    <!-- Side-by-side tables -->
+    <section class="admin-v2-tables">
+        <div class="admin-v2-card admin-v2-keys">
+            <div class="admin-v2-card-header">
+                <span class="admin-v2-card-eyebrow" id="adminKeysEyebrow" style="margin:0">LICENSE KEYS</span>
+                <span style="font-family:var(--v2-font-sans);font-size:.78rem;color:var(--v2-text-tertiary)">Click to copy</span>
+            </div>
+            <div id="adminKeysList"></div>
+        </div>
+        <div class="admin-v2-card admin-v2-users">
+            <div class="admin-v2-card-header">
+                <span class="admin-v2-card-eyebrow" id="adminUsersEyebrow" style="margin:0">USERS</span>
+            </div>
+            <div id="adminUsersList"></div>
+        </div>
+    </section>
 </div>
 
 </main>
 
 <!-- MODALS -->
-<div class="modal-overlay" id="addMaterialModal"><div class="modal"><h3>Add Material</h3><div class="field"><label>Add to Phase</label><select class="input" id="addMaterialCategory"></select></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('addMaterialModal')">Cancel</button><button class="btn btn-success" onclick="addMaterialFromModal()">Add</button></div></div></div>
+<div class="modal-overlay" id="addMaterialModal"><div class="modal"><h3>Add Material</h3><div class="field"><label>Add to Phase</label><select class="input" id="addMaterialCategory"></select></div><div class="modal-actions"><button class="btn btn-secondary" data-on-click="closeModal" data-args="addMaterialModal">Cancel</button><button class="btn btn-success" data-on-click="addMaterialFromModal">Add</button></div></div></div>
 
-<div class="modal-overlay" id="addCategoryModal"><div class="modal"><h3>Add New Phase</h3><div class="field"><label>Phase Name</label><input type="text" class="input" id="newCategoryName" placeholder="e.g. Painting, Trim"></div><div class="field" style="margin-top:8px"><label>Scope Group</label><select class="input" id="newCategoryGroup"><option value="">None (standalone)</option><option value="Stucco">Stucco</option><option value="Stone">Stone</option><option value="Drywall">Drywall</option><option value="Painting">Painting</option><option value="custom">New group...</option></select></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('addCategoryModal')">Cancel</button><button class="btn btn-success" onclick="addCategory()">Add</button></div></div></div>
+<div class="modal-overlay" id="addCategoryModal"><div class="modal"><h3>Add New Phase</h3><div class="field"><label>Phase Name</label><input type="text" class="input" id="newCategoryName" placeholder="e.g. Painting, Trim"></div><div class="field" style="margin-top:8px"><label>Scope Group</label><select class="input" id="newCategoryGroup"><option value="">None (standalone)</option><option value="Stucco">Stucco</option><option value="Stone">Stone</option><option value="Drywall">Drywall</option><option value="Painting">Painting</option><option value="custom">New group...</option></select></div><div class="modal-actions"><button class="btn btn-secondary" data-on-click="closeModal" data-args="addCategoryModal">Cancel</button><button class="btn btn-success" data-on-click="addCategory">Add</button></div></div></div>
 
-<div class="modal-overlay" id="deleteCategoryModal"><div class="modal"><h3>Delete Phase</h3><div class="field"><label>Phase to delete</label><select class="input" id="deleteCategorySelect"></select></div><div class="field"><label>Scope</label><select class="input" id="deleteCategoryScope"><option value="supplier">Remove from this supplier only</option><option value="all">Delete phase from all suppliers</option></select></div><p class="modal-warning">"Delete from all" permanently removes the phase and its materials everywhere.</p><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('deleteCategoryModal')">Cancel</button><button class="btn btn-danger" onclick="deleteCategory()">Delete</button></div></div></div>
+<div class="modal-overlay" id="deleteCategoryModal"><div class="modal"><h3>Delete Phase</h3><div class="field"><label>Phase to delete</label><select class="input" id="deleteCategorySelect"></select></div><div class="field"><label>Scope</label><select class="input" id="deleteCategoryScope"><option value="supplier">Remove from this supplier only</option><option value="all">Delete phase from all suppliers</option></select></div><p class="modal-warning">"Delete from all" permanently removes the phase and its materials everywhere.</p><div class="modal-actions"><button class="btn btn-secondary" data-on-click="closeModal" data-args="deleteCategoryModal">Cancel</button><button class="btn btn-danger" data-on-click="deleteCategory">Delete</button></div></div></div>
 
-<div class="modal-overlay" id="addSupplierModal"><div class="modal"><h3>Add Supplier</h3><div class="field"><label>Supplier Name</label><input type="text" class="input" id="newSupplierName" placeholder="e.g. Home Depot"></div><div class="field" style="margin-top:8px"><label><input type="checkbox" id="copyDefaultsToSupplier" checked> Pre-fill with default materials</label></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('addSupplierModal')">Cancel</button><button class="btn btn-success" onclick="addSupplier()">Add</button></div></div></div>
+<div class="modal-overlay" id="addSupplierModal"><div class="modal"><h3>Add Supplier</h3><div class="field"><label>Supplier Name</label><input type="text" class="input" id="newSupplierName" placeholder="e.g. Home Depot"></div><div class="field" style="margin-top:8px"><label><input type="checkbox" id="copyDefaultsToSupplier" checked> Pre-fill with default materials</label></div><div class="modal-actions"><button class="btn btn-secondary" data-on-click="closeModal" data-args="addSupplierModal">Cancel</button><button class="btn btn-success" data-on-click="addSupplier">Add</button></div></div></div>
 
-<div class="modal-overlay" id="deleteSupplierModal"><div class="modal"><h3>Remove Supplier</h3><p>Remove "<span id="deleteSupplierName"></span>" and all its materials?</p><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('deleteSupplierModal')">Cancel</button><button class="btn btn-danger" onclick="deleteSupplier()">Remove</button></div></div></div>
+<div class="modal-overlay" id="deleteSupplierModal"><div class="modal"><h3>Remove Supplier</h3><p>Remove "<span id="deleteSupplierName"></span>" and all its materials?</p><div class="modal-actions"><button class="btn btn-secondary" data-on-click="closeModal" data-args="deleteSupplierModal">Cancel</button><button class="btn btn-danger" data-on-click="deleteSupplier">Remove</button></div></div></div>
 
-<div class="modal-overlay" id="duplicateModal"><div class="modal"><h3>Copy Material to Supplier</h3><div class="field"><label>Target Supplier</label><select class="input" id="duplicateTarget"></select></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('duplicateModal')">Cancel</button><button class="btn btn-primary" onclick="doDuplicate()">Copy</button></div></div></div>
+<div class="modal-overlay" id="duplicateModal"><div class="modal"><h3>Copy Material to Supplier</h3><div class="field"><label>Target Supplier</label><select class="input" id="duplicateTarget"></select></div><div class="modal-actions"><button class="btn btn-secondary" data-on-click="closeModal" data-args="duplicateModal">Cancel</button><button class="btn btn-primary" data-on-click="doDuplicate">Copy</button></div></div></div>
 
-<div class="modal-overlay" id="saveJobModal"><div class="modal"><h3>Save Job</h3><div class="field"><label>Job Name</label><input type="text" class="input" id="saveJobName" placeholder="e.g. Smith Residence - April 2026"></div><div class="field" style="margin-top:8px"><label><input type="checkbox" id="saveAsTemplate"> Save as reusable template (no project details)</label></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('saveJobModal')">Cancel</button><button class="btn btn-success" onclick="doSaveJob()">Save</button></div></div></div>
+<div class="modal-overlay" id="saveJobModal"><div class="modal"><h3>Save Job</h3><div class="field"><label>Job Name</label><input type="text" class="input" id="saveJobName" placeholder="e.g. Smith Residence - April 2026"></div><div class="field" style="margin-top:8px"><label><input type="checkbox" id="saveAsTemplate"> Save as reusable template (no project details)</label></div><div class="modal-actions"><button class="btn btn-secondary" data-on-click="closeModal" data-args="saveJobModal">Cancel</button><button class="btn btn-success" data-on-click="doSaveJob">Save</button></div></div></div>
 
-<div class="admin-floating-btn" id="adminFloatingBtn" style="display:none" onclick="toggleAdminView()">Back to Admin</div>
+<div class="admin-floating-btn" id="adminFloatingBtn" style="display:none" data-on-click="toggleAdminView">Back to Admin</div>
 <div class="print-watermark" id="printWatermark" style="display:none">EstiCount Trial &mdash; esticount.com</div>
 <div class="notification" id="notification"></div>
 
 </div><!-- /appContainer -->
 
+<script src="js/handlers.js"></script>
+<script src="js/ui-handlers.js"></script>
 <script src="js/api.js"></script>
 <script src="js/app.js"></script>
-<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}</script>
+<script src="js/sw-register.js"></script>
 </body>
 </html>

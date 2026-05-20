@@ -1,0 +1,327 @@
+/* admin-v2 — page-scoped redesign. See docs/calc-redesign/pages-spec.md §6 */
+
+/* ===== Page wrapper ===== */
+#adminPage.admin-v2-page{
+    padding:24px 40px 64px;
+    max-width:1440px;
+    margin:0 auto;
+    font-family:var(--v2-font-sans);
+    color:var(--v2-text-primary);
+    font-size:14px;
+    line-height:1.45;
+}
+#adminPage.admin-v2-page *{font-variant-numeric:tabular-nums}
+body:has(#adminPage.admin-v2-page.active){background:var(--v2-bg-app)}
+
+/* Suppress legacy admin children that aren't part of v2 markup (we replace the
+   region entirely; this is a safety net in case stray nodes remain). */
+.admin-v2-page .calc-section,
+.admin-v2-page .dash-stats,
+.admin-v2-page .form-row-3,
+.admin-v2-page .form-row-2{display:none}
+.admin-v2-page .admin-v2-shell .calc-section,
+.admin-v2-page .admin-v2-shell .dash-stats{display:block}
+
+/* ===== Header zone ===== */
+.admin-v2-header{
+    display:flex;align-items:flex-start;justify-content:space-between;
+    gap:24px;padding-bottom:20px;margin-bottom:20px;
+    border-bottom:1px solid var(--v2-border-hairline);
+}
+.admin-v2-header-left{display:flex;flex-direction:column;min-width:0}
+.admin-v2-eyebrow{
+    font-family:var(--v2-font-mono);font-size:.7rem;font-weight:400;
+    color:var(--v2-text-tertiary);
+    letter-spacing:.10em;text-transform:uppercase;
+    margin-bottom:8px;
+}
+.admin-v2-eyebrow .sep{margin:0 8px;color:var(--v2-text-muted)}
+.admin-v2-title{
+    font-family:var(--v2-font-serif);font-weight:500;
+    font-size:2rem;line-height:1.05;
+    letter-spacing:-.005em;color:var(--v2-text-primary);
+    margin:0 0 6px;
+}
+.admin-v2-subtitle{
+    font-family:var(--v2-font-sans);font-size:.88rem;font-weight:400;
+    color:var(--v2-text-secondary);
+}
+.admin-v2-header-right{
+    display:flex;align-items:center;gap:16px;flex-shrink:0;padding-top:24px;
+}
+.admin-v2-link{
+    background:none;border:none;cursor:pointer;padding:0;
+    font-family:var(--v2-font-sans);font-size:.85rem;font-weight:500;
+    color:var(--v2-text-secondary);
+    text-decoration:none;
+}
+.admin-v2-link:hover{color:var(--v2-text-primary)}
+.admin-v2-cta{
+    display:inline-flex;align-items:center;gap:6px;
+    height:36px;padding:0 18px;
+    border:none;border-radius:var(--v2-r-button);
+    background:var(--v2-accent);color:#fff;
+    font-family:var(--v2-font-sans);font-size:.88rem;font-weight:600;
+    cursor:pointer;
+    transition:background 120ms ease,box-shadow 120ms ease;
+}
+.admin-v2-cta:hover{background:var(--v2-accent-hover);box-shadow:0 0 0 4px rgba(68,147,248,.10)}
+.admin-v2-cta .arr{font-weight:400}
+
+/* ===== Metric strip ===== */
+.admin-v2-metrics{
+    display:grid;grid-template-columns:repeat(5,1fr);
+    background:var(--v2-bg-surface);
+    border:1px solid var(--v2-border-hairline);
+    border-radius:var(--v2-r-inner);
+    margin-bottom:28px;
+    overflow:hidden;
+}
+.admin-v2-metric{padding:16px 20px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.admin-v2-metric + .admin-v2-metric{border-left:1px solid var(--v2-border-hairline)}
+.admin-v2-metric-label{
+    font-family:var(--v2-font-mono);font-size:.7rem;font-weight:400;
+    color:var(--v2-text-tertiary);
+    letter-spacing:.10em;text-transform:uppercase;
+}
+.admin-v2-metric-value{
+    display:inline-flex;align-items:baseline;gap:6px;
+    font-family:var(--v2-font-serif);font-weight:500;font-size:2rem;line-height:1;
+    color:var(--v2-text-primary);
+    letter-spacing:-.005em;
+}
+.admin-v2-metric-denom{
+    font-family:var(--v2-font-mono);font-weight:500;font-size:1rem;
+    color:var(--v2-text-secondary);letter-spacing:0;
+}
+.admin-v2-metric-sub{
+    font-family:var(--v2-font-sans);font-size:.78rem;font-weight:400;
+    color:var(--v2-text-secondary);
+}
+.admin-v2-metric-sub .arrow{color:var(--v2-accent);margin-right:2px}
+
+/* ===== Generate keys form ===== */
+.admin-v2-genform{
+    background:var(--v2-bg-surface);
+    border:1px solid var(--v2-border-hairline);
+    border-radius:var(--v2-r-card);
+    padding:24px;
+    margin-bottom:24px;
+}
+.admin-v2-card-eyebrow{
+    font-family:var(--v2-font-mono);font-size:.7rem;font-weight:400;
+    color:var(--v2-text-tertiary);
+    letter-spacing:.10em;text-transform:uppercase;
+    margin-bottom:16px;
+    display:flex;align-items:baseline;justify-content:space-between;gap:16px;
+}
+.admin-v2-card-eyebrow .meta{
+    font-family:var(--v2-font-sans);font-size:.78rem;font-weight:400;
+    letter-spacing:0;text-transform:none;
+    color:var(--v2-text-tertiary);
+}
+.admin-v2-genform-row{
+    display:grid;grid-template-columns:200px 120px 120px 1fr auto;
+    gap:16px;align-items:end;
+}
+.admin-v2-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.admin-v2-field label{
+    font-family:var(--v2-font-mono);font-size:.7rem;font-weight:400;
+    color:var(--v2-text-tertiary);
+    letter-spacing:.10em;text-transform:uppercase;
+}
+.admin-v2-input,
+.admin-v2-select{
+    height:36px;padding:0 12px;
+    background:var(--v2-bg-input);
+    border:1px solid var(--v2-border-hairline);
+    border-radius:var(--v2-r-input);
+    color:var(--v2-text-primary);
+    font-family:var(--v2-font-mono);font-size:.95rem;font-weight:500;
+    line-height:1;outline:none;
+    transition:border-color 120ms ease;
+}
+.admin-v2-select{
+    font-family:var(--v2-font-sans);
+    appearance:none;-webkit-appearance:none;
+    background-image:linear-gradient(45deg,transparent 50%,var(--v2-text-tertiary) 50%),linear-gradient(135deg,var(--v2-text-tertiary) 50%,transparent 50%);
+    background-position:calc(100% - 14px) 16px,calc(100% - 9px) 16px;
+    background-size:5px 5px;
+    background-repeat:no-repeat;
+    padding-right:32px;
+}
+.admin-v2-input:focus,
+.admin-v2-select:focus{border-color:var(--v2-accent)}
+.admin-v2-prefix{
+    height:36px;display:flex;align-items:center;padding:0 12px;
+    background:var(--v2-bg-input);
+    border:1px solid var(--v2-border-hairline);
+    border-radius:var(--v2-r-input);
+    font-family:var(--v2-font-mono);font-size:.85rem;font-weight:400;
+    color:var(--v2-text-tertiary);
+    overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+}
+.admin-v2-genform-helper{
+    margin-top:12px;
+    font-family:var(--v2-font-sans);font-size:.78rem;font-weight:400;
+    color:var(--v2-text-tertiary);
+}
+
+/* ===== Tables row ===== */
+.admin-v2-tables{
+    display:grid;grid-template-columns:1fr 1fr;gap:24px;
+}
+.admin-v2-card{
+    background:var(--v2-bg-surface);
+    border:1px solid var(--v2-border-hairline);
+    border-radius:var(--v2-r-card);
+    overflow:hidden;
+}
+.admin-v2-card-header{
+    padding:14px 16px;
+    border-bottom:1px solid var(--v2-border-hairline);
+    display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+}
+
+/* Shared table chrome */
+.admin-v2-table{
+    width:100%;border-collapse:collapse;
+    font-family:var(--v2-font-sans);
+}
+.admin-v2-table thead th{
+    padding:10px 16px;text-align:left;font-weight:400;
+    font-family:var(--v2-font-mono);font-size:.7rem;
+    color:var(--v2-text-tertiary);
+    letter-spacing:.10em;text-transform:uppercase;
+    border-bottom:1px solid var(--v2-border-hairline);
+    background:var(--v2-bg-surface);
+}
+.admin-v2-table tbody td{
+    padding:12px 16px;
+    border-bottom:1px solid var(--v2-border-hairline);
+    color:var(--v2-text-primary);
+    vertical-align:middle;
+}
+.admin-v2-table tbody tr:last-child td{border-bottom:none}
+.admin-v2-table .align-right{text-align:right}
+.admin-v2-table .align-center{text-align:center}
+
+/* Keys table */
+.admin-v2-keys tbody tr{cursor:copy;transition:background 100ms ease}
+.admin-v2-keys tbody tr:hover{background:var(--v2-bg-surface-hover)}
+.admin-v2-keys tbody tr.flash{animation:adminKeyFlash 1200ms ease}
+@keyframes adminKeyFlash{
+    0%{background:rgba(68,147,248,.18)}
+    100%{background:transparent}
+}
+.admin-v2-key-cell{
+    font-family:var(--v2-font-mono);font-size:.82rem;font-weight:400;
+    color:var(--v2-text-primary);letter-spacing:.02em;
+    word-break:break-all;
+}
+.admin-v2-type{
+    font-family:var(--v2-font-sans);font-size:.78rem;font-weight:500;
+    text-transform:lowercase;
+}
+.admin-v2-type.lifetime{color:var(--v2-status-dot-green)}
+.admin-v2-type.monthly{color:var(--v2-accent)}
+.admin-v2-type.yearly{color:var(--v2-accent)}
+.admin-v2-type.trial{color:var(--v2-text-secondary)}
+.admin-v2-mono-muted{
+    font-family:var(--v2-font-mono);font-size:.82rem;font-weight:400;
+    color:var(--v2-text-secondary);
+}
+.admin-v2-by{
+    font-family:var(--v2-font-sans);font-size:.85rem;font-weight:400;
+    color:var(--v2-text-secondary);
+}
+.admin-v2-by.unused{color:var(--v2-text-tertiary);font-style:italic}
+.admin-v2-rowaction{
+    background:none;border:none;cursor:pointer;padding:4px 6px;
+    color:var(--v2-text-muted);font-size:1rem;line-height:1;border-radius:4px;
+    transition:color 120ms ease,background 120ms ease;
+}
+.admin-v2-rowaction:hover{color:var(--v2-accent);background:var(--v2-bg-input)}
+
+/* Users table */
+.admin-v2-users tbody td{vertical-align:middle}
+.admin-v2-user-cell{display:flex;align-items:center;gap:12px;min-width:0}
+.admin-v2-avatar{
+    width:28px;height:28px;border-radius:50%;flex-shrink:0;
+    border:1px solid var(--v2-border-hairline);
+    display:inline-flex;align-items:center;justify-content:center;
+    font-family:var(--v2-font-sans);font-size:.7rem;font-weight:600;
+    color:var(--v2-text-primary);
+    background:var(--v2-bg-surface-2);
+}
+.admin-v2-user-meta{display:flex;flex-direction:column;min-width:0;gap:1px}
+.admin-v2-user-name{
+    font-family:var(--v2-font-sans);font-size:.88rem;font-weight:600;
+    color:var(--v2-text-primary);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.admin-v2-user-email{
+    font-family:var(--v2-font-sans);font-size:.78rem;font-weight:400;
+    color:var(--v2-text-tertiary);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.admin-v2-role-cell{display:flex;flex-direction:column;gap:2px}
+.admin-v2-role{
+    font-family:var(--v2-font-sans);font-size:.82rem;font-weight:500;
+    text-transform:lowercase;
+}
+.admin-v2-role.admin{color:var(--v2-accent)}
+.admin-v2-role.estimator,
+.admin-v2-role.foreman{color:var(--v2-text-secondary)}
+.admin-v2-role.user{color:var(--v2-text-tertiary)}
+.admin-v2-license{
+    font-family:var(--v2-font-sans);font-size:.78rem;font-weight:400;
+    color:var(--v2-text-tertiary);text-transform:lowercase;
+}
+.admin-v2-license.expired{color:var(--v2-status-dot-amber)}
+.admin-v2-status-dot{
+    display:inline-block;width:8px;height:8px;border-radius:50%;
+    background:var(--v2-status-dot-green);
+}
+.admin-v2-status-dot.inactive{background:var(--v2-text-muted)}
+.admin-v2-user-actions{display:inline-flex;gap:4px;justify-content:flex-end}
+
+/* Empty / error states */
+.admin-v2-empty{
+    padding:32px 16px;text-align:center;
+    font-family:var(--v2-font-sans);font-size:.85rem;
+    color:var(--v2-text-tertiary);
+}
+
+/* ===== Mobile ===== */
+@media (max-width:1100px){
+    .admin-v2-tables{grid-template-columns:1fr}
+}
+@media (max-width:900px){
+    .admin-v2-metrics{grid-template-columns:repeat(2,1fr)}
+    .admin-v2-metric{border-left:none !important}
+    .admin-v2-metric:nth-child(2n){border-left:1px solid var(--v2-border-hairline) !important}
+    .admin-v2-metric:nth-child(n+3){border-top:1px solid var(--v2-border-hairline)}
+    .admin-v2-metric:last-child{grid-column:1 / -1;border-left:none !important}
+    .admin-v2-genform-row{grid-template-columns:1fr 1fr;}
+    .admin-v2-genform-row .admin-v2-field:nth-child(4){grid-column:1 / -1}
+    .admin-v2-genform-row > button{grid-column:1 / -1;justify-self:start}
+}
+@media (max-width:768px){
+    #adminPage.admin-v2-page{padding:20px}
+    .admin-v2-header{flex-direction:column;align-items:flex-start;gap:16px}
+    .admin-v2-header-right{padding-top:0}
+    .admin-v2-title{font-size:1.6rem}
+    .admin-v2-metric-value{font-size:1.6rem}
+    .admin-v2-genform-row{grid-template-columns:1fr}
+    .admin-v2-keys th:nth-child(5),
+    .admin-v2-keys td:nth-child(5){display:none}
+    .admin-v2-users th:nth-child(3),
+    .admin-v2-users td:nth-child(3){display:none}
+}
+
+/* Hover-reveal row actions on Admin tables (spec §6.6 — actions are
+ * affordances tucked behind hover, not always-on columns). */
+.admin-v2-table tbody tr .admin-v2-rowaction{opacity:0;transition:opacity .12s ease,color .12s ease,background .12s ease}
+.admin-v2-table tbody tr:hover .admin-v2-rowaction,
+.admin-v2-table tbody tr:focus-within .admin-v2-rowaction{opacity:1}
