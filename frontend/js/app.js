@@ -53,6 +53,13 @@ const SUPPLIER_PRICE_MODS={'Pacific Supply':1,'ABC Supply':1.03,'Sherwin William
 
 // ===== STATE =====
 let suppliers=[],categories=[],materialsBySupplier={},activeSupplier='',editingId=null,currentCalc=null,savedJobs=[];
+// Per-phase user picks for the calculator's "smart material" picker.
+// Shape: { [phaseName]: [materialId, ...] }. Empty array OR missing key for a phase
+// means "include all" (back-compat with saved jobs that predate this feature).
+let selectedMaterials={};
+// Tracks which phase pick-lists are user-overridden vs auto-populated smart defaults.
+// When set true for a phase, smartDefaultsForPhase() won't reseed on supplier change.
+let selectedMaterialsTouched={};
 let undoStack=[],redoStack=[];const MAX_UNDO=25;let dragSrcId=null;
 let pageHistory=['dashboard'];
 let savedPhaseSelection=null; // preserve phase checkboxes across page nav
@@ -795,6 +802,7 @@ function updatePhaseOptions(){
     document.getElementById('optDrywall').classList.toggle('hidden',!hasDrywall);
     document.getElementById('optPainting').classList.toggle('hidden',!hasPaint);
     if(hasDrywall)renderDrywallAreaRows();
+    if(typeof renderMaterialPicker==='function')renderMaterialPicker();
 }
 
 const DW_AREA_LABELS=['Walls','Ceilings','Garage','Shower/Wet Areas','Bedroom','Kitchen','Bathroom','Hallway','Other'];
@@ -812,6 +820,167 @@ function getDrywallSheets(){
     }
     return sheets;
 }
+
+// ===== SMART MATERIAL PICKER =====
+// Group materials inside a phase using the SKU's leading-letter prefix, then
+// pick the cheapest item per group as the default. Heuristic — tunable here.
+// Examples:
+//   HAP, HBD, HHL, HTNTL → "H"   (joint compounds collapse to one)
+//   PMT224-W/Y/B → "PMT"          (mesh tape colors collapse to one)
+//   COJWT10, COBNPT10 → "CO"      (corner beads collapse to one)
+//   FC-SD150/180/220/... → "FC"  (sanding-disc grits collapse to one)
+function inferMaterialGroup(m){
+    const sku=String(m.sku||'').toUpperCase();
+    const mm=sku.match(/^[A-Z]+/);
+    if(mm&&mm[0])return mm[0];
+    // No SKU prefix → group by normalized first word of name
+    const w=String(m.name||'').toLowerCase().replace(/[^a-z0-9 ]+/g,' ').trim().split(/\s+/)[0];
+    return w?'n:'+w:'id:'+m.id;
+}
+
+// Materials for a phase that participate in the smart picker (excludes drywall sheets).
+// IMPORTANT: filter by m.category (primary) to stay consistent with calcForSupplier's
+// `selectedPhases.includes(m.category)` filter and renderCalcResults' `i.category===cat`
+// item grouping. Multi-category materials are picker'd under their primary phase only;
+// they don't appear in the picker for their secondary phases (which would be confusing
+// since the calc engine wouldn't count them there anyway).
+function pickerMaterialsForPhase(phase,supplierName){
+    if(supplierName==='All Suppliers'){
+        const all=Object.values(materialsBySupplier).flat();
+        return all.filter(m=>m.category===phase&&!m.isDrywallSheet);
+    }
+    return (materialsBySupplier[supplierName]||[]).filter(m=>m.category===phase&&!m.isDrywallSheet);
+}
+
+// Returns array of material IDs: one cheapest per inferred sub-group.
+function smartDefaultsForPhase(phase,supplierName){
+    const mats=pickerMaterialsForPhase(phase,supplierName);
+    const groups={};
+    mats.forEach(m=>{
+        const k=inferMaterialGroup(m);
+        if(!groups[k]||(Number(m.pricePerUnit)||0)<(Number(groups[k].pricePerUnit)||0))groups[k]=m;
+    });
+    return Object.values(groups).map(m=>m.id);
+}
+
+// Seeds selectedMaterials[phase] with smart defaults IF not yet user-touched.
+function ensureSmartDefaults(phase){
+    if(selectedMaterialsTouched[phase])return;
+    const supplier=document.getElementById('calcSupplier')?.value||'';
+    selectedMaterials[phase]=smartDefaultsForPhase(phase,supplier);
+}
+
+// Search filter state (per phase). Lightweight; lives only in memory.
+const _pickerSearchState={};
+
+function renderMaterialPicker(){
+    const wrap=document.getElementById('materialPicker');
+    if(!wrap)return;
+    const selectedPhases=getSelectedPhases();
+    // Only show picker if user has explicitly checked phases.
+    const anyChecked=document.querySelectorAll('#phaseCheckboxes input[type="checkbox"]:checked').length>0;
+    if(!anyChecked||!selectedPhases.length){wrap.innerHTML='';return}
+    const supplier=document.getElementById('calcSupplier')?.value||'';
+    // In All-Suppliers mode, picks don't apply (material IDs are supplier-specific).
+    // Show a small hint instead of the full picker so user understands.
+    if(supplier==='All Suppliers'){
+        wrap.innerHTML='<div class="calc-v2-material-picker-hint">Material picks apply per supplier. Pick a specific supplier to customize which items get included.</div>';
+        return;
+    }
+    let html='';
+    selectedPhases.forEach(phase=>{
+        const mats=pickerMaterialsForPhase(phase,supplier);
+        if(!mats.length)return;
+        ensureSmartDefaults(phase);
+        const picks=selectedMaterials[phase]||[];
+        const pickSet=new Set(picks);
+        const search=String(_pickerSearchState[phase]||'').toLowerCase().trim();
+        const chipCls=v2ChipClass(phase);
+        const visibleMats=search?mats.filter(m=>(String(m.name||'')+' '+String(m.sku||'')).toLowerCase().includes(search)):mats;
+        const selCount=mats.filter(m=>pickSet.has(m.id)).length;
+        const rows=visibleMats.map(m=>{
+            const checked=pickSet.has(m.id);
+            const safePhase=escAttr(phase);
+            const safeId=escAttr(String(m.id));
+            return `<label class="calc-v2-material-row${checked?'':' is-off'}">
+                <input type="checkbox"${checked?' checked':''} data-on-change="toggleMaterialPick" data-args='["${safePhase}","${safeId}"]'>
+                <span class="calc-v2-material-sku">${escHtml(m.sku||'—')}</span>
+                <span class="calc-v2-material-name">${escHtml(m.name||'')}</span>
+                <span class="calc-v2-material-price">${fmt(m.pricePerUnit||0)}</span>
+            </label>`;
+        }).join('');
+        html+=`<section class="calc-v2-material-picker-phase" data-phase="${escAttr(phase)}">
+            <div class="calc-v2-material-picker-head">
+                <span class="v2-chip ${chipCls}">${escHtml(phase)}</span>
+                <span class="calc-v2-material-picker-count">${selCount} of ${mats.length} selected</span>
+                <input type="search" class="calc-v2-material-picker-search" placeholder="Filter by SKU or name…" value="${escAttr(_pickerSearchState[phase]||'')}" data-on-input="materialPickerSearch" data-args="${escAttr(phase)}">
+            </div>
+            <div class="calc-v2-material-picker-list">${rows||'<div class="calc-v2-material-picker-empty">No items match.</div>'}</div>
+        </section>`;
+    });
+    wrap.innerHTML=html?`<div class="calc-v2-material-picker-eyebrow">MATERIALS IN THIS JOB</div>${html}`:'';
+}
+
+function toggleMaterialPick(phase,materialId,event){
+    if(!phase||!materialId)return;
+    selectedMaterialsTouched[phase]=true;
+    if(!Array.isArray(selectedMaterials[phase]))selectedMaterials[phase]=[];
+    const idx=selectedMaterials[phase].indexOf(materialId);
+    if(idx>=0)selectedMaterials[phase].splice(idx,1);
+    else selectedMaterials[phase].push(materialId);
+    // Update the visual count + checkbox state without a full re-render (faster + preserves scroll/search).
+    const wrap=document.querySelector(`.calc-v2-material-picker-phase[data-phase="${CSS&&CSS.escape?CSS.escape(phase):phase}"]`);
+    if(wrap){
+        const total=pickerMaterialsForPhase(phase,document.getElementById('calcSupplier')?.value||'').length;
+        const sel=selectedMaterials[phase].length;
+        const cEl=wrap.querySelector('.calc-v2-material-picker-count');
+        if(cEl)cEl.textContent=`${sel} of ${total} selected`;
+        // Toggle the row's .is-off class so it dims when unchecked
+        const target=event&&event.target?event.target:null;
+        const row=target?target.closest('.calc-v2-material-row'):null;
+        if(row)row.classList.toggle('is-off',!target.checked);
+    }
+    if(currentCalc&&typeof autoRecalc==='function')autoRecalc();
+}
+
+function materialPickerSearch(phase,event){
+    if(!phase)return;
+    const v=event&&event.target?event.target.value:'';
+    _pickerSearchState[phase]=v;
+    // Re-render just this phase's list (cheap; keeps focus on the search input)
+    const wrap=document.querySelector(`.calc-v2-material-picker-phase[data-phase="${CSS&&CSS.escape?CSS.escape(phase):phase}"] .calc-v2-material-picker-list`);
+    if(!wrap)return;
+    const supplier=document.getElementById('calcSupplier')?.value||'';
+    const mats=pickerMaterialsForPhase(phase,supplier);
+    const search=String(v||'').toLowerCase().trim();
+    const visible=search?mats.filter(m=>(String(m.name||'')+' '+String(m.sku||'')).toLowerCase().includes(search)):mats;
+    const pickSet=new Set(selectedMaterials[phase]||[]);
+    wrap.innerHTML=visible.length?visible.map(m=>{
+        const checked=pickSet.has(m.id);
+        const safePhase=escAttr(phase);
+        const safeId=escAttr(String(m.id));
+        return `<label class="calc-v2-material-row${checked?'':' is-off'}">
+            <input type="checkbox"${checked?' checked':''} data-on-change="toggleMaterialPick" data-args='["${safePhase}","${safeId}"]'>
+            <span class="calc-v2-material-sku">${escHtml(m.sku||'—')}</span>
+            <span class="calc-v2-material-name">${escHtml(m.name||'')}</span>
+            <span class="calc-v2-material-price">${fmt(m.pricePerUnit||0)}</span>
+        </label>`;
+    }).join(''):'<div class="calc-v2-material-picker-empty">No items match.</div>';
+}
+
+// Supplier change resets the picker state because material IDs are
+// supplier-specific. Then renders the chip set + picker (which smart-defaults).
+function onCalcSupplierChange(){
+    selectedMaterials={};
+    selectedMaterialsTouched={};
+    renderPhaseCheckboxes();
+    if(typeof renderMaterialPicker==='function')renderMaterialPicker();
+}
+
+window.toggleMaterialPick=toggleMaterialPick;
+window.materialPickerSearch=materialPickerSearch;
+window.renderMaterialPicker=renderMaterialPicker;
+window.onCalcSupplierChange=onCalcSupplierChange;
 
 function renderDrywallAreaRows(){
     const wrap=document.getElementById('drywallAreaRows');
@@ -921,6 +1090,30 @@ function calcForSupplier(supplier,waste,selectedPhases,opts={}){
     let mats=materialsBySupplier[supplier]||[];
     if(selectedPhases?.length>0)mats=mats.filter(m=>selectedPhases.includes(m.category));
     if(hasDrywallAreas)mats=mats.filter(m=>!m.isDrywallSheet||sheetSqftMap[m.sku]!==undefined);
+    // Smart material picker: honor per-phase user picks. Drywall sheets are
+    // handled separately via drywallAreas above; everything else respects
+    // selectedMaterials[phase]. An empty/missing pick list means "include all".
+    //
+    // IMPORTANT: picks are stored as material IDs which are supplier-specific.
+    // When the dropdown is on a specific supplier, picks apply. When the dropdown
+    // is "All Suppliers", calcForSupplier is invoked once per supplier inside the
+    // comparison loop — applying picks there would filter out OTHER suppliers'
+    // materials (their IDs don't match the picked supplier's IDs) and break the
+    // comparison. So we only apply picks when the dropdown matches THIS supplier.
+    {
+        const dd=document.getElementById('calcSupplier');
+        const dropdownVal=dd?dd.value:'';
+        const picksApply=dropdownVal===supplier&&dropdownVal!=='All Suppliers';
+        if(picksApply){
+            const picksByPhase=(typeof selectedMaterials==='object'&&selectedMaterials)||{};
+            mats=mats.filter(m=>{
+                if(m.isDrywallSheet)return true;
+                const picks=picksByPhase[m.category];
+                if(!picks||!picks.length)return true;
+                return picks.includes(m.id);
+            });
+        }
+    }
 
     const phases={};categories.forEach(c=>phases[c]={total:0,count:0});let materialTotal=0;
     const items=mats.map(m=>{
@@ -1035,6 +1228,8 @@ function calculateJob(){
     r.subtotalBeforeProfit=r.materialPlusTax+r.laborTotal+r.deliveryTotal+r.businessExpensesTotal;r.profitAmount=r.subtotalBeforeProfit*(profitPct/100);
     r.sellingBeforeCC=r.subtotalBeforeProfit+r.profitAmount;r.ccFeeAmount=r.sellingBeforeCC*(ccFeePct/100);r.sellingPrice=r.sellingBeforeCC+r.ccFeeAmount;
     r.grossMargin=r.sellingPrice>0?(r.profitAmount/r.sellingPrice*100):0;
+    // Snapshot the user's material picks so saveJob serializes them.
+    r.selectedMaterials=JSON.parse(JSON.stringify(selectedMaterials||{}));
     currentCalc=r;renderCalcResults(r);
 
     // Show v2 supplier comparison picker on the calculator when in All-Suppliers mode.
@@ -1697,7 +1892,7 @@ function saveJob(){if(!currentCalc){notify('Calculate first','error');return}
     if(!isLicensed()&&savedJobs.length>=FREE_JOB_LIMIT){notify(`Free accounts can save up to ${FREE_JOB_LIMIT} jobs. Activate a license for unlimited.`,'error');return}
     const el=document.getElementById('saveJobName');el.value=document.getElementById('calcProjectName').value||'';document.getElementById('saveAsTemplate').checked=false;openModal('saveJobModal');el.focus()}
 async function doSaveJob(){const name=document.getElementById('saveJobName').value.trim();if(!name){notify('Enter name','error');return}const isTemplate=document.getElementById('saveAsTemplate').checked;
-    const job={id:'job-'+Date.now(),name,isTemplate,projectName:isTemplate?'':document.getElementById('calcProjectName').value,projectAddress:isTemplate?'':document.getElementById('calcProjectAddress').value,supplier:currentCalc.supplier,sqft:currentCalc.totalSqft||0,linearFt:0,waste:currentCalc.waste,profitPct:currentCalc.profitPct,taxPct:currentCalc.taxPct,laborRate:currentCalc.laborRate,selectedPhases:currentCalc.selectedPhases||categories,phaseDims:currentCalc.phaseDims||{},drywallAreas:currentCalc.drywallAreas||[],materialTotal:currentCalc.materialTotal,sellingPrice:currentCalc.sellingPrice,savedAt:new Date().toISOString()};
+    const job={id:'job-'+Date.now(),name,isTemplate,projectName:isTemplate?'':document.getElementById('calcProjectName').value,projectAddress:isTemplate?'':document.getElementById('calcProjectAddress').value,supplier:currentCalc.supplier,sqft:currentCalc.totalSqft||0,linearFt:0,waste:currentCalc.waste,profitPct:currentCalc.profitPct,taxPct:currentCalc.taxPct,laborRate:currentCalc.laborRate,selectedPhases:currentCalc.selectedPhases||categories,phaseDims:currentCalc.phaseDims||{},drywallAreas:currentCalc.drywallAreas||[],selectedMaterials:currentCalc.selectedMaterials||{},materialTotal:currentCalc.materialTotal,sellingPrice:currentCalc.sellingPrice,savedAt:new Date().toISOString()};
     savedJobs.unshift(job);saveSavedJobs();
     // Save to API
     if(api.getToken()){
@@ -1914,6 +2109,16 @@ function loadJob(id){const job=savedJobs.find(j=>j.id===id);if(!job)return;docum
     if(job.phaseDims){const pd=job.phaseDims;if(pd.Stucco){const el=document.getElementById('calcStuccoSqft');if(el)el.value=pd.Stucco.sqft||'';const lf=document.getElementById('calcStuccoLinearFt');if(lf)lf.value=pd.Stucco.linearFt||''}if(pd.Stone){const el=document.getElementById('calcStoneSqft');if(el)el.value=pd.Stone.sqft||'';const lf=document.getElementById('calcStoneLinearFt');if(lf)lf.value=pd.Stone.linearFt||''}if(pd.Painting){const el=document.getElementById('calcPaintSqft');if(el)el.value=pd.Painting.sqft||''}}
     // Restore drywall areas
     if(job.drywallAreas&&job.drywallAreas.length){const wrap=document.getElementById('drywallAreaRows');if(wrap)wrap.innerHTML='';job.drywallAreas.forEach(a=>addDrywallArea(a.label,a.sku,a.rawVal||a.sqft,a.unit||'sqft'))}
+    // Restore smart material picks (per-phase). Mark each phase touched so the
+    // calculator doesn't re-seed with smart defaults and clobber the user's saved picks.
+    if(job.selectedMaterials&&typeof job.selectedMaterials==='object'){
+        selectedMaterials={...job.selectedMaterials};
+        selectedMaterialsTouched={};
+        Object.keys(selectedMaterials).forEach(p=>{selectedMaterialsTouched[p]=true});
+    }else{
+        selectedMaterials={};selectedMaterialsTouched={};
+    }
+    if(typeof renderMaterialPicker==='function')renderMaterialPicker();
     if(!job.isTemplate)calculateJob()},50);notify(job.isTemplate?'Template loaded — enter project details':'Job loaded','info')}
 function duplicateJob(id){const job=savedJobs.find(j=>j.id===id);if(!job)return;savedJobs.unshift({...job,id:'job-'+Date.now(),name:job.name+' (copy)',savedAt:new Date().toISOString()});saveSavedJobs();renderSavedJobs();notify('Duplicated','success')}
 async function deleteJob(id){if(!confirm('Delete?'))return;

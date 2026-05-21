@@ -435,7 +435,7 @@
             <div class="calc-v2-metrics calc-v2-metrics-single" id="calcV2Metrics">
                 <div class="calc-v2-metric" id="calcV2MetricSupplier">
                     <div class="calc-v2-metric-label">Supplier</div>
-                    <div class="calc-v2-metric-value calc-v2-metric-supplier"><select class="calc-v2-supplier-select" id="calcSupplier" data-on-change="renderPhaseCheckboxes"></select></div>
+                    <div class="calc-v2-metric-value calc-v2-metric-supplier"><select class="calc-v2-supplier-select" id="calcSupplier" data-on-change="onCalcSupplierChange"></select></div>
                 </div>
             </div>
 
@@ -521,6 +521,9 @@
             <div class="calc-v2-actions-row">
                 <button class="calc-v2-btn calc-v2-btn-primary" data-on-click="calculateJob">Calculate</button>
             </div>
+
+            <!-- Smart material picker (auto-renders when phases are checked) -->
+            <div id="materialPicker" class="calc-v2-material-picker"></div>
 
             <!-- Phase result cards -->
             <div id="calcResults" class="hidden">
