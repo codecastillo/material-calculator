@@ -209,8 +209,8 @@
     color:var(--v2-text-tertiary);
 }
 .order-v2-group-subtotal{
-    font-family:var(--v2-font-serif);
-    font-weight:500;
+    font-family:var(--v2-font-sans);
+    font-weight:600;
     font-size:1.2rem;
     color:var(--v2-text-primary);
     font-variant-numeric:tabular-nums;
@@ -335,8 +335,8 @@
     color:var(--v2-text-primary);
 }
 .order-v2-grand-row .amount{
-    font-family:var(--v2-font-serif);
-    font-weight:500;
+    font-family:var(--v2-font-sans);
+    font-weight:700;
     font-size:1.4rem;
     color:var(--v2-accent);
 }
@@ -358,6 +358,27 @@
     letter-spacing:.1em;
     color:var(--v2-text-tertiary);
     margin-bottom:6px;
+}
+.order-v2-notes-print{
+    padding:16px 0;
+    border-bottom:1px solid var(--v2-border-hairline);
+    margin-bottom:8px;
+}
+.order-v2-notes-eyebrow{
+    font-family:var(--v2-font-mono);
+    font-size:.72rem;
+    font-weight:500;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--v2-text-tertiary);
+    margin-bottom:6px;
+}
+.order-v2-notes-body{
+    font-family:var(--v2-font-sans);
+    font-size:.85rem;
+    line-height:1.5;
+    color:var(--v2-text-secondary);
+    white-space:pre-wrap;
 }
 
 /* ============================================================
@@ -624,7 +645,9 @@
 /* ============================================================
    PRINT
    ============================================================ */
+@page{margin:0.5in;margin-header:0;margin-footer:0}
 @media print{
+    @page{margin:0.5in}
     #orderPage.order-v2-page{
         background:#ffffff;
         color:#111;
@@ -656,6 +679,8 @@
     .order-v2-totals,
     .order-v2-grand-row,
     .order-v2-notes-print{border-color:#bbb !important}
+    .order-v2-notes-eyebrow{color:#555 !important}
+    .order-v2-notes-body{color:#333 !important}
     .order-v2-qty-input{
         background:transparent;
         border:none;

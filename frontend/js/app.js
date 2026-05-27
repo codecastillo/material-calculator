@@ -1758,6 +1758,18 @@ function renderOrderForm(r,selections){
     const da=document.getElementById('orderDeliverAddress');
     if(da)da.textContent=pa||'';
 
+    const dn=(document.getElementById('calcDeliveryNotes')?.value||'').trim();
+    const npEl=document.getElementById('orderNotesPrint');
+    if(npEl){
+        if(dn){
+            npEl.innerHTML='<div class="order-v2-notes-eyebrow">DELIVERY NOTES</div><div class="order-v2-notes-body">'+escHtml(dn).replace(/\n/g,'<br>')+'</div>';
+            npEl.style.display='';
+        }else{
+            npEl.innerHTML='';
+            npEl.style.display='none';
+        }
+    }
+
     // ----- Supplier sections -----
     const opts=orderV2CalcOpts(r);
     const waste=r.waste||0;
