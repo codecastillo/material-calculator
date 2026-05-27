@@ -115,6 +115,12 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+app.get('/api/config', (req, res) => {
+    res.json({
+        googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY || ''
+    });
+});
+
 // ---------------------------------------------------------------------------
 // Fallback: serve app for non-API routes
 // ---------------------------------------------------------------------------
