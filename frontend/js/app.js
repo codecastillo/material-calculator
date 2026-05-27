@@ -1894,6 +1894,8 @@ function emailOrderToSupplier(){
     body+='\n';
     items.forEach(i=>{body+=i.qty+' x '+i.name+' ('+i.sku+') @ $'+Number(i.pricePerUnit).toFixed(2)+' = $'+Number(i.lineTotal).toFixed(2)+'\n'});
     body+='\nTotal: $'+Number(currentCalc.materialTotal||0).toFixed(2)+'\n';
+    const dn=(document.getElementById('calcDeliveryNotes')?.value||'').trim();
+    if(dn)body+='\nDelivery Notes:\n'+dn+'\n';
     window.location.href='mailto:?subject='+subject+'&body='+encodeURIComponent(body);
 }
 window.emailOrderToSupplier=emailOrderToSupplier;
