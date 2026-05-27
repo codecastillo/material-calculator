@@ -1027,11 +1027,52 @@ select.calc-v2-input{cursor:pointer}
 
 .calc-v2-summary-ctas{display:flex;flex-direction:column;gap:8px}
 
+/* Google Places autocomplete dropdown — dark theme */
+.pac-container{
+    background:var(--v2-bg-surface,#1a1d21);
+    border:1px solid var(--v2-border-hairline,#2a2d31);
+    border-radius:8px;
+    box-shadow:0 8px 24px rgba(0,0,0,.5);
+    font-family:var(--v2-font-sans);
+    margin-top:4px;
+    z-index:10000;
+}
+.pac-item{
+    padding:10px 14px;
+    border-top:1px solid var(--v2-border-hairline,#2a2d31);
+    color:var(--v2-text-secondary,#9aa0a9);
+    font-size:.88rem;
+    cursor:pointer;
+}
+.pac-item:first-child{border-top:none}
+.pac-item:hover,.pac-item-selected{
+    background:var(--v2-bg-surface-hover,rgba(255,255,255,.04));
+}
+.pac-item-query{
+    color:var(--v2-text-primary,#e8e6e1);
+    font-weight:500;
+}
+.pac-icon,.pac-icon-marker{display:none}
+.pac-matched{color:var(--v2-accent,#4a9eff)}
+
+[data-theme="light"] .pac-container{
+    background:#ffffff;
+    border-color:#e2e2dd;
+    box-shadow:0 8px 24px rgba(0,0,0,.12);
+}
+[data-theme="light"] .pac-item{
+    border-color:#e2e2dd;
+    color:#555;
+}
+[data-theme="light"] .pac-item:hover,
+[data-theme="light"] .pac-item-selected{background:#f5f5f3}
+[data-theme="light"] .pac-item-query{color:#111}
+[data-theme="light"] .pac-matched{color:#0066cc}
+
 /* Hide legacy result chrome in v2 (kept in DOM for compatibility) */
 .calc-v2-page #calcBreakdown,
 .calc-v2-page #calcGrandTotal,
-.calc-v2-page #summaryGrid,
-.calc-v2-page #comparisonSection{display:none}
+.calc-v2-page #summaryGrid{display:none}
 
 /* Responsive — collapse two-column grid earlier so the sidebar doesn't squeeze the table,
    but defer full mobile stacking (per spec §9) to the 768px breakpoint. */
