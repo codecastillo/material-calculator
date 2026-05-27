@@ -791,6 +791,13 @@ body:has(.calc-v2-page.active){background:var(--v2-bg-app)}
 }
 .calc-v2-input:focus{outline:none;border-color:var(--v2-accent)}
 select.calc-v2-input{cursor:pointer}
+.calc-v2-textarea{
+    resize:vertical;
+    min-height:48px;
+    line-height:1.4;
+    font-family:var(--v2-font-sans);
+}
+.calc-v2-field-full{grid-column:1/-1}
 .calc-v2-page .hint{color:var(--v2-text-tertiary);font-family:var(--v2-font-sans);font-size:.75rem}
 .calc-v2-btn-icon{
     background:none;border:none;color:var(--v2-text-tertiary);

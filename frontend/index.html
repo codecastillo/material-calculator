@@ -203,7 +203,7 @@
             </div>
 
             <div class="login-v2-rightfoot">
-                <span>Need help? <a href="mailto:support@esticount.app">support@esticount.app</a></span>
+                <span>Need help? <a href="mailto:support@esticount.com">support@esticount.com</a></span>
                 <span class="login-v2-rightfoot-version">v4.2.0</span>
             </div>
         </section>
@@ -263,7 +263,7 @@
             </div>
 
             <div class="login-v2-rightfoot">
-                <span>Need help? <a href="mailto:support@esticount.app">support@esticount.app</a></span>
+                <span>Need help? <a href="mailto:support@esticount.com">support@esticount.com</a></span>
                 <span class="login-v2-rightfoot-version">v4.2.0</span>
             </div>
         </section>
@@ -278,7 +278,7 @@
     <div class="topnav-inner v2-topnav-inner">
         <div class="topnav-left v2-topnav-left">
             <button class="mobile-menu-btn" data-on-click="toggleMobileMenu">&#9776;</button>
-            <a href="#" class="v2-brand" data-on-click="showPage" data-args="dashboard">
+            <a href="javascript:void(0)" class="v2-brand" data-on-click="showPage" data-args="dashboard">
                 <span class="v2-brand-mark" aria-hidden="true"><img src="assets/logo.png" alt="" class="v2-brand-img"></span>
                 <span class="v2-brand-word">esticount</span>
             </a>
@@ -343,7 +343,7 @@
         <!-- Header zone -->
         <header class="price-v2-header">
             <div class="price-v2-header-left">
-                <div class="price-v2-eyebrow"><span>03 &middot; PRICING</span><span class="price-v2-eyebrow-sep">&middot;</span><span id="priceV2Slug">CATALOG</span></div>
+                <div class="price-v2-eyebrow"><span>PRICING</span><span class="price-v2-eyebrow-sep">&middot;</span><span id="priceV2Slug">CATALOG</span></div>
                 <h1 class="price-v2-title">Material catalog</h1>
                 <p class="price-v2-subtitle" id="priceV2Subtitle">
                     <span class="price-v2-sub-text" id="priceV2SkuCount">0 SKUs</span>
@@ -415,14 +415,11 @@
 <div class="page calc-v2-page" id="calculatorPage">
     <header class="calc-v2-header">
         <div class="calc-v2-header-left">
-            <div class="calc-v2-eyebrow"><span>02 &middot; CALCULATOR</span><span class="calc-v2-eyebrow-sep">|</span><span id="calcV2JobCode">JOB J-2419</span></div>
+            <div class="calc-v2-eyebrow"><span>CALCULATOR</span></div>
             <h1 class="calc-v2-title" id="calcV2Title">New Estimate</h1>
-            <p class="calc-v2-subtitle" id="calcV2Subtitle"><span id="calcV2SubAddress" class="calc-v2-sub-text">Add an address</span><span class="calc-v2-sub-sep">&middot;</span><span class="calc-v2-sub-text" id="calcV2SubScope">Stucco re-coat</span><span class="calc-v2-sub-sep">&middot;</span><span class="calc-v2-sub-text" id="calcV2SubArea">Enter dimensions</span></p>
+            <p class="calc-v2-subtitle" id="calcV2Subtitle"></p>
         </div>
         <div class="calc-v2-header-right">
-            <span class="calc-v2-status" id="calcV2Status"><span class="calc-v2-status-dot"></span>Draft</span>
-            <button class="calc-v2-text-link" data-on-click="duplicateCurrentJob">Duplicate</button>
-            <button class="calc-v2-text-link" data-on-click="saveTemplate">Save template</button>
             <button class="calc-v2-cta" data-on-click="prepareOrderFromCalc">Generate order <span class="calc-v2-cta-arrow">&rarr;</span></button>
         </div>
     </header>
@@ -446,6 +443,9 @@
                     <div class="calc-v2-form-row">
                         <div class="calc-v2-field"><label>Project Name</label><input type="text" class="calc-v2-input" id="calcProjectName" placeholder="e.g. Smith Residence" data-on-input="updateCalcHeader"></div>
                         <div class="calc-v2-field"><label>Project Address</label><input type="text" class="calc-v2-input" id="calcProjectAddress" placeholder="e.g. 123 Main St, City, ST" data-on-input="updateCalcHeader"></div>
+                    </div>
+                    <div class="calc-v2-form-row">
+                        <div class="calc-v2-field calc-v2-field-full"><label>Delivery Notes</label><textarea class="calc-v2-input calc-v2-textarea" id="calcDeliveryNotes" rows="2" placeholder="Lot #, gate code, delivery instructions..."></textarea></div>
                     </div>
                     <div class="calc-v2-form-row calc-v2-form-row-3">
                         <div class="calc-v2-field"><label>Waste %</label><input type="number" class="calc-v2-input" id="calcWaste" value="10" min="0" max="50"></div>
@@ -586,7 +586,7 @@
     <!-- Comparison view (shown only when current calc used "All Suppliers") -->
     <div id="orderComparison" class="hidden order-v2-compare">
         <header class="order-v2-compare-head">
-            <div class="order-v2-eyebrow">04 &middot; ORDER &middot; COMPARE</div>
+            <div class="order-v2-eyebrow">ORDER &middot; COMPARE</div>
             <h1 class="order-v2-compare-title">Pick a supplier per phase</h1>
             <p class="order-v2-compare-sub" id="orderCompareSub">Cheapest supplier is pre-selected for each phase. Adjust if you prefer a different vendor, then generate the printable order.</p>
         </header>
@@ -605,7 +605,6 @@
                 <header class="order-v2-letterhead">
                     <div class="order-v2-letterhead-left">
                         <div class="order-v2-brand-row">
-                            <span class="order-v2-brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
                             <span class="order-v2-company" id="orderCompanyName">&nbsp;</span>
                         </div>
                         <div class="order-v2-company-meta" id="orderCompanyMeta">&nbsp;</div>
@@ -651,8 +650,8 @@
 
             <!-- Actions row (print only) -->
             <div class="order-v2-actions no-print">
-                <button class="order-v2-btn order-v2-btn-primary" data-on-click="printOrder">Print <span class="order-v2-cta-arrow">&rarr;</span></button>
-                <button class="order-v2-btn order-v2-btn-link" data-on-click="exportOrderCSV">Export CSV</button>
+                <button class="order-v2-btn order-v2-btn-primary" data-on-click="printOrder">Download <span class="order-v2-cta-arrow">&rarr;</span></button>
+                <button class="order-v2-btn order-v2-btn-secondary" data-on-click="emailOrderToSupplier">Email to supplier</button>
             </div>
         </div>
     </div>
@@ -663,7 +662,7 @@
     <div class="jobs-v2-page">
         <header class="jobs-v2-header">
             <div class="jobs-v2-header-left">
-                <div class="jobs-v2-eyebrow">06 · Saved Jobs</div>
+                <div class="jobs-v2-eyebrow">Saved Jobs</div>
                 <h1 class="jobs-v2-title">Library</h1>
                 <p class="jobs-v2-subtitle" id="jobsV2Subtitle">— jobs<span class="sep">·</span>— templates<span class="sep">·</span>search, filter, duplicate</p>
             </div>
@@ -690,7 +689,7 @@
     <!-- Header -->
     <header class="account-v2-header">
         <div class="account-v2-header-left">
-            <div class="account-v2-eyebrow">10<span class="sep">&middot;</span>ACCOUNT<span class="sep">&middot;</span>PROFILE</div>
+            <div class="account-v2-eyebrow">ACCOUNT<span class="sep">&middot;</span>PROFILE</div>
             <h1 class="account-v2-title">Account</h1>
             <div class="account-v2-subtitle">Manage your profile, license, and workspace preferences.</div>
         </div>
@@ -824,7 +823,7 @@
             <section class="account-v2-card" aria-label="Help and support">
                 <div class="account-v2-card-eyebrow"><span>HELP &amp; SUPPORT</span></div>
                 <p class="account-v2-help-line">Questions, key issues, or feature requests? We answer within one business day.</p>
-                <p class="account-v2-help-line"><a class="account-v2-help-link" href="mailto:support@esticount.app">support@esticount.app</a></p>
+                <p class="account-v2-help-line"><a class="account-v2-help-link" href="mailto:support@esticount.com">support@esticount.com</a></p>
                 <div class="account-v2-help-meta" id="accountVersionLine">EstiCount &middot; v4.2.0</div>
             </section>
         </aside>
@@ -836,13 +835,12 @@
     <!-- Header -->
     <header class="admin-v2-header">
         <div class="admin-v2-header-left">
-            <div class="admin-v2-eyebrow">07<span class="sep">&middot;</span>ADMIN<span class="sep">&middot;</span>OPERATOR CONSOLE</div>
+            <div class="admin-v2-eyebrow">ADMIN<span class="sep">&middot;</span>OPERATOR CONSOLE</div>
             <h1 class="admin-v2-title">License &amp; user management</h1>
             <div class="admin-v2-subtitle">EstiCount is your SaaS &mdash; manage trial keys, lifetime licenses, and active accounts.</div>
         </div>
         <div class="admin-v2-header-right">
             <button type="button" class="admin-v2-link" id="adminViewToggle" data-on-click="toggleAdminView">View as user</button>
-            <button type="button" class="admin-v2-cta" data-on-click="focusGenerateKeys">Generate keys <span class="arr">&rarr;</span></button>
         </div>
     </header>
 
@@ -912,6 +910,8 @@
 <div class="modal-overlay" id="addSupplierModal"><div class="modal"><h3>Add Supplier</h3><div class="field"><label>Supplier Name</label><input type="text" class="input" id="newSupplierName" placeholder="e.g. Home Depot"></div><div class="field" style="margin-top:8px"><label><input type="checkbox" id="copyDefaultsToSupplier" checked> Pre-fill with default materials</label></div><div class="modal-actions"><button class="btn btn-secondary" data-on-click="closeModal" data-args="addSupplierModal">Cancel</button><button class="btn btn-success" data-on-click="addSupplier">Add</button></div></div></div>
 
 <div class="modal-overlay" id="deleteSupplierModal"><div class="modal"><h3>Remove Supplier</h3><p>Remove "<span id="deleteSupplierName"></span>" and all its materials?</p><div class="modal-actions"><button class="btn btn-secondary" data-on-click="closeModal" data-args="deleteSupplierModal">Cancel</button><button class="btn btn-danger" data-on-click="deleteSupplier">Remove</button></div></div></div>
+
+<div class="modal-overlay" id="deleteKeyModal"><div class="modal"><h3>Delete Key</h3><p>Delete this license key? This cannot be undone.</p><div class="modal-actions"><button class="btn btn-secondary" data-on-click="closeModal" data-args="deleteKeyModal">Cancel</button><button class="btn btn-danger" data-on-click="confirmDeleteKey">Delete</button></div></div></div>
 
 <div class="modal-overlay" id="duplicateModal"><div class="modal"><h3>Copy Material to Supplier</h3><div class="field"><label>Target Supplier</label><select class="input" id="duplicateTarget"></select></div><div class="modal-actions"><button class="btn btn-secondary" data-on-click="closeModal" data-args="duplicateModal">Cancel</button><button class="btn btn-primary" data-on-click="doDuplicate">Copy</button></div></div></div>
 
