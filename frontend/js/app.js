@@ -1,5 +1,5 @@
 // ===== DEFAULTS =====
-const DEFAULT_CATEGORIES=['Lath','Gray Coat','Color Coat','Stone','Drywall','Painting'];
+const DEFAULT_CATEGORIES=['Accessories','Lath','Gray Coat','Color Coat','Drywall','Stone'];
 const DEFAULT_SUPPLIERS=['Pacific Supply','ABC Supply','Sherwin Williams'];
 const UNITS=['roll','box','piece','bag','ton','pail','tube','gal','lb','each','bundle','bucket','sheet','sqyd','disc'];
 const CALC_TYPES=['area','linear'];
@@ -46,10 +46,11 @@ const STUCCO_GRAY=[{name:'Portland Cement Type S (94lb)',sku:'PC-TS-94',unit:'ba
 const STUCCO_COLOR=[{name:'LaHabra X-Kaliber Finish (65lb)',sku:'LH-XK-65',unit:'bag',pricePerUnit:28,category:'Color Coat',coveragePerUnit:65,calcType:'area'},{name:'Color Pigment (1lb tube)',sku:'LH-PIG-1',unit:'tube',pricePerUnit:9.50,category:'Color Coat',coveragePerUnit:200,calcType:'area'},{name:'Finish Sand 30-mesh (80lb)',sku:'FS-30-80',unit:'bag',pricePerUnit:12,category:'Color Coat',coveragePerUnit:100,calcType:'area'},{name:'Acrylic Additive (1 gal)',sku:'AA-QR-1G',unit:'gal',pricePerUnit:18,category:'Color Coat',coveragePerUnit:150,calcType:'area'}];
 const STONE_MATERIALS=[{name:'Manufactured Stone Veneer (flat)',sku:'SV-FLAT-BOX',unit:'box',pricePerUnit:125,category:'Stone',coveragePerUnit:10,calcType:'area'},{name:'Stone Corners (linear)',sku:'SV-CORN-BOX',unit:'box',pricePerUnit:85,category:'Stone',coveragePerUnit:5,calcType:'linear'},{name:'Stone Mortar Mix (80lb)',sku:'SM-MRT-80',unit:'bag',pricePerUnit:12.50,category:'Stone',coveragePerUnit:20,calcType:'area'},{name:'Stone Grout Bag (50lb)',sku:'SM-GRT-50',unit:'bag',pricePerUnit:14,category:'Stone',coveragePerUnit:35,calcType:'area'},{name:'Metal Lath for Stone (2.5 lb)',sku:'ML-ST-25',unit:'roll',pricePerUnit:52,category:'Stone',coveragePerUnit:450,calcType:'area'},{name:'Scratch Coat Cement (94lb)',sku:'SC-ST-94',unit:'bag',pricePerUnit:14.50,category:'Stone',coveragePerUnit:25,calcType:'area'}];
 const DRYWALL_MATERIALS=[{name:'Drywall Sheet 1/2" 4x8',sku:'DW-12-48',unit:'sheet',pricePerUnit:12.50,category:'Drywall',coveragePerUnit:32,calcType:'area',isDrywallSheet:true},{name:'Drywall Sheet 5/8" 4x8',sku:'DW-58-48',unit:'sheet',pricePerUnit:14.50,category:'Drywall',coveragePerUnit:32,calcType:'area',isDrywallSheet:true},{name:'DenShield Tile Backer 1/2" 4x8',sku:'DS-12-48',unit:'sheet',pricePerUnit:28,category:'Drywall',coveragePerUnit:32,calcType:'area',isDrywallSheet:true},{name:'Red Dot Joint Compound (4.5 gal)',sku:'RD-AP-45G',unit:'bucket',pricePerUnit:18,category:'Drywall',coveragePerUnit:230,calcType:'area'},{name:'TNT Lite Topping (4.5 gal)',sku:'TNT-LT-45G',unit:'bucket',pricePerUnit:22,category:'Drywall',coveragePerUnit:270,calcType:'area'},{name:'Sanding Discs 120 Grit (25pk)',sku:'SD-120-25',unit:'box',pricePerUnit:15,category:'Drywall',coveragePerUnit:1500,calcType:'area'},{name:'Sanding Discs 150 Grit (25pk)',sku:'SD-150-25',unit:'box',pricePerUnit:15,category:'Drywall',coveragePerUnit:1500,calcType:'area'},{name:'Paper Joint Tape (500\')',sku:'PJT-500',unit:'roll',pricePerUnit:4.50,category:'Drywall',coveragePerUnit:200,calcType:'area'},{name:'Mesh Joint Tape (300\')',sku:'MJT-300',unit:'roll',pricePerUnit:7,category:'Drywall',coveragePerUnit:150,calcType:'area'},{name:'Corner Bead Metal 8\'',sku:'CB-MT-8',unit:'piece',pricePerUnit:3.50,category:'Drywall',coveragePerUnit:8,calcType:'linear'}];
-const PAINT_MATERIALS=[{name:'Painters Plastic (9\' x 400\')',sku:'PP-9400',unit:'roll',pricePerUnit:18,category:'Painting',coveragePerUnit:3600,calcType:'area'},{name:'Primer (1 gal)',sku:'SW-PRM-1G',unit:'gal',pricePerUnit:28,category:'Painting',coveragePerUnit:400,calcType:'area',isPaint:true},{name:'Primer (5 gal)',sku:'SW-PRM-5G',unit:'bucket',pricePerUnit:115,category:'Painting',coveragePerUnit:2000,calcType:'area',isPaint:true},{name:'A-100 Exterior Latex (1 gal)',sku:'SW-A100-1G',unit:'gal',pricePerUnit:42,category:'Painting',coveragePerUnit:400,calcType:'area',isPaint:true},{name:'A-100 Exterior Latex (5 gal)',sku:'SW-A100-5G',unit:'bucket',pricePerUnit:185,category:'Painting',coveragePerUnit:2000,calcType:'area',isPaint:true}];
+const ACCESSORIES_MATERIALS=[{name:'Bonding Agent - Weld-Crete (1 gal)',sku:'AC-BA-1G',unit:'gal',pricePerUnit:22,category:'Accessories',coveragePerUnit:200,calcType:'area'},{name:'Caulking Sealant (10 oz)',sku:'AC-CLK-10',unit:'tube',pricePerUnit:6.50,category:'Accessories',coveragePerUnit:100,calcType:'linear'},{name:'Expansion Joint 1/2" (10\')',sku:'AC-EJ-10',unit:'piece',pricePerUnit:4.75,category:'Accessories',coveragePerUnit:10,calcType:'linear'},{name:'Masking Tape 2" (60yd)',sku:'AC-MT-2',unit:'roll',pricePerUnit:7,category:'Accessories',coveragePerUnit:500,calcType:'area'},{name:'Plastic Sheeting 6mil (10\' x 100\')',sku:'AC-PS-10100',unit:'roll',pricePerUnit:35,category:'Accessories',coveragePerUnit:1000,calcType:'area'}];
 
-const SUPPLIER_MATERIALS={'Pacific Supply':[...STUCCO_LATH,...STUCCO_GRAY,...STUCCO_COLOR,...STONE_MATERIALS,...DRYWALL_MATERIALS],'ABC Supply':[...STUCCO_LATH,...STUCCO_GRAY,...STUCCO_COLOR,...STONE_MATERIALS,...DRYWALL_MATERIALS],'Sherwin Williams':[...PAINT_MATERIALS]};
-const SUPPLIER_PRICE_MODS={'Pacific Supply':1,'ABC Supply':1.03,'Sherwin Williams':1};
+const ALL_DEFAULT_MATERIALS=[...ACCESSORIES_MATERIALS,...STUCCO_LATH,...STUCCO_GRAY,...STUCCO_COLOR,...DRYWALL_MATERIALS,...STONE_MATERIALS];
+const SUPPLIER_MATERIALS={'Pacific Supply':[...ALL_DEFAULT_MATERIALS],'ABC Supply':[...ALL_DEFAULT_MATERIALS],'Sherwin Williams':[...ALL_DEFAULT_MATERIALS]};
+const SUPPLIER_PRICE_MODS={'Pacific Supply':1,'ABC Supply':1.03,'Sherwin Williams':0.98};
 
 // ===== STATE =====
 let suppliers=[],categories=[],materialsBySupplier={},activeSupplier='',editingId=null,currentCalc=null,savedJobs=[];
@@ -137,6 +138,7 @@ async function loadData(){
             localStorage.setItem('stucco_saved_jobs',JSON.stringify(savedJobs));
 
             if(suppliers.length>0)activeSupplier=suppliers[0];
+            try{const cfg=await fetch('/api/config').then(r=>r.json());if(cfg.googlePlacesApiKey)loadGooglePlaces(cfg.googlePlacesApiKey)}catch(_){}
             return;
         }catch(err){
             console.warn('API load failed, using localStorage cache:',err.message);
@@ -213,6 +215,36 @@ function closeModal(id){document.getElementById(id).classList.remove('open')}
 function toggleUserMenu(){document.getElementById('userBadge').classList.toggle('open')}
 document.addEventListener('click',function(e){const dd=document.getElementById('userBadge');if(dd&&!dd.contains(e.target))dd.classList.remove('open')});
 function toggleTheme(){const c=document.documentElement.getAttribute('data-theme');const n=c==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);localStorage.setItem('stucco_theme',n)}
+
+// ===== GOOGLE PLACES AUTOCOMPLETE =====
+function loadGooglePlaces(apiKey){
+    if(!apiKey||document.getElementById('googleMapsScript'))return;
+    const s=document.createElement('script');
+    s.id='googleMapsScript';
+    s.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(apiKey)+'&libraries=places';
+    s.async=true;
+    s.defer=true;
+    s.onload=initPlacesAutocomplete;
+    document.head.appendChild(s);
+}
+
+function initPlacesAutocomplete(){
+    if(typeof google==='undefined'||!google.maps||!google.maps.places)return;
+    const input=document.getElementById('calcProjectAddress');
+    if(!input)return;
+    const ac=new google.maps.places.Autocomplete(input,{
+        types:['address'],
+        componentRestrictions:{country:'us'},
+        fields:['formatted_address']
+    });
+    ac.addListener('place_changed',function(){
+        const place=ac.getPlace();
+        if(place&&place.formatted_address){
+            input.value=place.formatted_address;
+        }
+        if(typeof updateCalcHeader==='function')updateCalcHeader();
+    });
+}
 
 // ===== NAVIGATION =====
 const PAGE_TITLES={dashboard:'Dashboard',pricing:'Material Pricing',calculator:'Job Calculator',order:'Order Form',savedJobs:'Saved Jobs',admin:'Admin Panel',account:'Account'};
@@ -1288,18 +1320,17 @@ function updateCalcHeader(){
     const addr=document.getElementById('calcProjectAddress')?.value?.trim();
     const titleEl=document.getElementById('calcV2Title');
     if(titleEl)titleEl.textContent=name||'New Estimate';
-    const subAddr=document.getElementById('calcV2SubAddress');
-    if(subAddr)subAddr.textContent=addr||'Add an address';
-    // Build a quick scope summary from selected phases
-    const scopeEl=document.getElementById('calcV2SubScope');
-    if(scopeEl){
-        const sel=getSelectedPhases();
-        scopeEl.textContent=sel.length?sel.slice(0,3).join(', '):'Stucco re-coat';
-    }
-    const areaEl=document.getElementById('calcV2SubArea');
-    if(areaEl){
+    const subtitleEl=document.getElementById('calcV2Subtitle');
+    if(subtitleEl){
+        const parts=[];
+        if(addr)parts.push(addr);
         const total=v2TotalScopeSqft(currentCalc)||(parseFloat(document.getElementById('calcStuccoSqft')?.value)||0)+(parseFloat(document.getElementById('calcStoneSqft')?.value)||0)+(parseFloat(document.getElementById('calcPaintSqft')?.value)||0);
-        areaEl.textContent=total>0?`${v2FmtInt(total)} sq·ft`:'Enter dimensions';
+        if(total>0){
+            const sel=getSelectedPhases();
+            if(sel.length)parts.push(sel.slice(0,3).join(', '));
+            parts.push(`${v2FmtInt(total)} sq·ft`);
+        }
+        subtitleEl.textContent=parts.join(' · ');
     }
 }
 window.updateCalcHeader=updateCalcHeader;
@@ -1750,7 +1781,6 @@ function renderOrderForm(r,selections){
                 +'<div class="order-v2-group-header-left">'
                     +chipsHtml
                     +'<span class="order-v2-group-supplier">'+escHtml(supplier)+'</span>'
-                    +'<span class="order-v2-group-po">'+escHtml(po)+'</span>'
                 +'</div>'
                 +'<div class="order-v2-group-subtotal">'+fmt(subtotal)+'</div>'
             +'</div>'
@@ -1775,7 +1805,7 @@ function renderOrderForm(r,selections){
         });
         html+='</tbody>'
             +'<tfoot><tr>'
-                +'<td colspan="4" class="order-v2-subtotal-label">Subtotal &mdash; '+escHtml(supplier)+'</td>'
+                +'<td colspan="4" class="order-v2-subtotal-label">Subtotal</td>'
                 +'<td class="order-v2-each order-v2-subtotal-amount">'+fmt(subtotal)+'</td>'
             +'</tr></tfoot>'
             +'</table>'
@@ -1835,8 +1865,26 @@ function prepareOrderFromCalc(){
 function printOrder(){
     const showWM=!isLicensed();
     togglePrintWatermark(showWM);
-    setTimeout(()=>{window.print();togglePrintWatermark(false)},100);
+    const origTitle=document.title;
+    const orderNum=currentCalc?calcOrderNumber(currentCalc):'Order';
+    document.title=orderNum;
+    setTimeout(()=>{window.print();togglePrintWatermark(false);document.title=origTitle},100);
 }
+
+function emailOrderToSupplier(){
+    if(!currentCalc){notify('Generate an order first','error');return}
+    const orderNum=calcOrderNumber(currentCalc);
+    const pn=(document.getElementById('calcProjectName')?.value||'').trim();
+    const items=(currentCalc.items||[]).filter(i=>i.qty>0);
+    const subject=encodeURIComponent('Material Order'+(orderNum?' — '+orderNum:'')+(pn?' — '+pn:''));
+    let body='Order: '+orderNum+'\n';
+    if(pn)body+='Project: '+pn+'\n';
+    body+='\n';
+    items.forEach(i=>{body+=i.qty+' x '+i.name+' ('+i.sku+') @ $'+Number(i.pricePerUnit).toFixed(2)+' = $'+Number(i.lineTotal).toFixed(2)+'\n'});
+    body+='\nTotal: $'+Number(currentCalc.materialTotal||0).toFixed(2)+'\n';
+    window.location.href='mailto:?subject='+subject+'&body='+encodeURIComponent(body);
+}
+window.emailOrderToSupplier=emailOrderToSupplier;
 
 function exportOrderCSV(){
     if(!requireLicense('export CSV'))return;
@@ -1961,9 +2009,6 @@ function jobsV2FmtDate(iso){
 function jobsV2RenderTabs(counts){
     const tabs=[
         {key:'All',label:'All',n:counts.All},
-        {key:'Active',label:'Active',n:counts.Active},
-        {key:'Won',label:'Won',n:counts.Won},
-        {key:'Sent',label:'Sent',n:counts.Sent},
         {key:'Drafts',label:'Drafts',n:counts.Drafts},
         {key:'Templates',label:'Templates',n:counts.Templates}
     ];
@@ -2078,13 +2123,10 @@ function renderSavedJobs(){
     if(footEl){
         const nonTpl=savedJobs.filter(j=>!j.isTemplate);
         const ytd=nonTpl.reduce((s,j)=>s+(Number(j.sellingPrice)||0),0);
-        const wonJobs=nonTpl.filter(j=>jobsV2Status(j).key==='won');
-        const closed=nonTpl.filter(j=>{const k=jobsV2Status(j).key;return k==='won'||k==='lost'});
-        const winRate=closed.length?Math.round((wonJobs.length/closed.length)*100):0;
         const margins=nonTpl.map(j=>Number(j.profitPct)||0).filter(n=>n>0);
         const avgMargin=margins.length?(margins.reduce((s,n)=>s+n,0)/margins.length):0;
         footEl.innerHTML=`<div>Showing <span class="num">${rows.length}</span> of <span class="num">${counts.All}</span><span class="sep">&middot;</span>YTD value <span class="num">${jobsV2FmtCompactMoney(ytd)}</span></div>`+
-            `<div>Avg margin <span class="num">${avgMargin.toFixed(1)}%</span><span class="sep">&middot;</span>Win rate <span class="num">${winRate}%</span></div>`;
+            `<div>Avg margin <span class="num">${avgMargin.toFixed(1)}%</span></div>`;
     }
 }
 
@@ -2314,7 +2356,7 @@ async function renderDashboard(){
                 }).join('')}
             </tbody>
         </table>`
-        :`<div class="dash-v2-empty">No saved jobs yet. Start with <strong>New calculation</strong>.</div>`;
+        :`<div class="dash-v2-empty">No orders yet. Start with <strong>New calculation</strong>.</div>`;
 
     const suppliersHtml=supRows.length
         ?`<div class="dash-v2-supplier-list">${supRows.map(r=>`
@@ -2333,11 +2375,11 @@ async function renderDashboard(){
         <header class="dash-v2-header">
             <div class="dash-v2-header-left">
                 <div class="dash-v2-eyebrow">
-                    <span>01 &middot; TODAY</span>
+                    <span>TODAY</span>
                     <span class="dash-v2-eyebrow-sep">&middot;</span>
                     <span>${escHtml(datePart)}</span>
                 </div>
-                <h1 class="dash-v2-title">Welcome back, ${escHtml(userName)}.</h1>
+                <h1 class="dash-v2-title">Welcome back, ${escHtml(userName)}</h1>
                 <p class="dash-v2-subtitle">
                     <span>${nonTemplates.length} saved job${nonTemplates.length===1?'':'s'}</span>
                     <span class="dash-v2-sub-sep">&middot;</span>
@@ -2346,9 +2388,7 @@ async function renderDashboard(){
             </div>
             <div class="dash-v2-header-right">
                 <button class="dash-v2-btn" data-on-click="showPage" data-args="pricing">Open catalog</button>
-                <button class="dash-v2-btn dash-v2-btn-primary" data-on-click="showPage" data-args="calculator">
-                    <span class="dash-v2-btn-glyph">&#10766;</span> New calculation
-                </button>
+                <button class="dash-v2-btn dash-v2-btn-primary" data-on-click="showPage" data-args="calculator">New calculation</button>
             </div>
         </header>
 
@@ -2360,7 +2400,7 @@ async function renderDashboard(){
 
                 <div class="dash-v2-section-head">
                     <div class="dash-v2-section-head-left">
-                        <span class="dash-v2-section-eyebrow">02 &middot; Recent jobs</span>
+                        <span class="dash-v2-section-eyebrow">Recent jobs</span>
                         <h2 class="dash-v2-section-title">Recent calculations</h2>
                     </div>
                     <div class="dash-v2-section-head-right">
@@ -2371,11 +2411,7 @@ async function renderDashboard(){
 
                 <div class="dash-v2-jobs-card">${jobsTableHtml}</div>
 
-                <div class="dash-v2-footer-stat">
-                    Total catalog value <span class="dash-v2-footer-num">${dashV2FmtMoneyK(catalogValue)}</span>
-                    <span class="dash-v2-sub-sep">&middot;</span>
-                    across <span class="dash-v2-footer-num">${supplierCount}</span> supplier${supplierCount===1?'':'s'}
-                </div>
+                <div class="dash-v2-footer-stat"></div>
             </div>
 
             <aside class="dash-v2-rail">
@@ -2383,7 +2419,7 @@ async function renderDashboard(){
                     <div class="dash-v2-card-eyebrow">Suppliers</div>
                     ${suppliersHtml}
                 </section>
-                <p class="dash-v2-help">Need help? <a class="dash-v2-help-link" href="mailto:support@esticount.app">support@esticount.app</a></p>
+                <p class="dash-v2-help">Need help? <a class="dash-v2-help-link" href="mailto:support@esticount.com">support@esticount.com</a></p>
             </aside>
         </div>`;
 }
@@ -2580,7 +2616,7 @@ async function renderAccountPage(){
             </div>
             <div class="account-v2-stat">
                 <span class="account-v2-stat-label">Templates</span>
-                <span class="account-v2-stat-value">${templates}</span>
+                <span class="account-v2-stat-value is-display">${templates}</span>
             </div>
             <div class="account-v2-stat">
                 <span class="account-v2-stat-label">Last saved</span>
@@ -2977,10 +3013,18 @@ async function generateKeys(){
     }catch(e){notify(e.message,'error')}
 }
 
-async function deleteKey(id){
-    if(!confirm('Delete this key?'))return;
+let pendingDeleteKeyId=null;
+function deleteKey(id){
+    pendingDeleteKeyId=id;
+    openModal('deleteKeyModal');
+}
+async function confirmDeleteKey(){
+    closeModal('deleteKeyModal');
+    if(!pendingDeleteKeyId)return;
+    const id=pendingDeleteKeyId;pendingDeleteKeyId=null;
     try{await api.deleteKey(id);renderAdminPanel();notify('Key deleted','success')}catch(e){notify(e.message,'error')}
 }
+window.confirmDeleteKey=confirmDeleteKey;
 
 async function toggleUserActive(id,active){
     try{await api.updateUser(id,{is_active:active});renderAdminPanel();notify(active?'User activated':'User deactivated','success')}catch(e){notify(e.message,'error')}
