@@ -21,6 +21,9 @@ const clientRoutes = require('./routes/clients');
 const invoiceRoutes = require('./routes/invoices');
 const activityRoutes = require('./routes/activity');
 const priceHistoryRoutes = require('./routes/priceHistory');
+const orderEmailRoutes = require('./routes/orderEmail');
+const onboardingRoutes = require('./routes/onboarding');
+const stripeRoutes = require('./routes/stripe');
 
 // Import error handler
 const errorHandler = require('./middleware/errorHandler');
@@ -37,13 +40,12 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
+      scriptSrc: ["'self'", "https://maps.googleapis.com"],
       scriptSrcAttr: ["'none'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:"],
-      // SW fetches Google Fonts CSS/woff2 — both endpoints need to be allowed.
-      connectSrc: ["'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https://maps.gstatic.com", "https://maps.googleapis.com"],
+      connectSrc: ["'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com", "https://maps.googleapis.com", "https://maps.gstatic.com", "https://places.googleapis.com"],
       manifestSrc: ["'self'"]
     }
   }
@@ -79,8 +81,12 @@ app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/forgot-password', authLimiter);
 app.use('/api/auth/reset-password', authLimiter);
 
-// Body parsing
-app.use(express.json({ limit: '1mb' }));
+// Body parsing — skip JSON for the Stripe webhook so signature verification
+// has access to the raw body (the stripe router uses express.raw on that path).
+app.use((req, res, next) => {
+  if (req.originalUrl === '/api/stripe/webhook') return next();
+  express.json({ limit: '1mb' })(req, res, next);
+});
 app.use(express.urlencoded({ extended: true }));
 
 // ---------------------------------------------------------------------------
@@ -109,6 +115,9 @@ app.use('/api/clients', clientRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/price-history', priceHistoryRoutes);
+app.use('/api/order-email', orderEmailRoutes);
+app.use('/api/onboarding', onboardingRoutes);
+app.use('/api/stripe', stripeRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

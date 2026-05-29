@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const supabase = require('../config/database');
 const { authenticate } = require('../middleware/auth');
 const { Resend } = require('resend');
+const { createLicenseKey, expiryFor } = require('../lib/keys');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change-this';
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -91,6 +92,29 @@ router.post('/register', async (req, res, next) => {
     // Generate unique referral code for the new user
     const referralCode = generateReferralCode();
     await supabase.from('users').update({ referral_code: referralCode }).eq('id', user.id);
+
+    // Auto-issue a 7-day trial license to every new account. Replaces the
+    // legacy free-3-jobs tier. Admins can later override with a paid key.
+    try {
+      const trial = await createLicenseKey({
+        type: 'trial',
+        duration_days: 7,
+        max_uses: 1,
+        times_used: 1,
+        created_by: null
+      });
+      const trialExpires = expiryFor('trial', 7);
+      await supabase.from('users').update({
+        license_key: trial.key,
+        license_type: 'trial',
+        license_expires: trialExpires
+      }).eq('id', user.id);
+      user.license_key = trial.key;
+      user.license_type = 'trial';
+      user.license_expires = trialExpires;
+    } catch (trialErr) {
+      console.error('Trial key issuance failed:', trialErr.message);
+    }
 
     // Generate and send verification code
     const code = generateCode();
@@ -200,6 +224,41 @@ router.put('/profile', authenticate, async (req, res, next) => {
     const { data: user, error } = await supabase.from('users').update(updates).eq('id', req.user.id).select('id, email, name, role, license_type, license_expires, is_active').single();
     if (error) throw error;
     res.json({ user, token: generateToken(user) });
+  } catch (err) { next(err); }
+});
+
+// DELETE /account — permanently delete the authenticated user's account.
+// Requires confirmation: current password + `confirm` field that equals "DELETE".
+// Cascading FKs (suppliers, categories, jobs, supplier_categories) clean up
+// dependent rows automatically.
+router.delete('/account', authenticate, async (req, res, next) => {
+  try {
+    const { password, confirm } = req.body || {};
+    if (confirm !== 'DELETE') {
+      return res.status(400).json({ error: 'Type DELETE to confirm' });
+    }
+    if (!password) return res.status(400).json({ error: 'Password is required' });
+
+    const { data: user, error: lookupErr } = await supabase
+      .from('users')
+      .select('id, password_hash, role')
+      .eq('id', req.user.id)
+      .single();
+    if (lookupErr || !user) return res.status(404).json({ error: 'Account not found' });
+    if (!bcrypt.compareSync(password, user.password_hash)) {
+      return res.status(401).json({ error: 'Wrong password' });
+    }
+    // Admins cannot self-delete via this endpoint — too risky. Use the admin panel.
+    if (user.role === 'admin') {
+      return res.status(403).json({ error: 'Admin accounts must be removed by another admin' });
+    }
+
+    // Best-effort cleanup of tables that don't have ON DELETE CASCADE.
+    await supabase.from('verification_codes').delete().eq('user_id', user.id);
+
+    const { error: delErr } = await supabase.from('users').delete().eq('id', user.id);
+    if (delErr) throw delErr;
+    res.json({ ok: true });
   } catch (err) { next(err); }
 });
 

@@ -185,6 +185,10 @@ textarea.account-v2-input{
 }
 .account-v2-cta:hover{background:var(--v2-accent-hover);box-shadow:0 0 0 4px rgba(68,147,248,.10)}
 .account-v2-cta .arr{font-weight:400}
+.account-v2-cta.is-danger{background:#c53030;color:#fff}
+.account-v2-cta.is-danger:hover{background:#9b2c2c;box-shadow:0 0 0 4px rgba(197,48,48,.18)}
+.account-v2-card.account-v2-danger{border-color:rgba(197,48,48,.35)}
+.account-v2-card.account-v2-danger .account-v2-card-eyebrow span:first-child{color:#ff6b6b}
 .account-v2-cta-secondary{
     display:inline-flex;align-items:center;gap:6px;
     height:40px;padding:0 18px;

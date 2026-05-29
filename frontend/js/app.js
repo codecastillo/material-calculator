@@ -54,6 +54,44 @@ const SUPPLIER_PRICE_MODS={'Pacific Supply':1,'ABC Supply':1.03,'Sherwin William
 
 // ===== STATE =====
 let suppliers=[],categories=[],materialsBySupplier={},activeSupplier='',editingId=null,currentCalc=null,savedJobs=[];
+let supplierInfo={};
+
+function loadSupplierInfo(){
+    try{
+        const raw=localStorage.getItem('esticount_supplier_info');
+        supplierInfo=raw?JSON.parse(raw):{};
+    }catch(_){supplierInfo={}}
+    // Migrate legacy email-only storage if present
+    try{
+        const legacy=localStorage.getItem('esticount_supplier_emails');
+        if(legacy){
+            const emails=JSON.parse(legacy);
+            Object.keys(emails).forEach(s=>{
+                if(!supplierInfo[s])supplierInfo[s]={};
+                if(!supplierInfo[s].email)supplierInfo[s].email=emails[s];
+            });
+            saveSupplierInfo();
+            localStorage.removeItem('esticount_supplier_emails');
+        }
+    }catch(_){}
+}
+function saveSupplierInfo(){
+    localStorage.setItem('esticount_supplier_info',JSON.stringify(supplierInfo));
+}
+function setSupplierInfo(supplier,patch){
+    if(!supplier)return;
+    const cur=supplierInfo[supplier]||{};
+    supplierInfo[supplier]={...cur,...patch};
+    Object.keys(supplierInfo[supplier]).forEach(k=>{if(!supplierInfo[supplier][k])delete supplierInfo[supplier][k]});
+    if(!Object.keys(supplierInfo[supplier]).length)delete supplierInfo[supplier];
+    saveSupplierInfo();
+}
+function getSupplierInfo(supplier){
+    return supplierInfo[supplier]||{};
+}
+function getSupplierEmail(supplier){return getSupplierInfo(supplier).email||''}
+function setSupplierEmail(supplier,email){setSupplierInfo(supplier,{email:String(email||'').trim()})}
+loadSupplierInfo();
 // Per-phase user picks for the calculator's "smart material" picker.
 // Shape: { [phaseName]: [materialId, ...] }. Empty array OR missing key for a phase
 // means "include all" (back-compat with saved jobs that predate this feature).
@@ -138,14 +176,27 @@ async function loadData(){
             localStorage.setItem('stucco_saved_jobs',JSON.stringify(savedJobs));
 
             if(suppliers.length>0)activeSupplier=suppliers[0];
-            try{const cfg=await fetch('/api/config').then(r=>r.json());if(cfg.googlePlacesApiKey)loadGooglePlaces(cfg.googlePlacesApiKey)}catch(_){}
-            return;
         }catch(err){
             console.warn('API load failed, using localStorage cache:',err.message);
+            loadFromLocalStorage();
         }
+    }else{
+        loadFromLocalStorage();
     }
 
-    // Fallback: load from localStorage
+    try{
+        const cfg=await fetch('/api/config').then(r=>r.json());
+        console.log('[Places] config response:',cfg);
+        if(cfg.googlePlacesApiKey){
+            console.log('[Places] loading SDK...');
+            loadGooglePlaces(cfg.googlePlacesApiKey);
+        }else{
+            console.log('[Places] no API key in config');
+        }
+    }catch(e){console.error('[Places] config fetch failed:',e)}
+}
+
+function loadFromLocalStorage(){
     try{
         const s=localStorage.getItem('stucco_suppliers'),c=localStorage.getItem('stucco_categories'),m=localStorage.getItem('stucco_materials_v2'),j=localStorage.getItem('stucco_saved_jobs');
         if(s&&c&&m){suppliers=JSON.parse(s);categories=JSON.parse(c);materialsBySupplier=JSON.parse(m);Object.values(materialsBySupplier).forEach(ms=>ms.forEach(mt=>{if(!mt.calcType)mt.calcType='area';if(!mt.lastUpdated)mt.lastUpdated=Date.now();if(mt.isDrywallSheet===undefined)mt.isDrywallSheet=mt.category==='Drywall'&&mt.unit==='sheet'}))}else resetAllToDefaults(true);
@@ -176,20 +227,22 @@ function undo(){if(!undoStack.length)return;redoStack.push(JSON.stringify(materi
 function redo(){if(!redoStack.length)return;undoStack.push(JSON.stringify(materialsBySupplier));materialsBySupplier=JSON.parse(redoStack.pop());saveAll();renderMaterialTable();updateUndoButtons();notify('Redone','info')}
 function updateUndoButtons(){const u=document.getElementById('undoBtn'),r=document.getElementById('redoBtn');if(u)u.disabled=!undoStack.length;if(r)r.disabled=!redoStack.length}
 
-// License check
+// License check. Trial keys (auto-issued at signup) count as active until they
+// expire. Lifetime users and admins always pass. No more "3 free jobs" tier —
+// the trial key replaces it.
 function isLicensed(){
     if(!currentUser)return false;
     if(currentUser.role==='admin')return true;
-    if(!currentUser.license_key)return false;
-    if(currentUser.license_expires&&new Date(currentUser.license_expires)<new Date())return false;
-    return true;
+    if(currentUser.license_type==='lifetime')return true;
+    if(!currentUser.license_expires)return false;
+    return new Date(currentUser.license_expires)>new Date();
 }
 function requireLicense(action){
     if(isLicensed())return true;
-    notify('Upgrade your license to '+action,'error');
+    notify('Your license is required to '+action,'error');
+    if(typeof checkLicenseGate==='function')checkLicenseGate();
     return false;
 }
-const FREE_JOB_LIMIT=3;
 function togglePrintWatermark(show){const el=document.getElementById('printWatermark');if(el)el.classList.toggle('active',show)}
 
 // Utils
@@ -216,34 +269,137 @@ function toggleUserMenu(){document.getElementById('userBadge').classList.toggle(
 document.addEventListener('click',function(e){const dd=document.getElementById('userBadge');if(dd&&!dd.contains(e.target))dd.classList.remove('open')});
 function toggleTheme(){const c=document.documentElement.getAttribute('data-theme');const n=c==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);localStorage.setItem('stucco_theme',n)}
 
-// ===== GOOGLE PLACES AUTOCOMPLETE =====
+// ===== GOOGLE PLACES AUTOCOMPLETE (REST API) =====
+// Uses the Places API (New) directly via fetch, no SDK. We control the dropdown.
+let _placesApiKey='';
+let _placesDebounce=null;
+let _placesUserLocation=null;
+
 function loadGooglePlaces(apiKey){
-    if(!apiKey||document.getElementById('googleMapsScript'))return;
-    const s=document.createElement('script');
-    s.id='googleMapsScript';
-    s.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(apiKey)+'&libraries=places';
-    s.async=true;
-    s.defer=true;
-    s.onload=initPlacesAutocomplete;
-    document.head.appendChild(s);
+    if(!apiKey)return;
+    _placesApiKey=apiKey;
+    // Request geolocation once to bias suggestions toward the user's area.
+    // If denied or unavailable, we fall back to nationwide search.
+    if(navigator.geolocation){
+        navigator.geolocation.getCurrentPosition(
+            pos=>{_placesUserLocation={latitude:pos.coords.latitude,longitude:pos.coords.longitude}},
+            ()=>{},
+            {timeout:5000,maximumAge:600000}
+        );
+    }
+    initPlacesAutocomplete();
 }
 
 function initPlacesAutocomplete(){
-    if(typeof google==='undefined'||!google.maps||!google.maps.places)return;
-    const input=document.getElementById('calcProjectAddress');
-    if(!input)return;
-    const ac=new google.maps.places.Autocomplete(input,{
-        types:['address'],
-        componentRestrictions:{country:'us'},
-        fields:['formatted_address']
-    });
-    ac.addListener('place_changed',function(){
-        const place=ac.getPlace();
-        if(place&&place.formatted_address){
-            input.value=place.formatted_address;
-        }
+    attachPlacesAutocomplete(document.getElementById('calcProjectAddress'),()=>{
         if(typeof updateCalcHeader==='function')updateCalcHeader();
     });
+}
+
+// Attach the dropdown to any address input. Optional onChange runs on each
+// keystroke and on selection. Safe to call before the SDK key has loaded —
+// it just no-ops until the key arrives.
+function attachPlacesAutocomplete(input,onChange){
+    if(!input||input.dataset.placesAttached)return;
+    input.dataset.placesAttached='1';
+    input.setAttribute('autocomplete','off');
+    let debounce=null;
+
+    const dd=document.createElement('div');
+    dd.className='places-dropdown';
+    dd.style.display='none';
+    document.body.appendChild(dd);
+
+    function positionDropdown(){
+        const r=input.getBoundingClientRect();
+        dd.style.top=(r.bottom+4)+'px';
+        dd.style.left=r.left+'px';
+        dd.style.width=r.width+'px';
+    }
+
+    input.addEventListener('input',()=>{
+        const q=input.value.trim();
+        if(typeof onChange==='function')onChange();
+        clearTimeout(debounce);
+        if(q.length<3||!_placesApiKey){dd.style.display='none';return}
+        debounce=setTimeout(()=>{positionDropdown();fetchPlaceSuggestions(q,dd,input,onChange)},250);
+    });
+    input.addEventListener('blur',()=>setTimeout(()=>{dd.style.display='none'},150));
+    input.addEventListener('focus',()=>{if(dd.children.length){positionDropdown();dd.style.display=''}});
+    window.addEventListener('resize',()=>{if(dd.style.display!=='none')positionDropdown()});
+    window.addEventListener('scroll',()=>{if(dd.style.display!=='none')positionDropdown()},true);
+}
+window.attachPlacesAutocomplete=attachPlacesAutocomplete;
+
+async function fetchPlaceSuggestions(query,dd,input,onChange){
+    if(!_placesApiKey)return;
+    try{
+        const body={
+            input:query,
+            regionCode:'us',
+            includedPrimaryTypes:['street_address','premise','subpremise']
+        };
+        if(_placesUserLocation){
+            body.locationBias={
+                circle:{
+                    center:_placesUserLocation,
+                    radius:50000
+                }
+            };
+        }
+        const res=await fetch('https://places.googleapis.com/v1/places:autocomplete',{
+            method:'POST',
+            headers:{
+                'Content-Type':'application/json',
+                'X-Goog-Api-Key':_placesApiKey
+            },
+            body:JSON.stringify(body)
+        });
+        if(!res.ok){console.warn('[Places] suggestions request failed:',res.status);return}
+        const data=await res.json();
+        const suggestions=(data.suggestions||[]).map(s=>s.placePrediction).filter(Boolean);
+        if(!suggestions.length){dd.style.display='none';return}
+        dd.innerHTML=suggestions.map(s=>{
+            const text=s.text?.text||'';
+            const placeId=s.placeId||'';
+            return `<div class="places-item" data-text="${escAttr(text)}" data-place-id="${escAttr(placeId)}">${escHtml(text)}</div>`;
+        }).join('');
+        dd.style.display='';
+        dd.querySelectorAll('.places-item').forEach(el=>{
+            el.addEventListener('mousedown',async e=>{
+                e.preventDefault();
+                input.value=el.dataset.text;
+                dd.style.display='none';
+                const placeId=el.dataset.placeId;
+                if(placeId){
+                    const full=await fetchPlaceDetails(placeId);
+                    if(full)input.value=full;
+                }
+                if(typeof onChange==='function')onChange();
+                else if(typeof updateCalcHeader==='function')updateCalcHeader();
+            });
+        });
+    }catch(e){console.error('[Places] fetch failed:',e)}
+}
+
+async function fetchPlaceDetails(placeId){
+    if(!_placesApiKey||!placeId)return null;
+    try{
+        const res=await fetch('https://places.googleapis.com/v1/places/'+encodeURIComponent(placeId),{
+            headers:{
+                'X-Goog-Api-Key':_placesApiKey,
+                'X-Goog-FieldMask':'formattedAddress,addressComponents'
+            }
+        });
+        if(!res.ok)return null;
+        const data=await res.json();
+        // formattedAddress includes street, city, state, zip, country
+        return data.formattedAddress||null;
+    }catch(e){console.error('[Places] details fetch failed:',e);return null}
+}
+
+function getProjectAddress(){
+    return(document.getElementById('calcProjectAddress')?.value||'').trim();
 }
 
 // ===== NAVIGATION =====
@@ -386,7 +542,7 @@ function renderSupplierTabs(){
         <section class="price-v2-suppliers">
             <div class="price-v2-eyebrow">SUPPLIERS &middot; ${suppliers.length}</div>
             <ul class="price-v2-supplier-list">${supplierRows}</ul>
-            <button class="price-v2-add-supplier" data-on-click="openAddSupplierModal">+ Add supplier</button>
+            <button class="price-v2-add-supplier" data-on-click="openAddSupplierModal">Add supplier</button>
         </section>
         <section class="price-v2-filter">
             <div class="price-v2-eyebrow">FILTER</div>
@@ -394,7 +550,7 @@ function renderSupplierTabs(){
         </section>
         <section class="price-v2-manage">
             <div class="price-v2-eyebrow">MANAGE</div>
-            <button class="price-v2-add-supplier" data-on-click="openModal" data-args="addCategoryModal">+ Phase</button>
+            <button class="price-v2-add-supplier" data-on-click="openModal" data-args="addCategoryModal">Add phase</button>
             <button class="price-v2-add-supplier" data-on-click="openDeleteCategoryModal">&minus; Phase</button>
             <button class="price-v2-add-supplier" data-on-click="resetToDefaults">Reset to defaults</button>
         </section>`;
@@ -460,10 +616,25 @@ function priceV2SetView(mode){
 window.priceV2SetSort=priceV2SetSort;
 window.priceV2SetView=priceV2SetView;
 function switchSupplier(name){activeSupplier=name;editingId=null;renderSupplierTabs();populateCategoryFilter();renderMaterialTable()}
-function openAddSupplierModal(){document.getElementById('newSupplierName').value='';openModal('addSupplierModal')}
-async function addSupplier(){const name=document.getElementById('newSupplierName').value.trim();if(!name){notify('Enter name','error');return}if(suppliers.includes(name)){notify('Already exists','error');return}pushUndo();suppliers.push(name);materialsBySupplier[name]=[];activeSupplier=name;
+function openAddSupplierModal(){
+    ['newSupplierName','newSupplierEmail','newSupplierPhone','newSupplierAddress'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+    openModal('addSupplierModal');
+}
+async function addSupplier(){
+    const name=document.getElementById('newSupplierName').value.trim();
+    if(!name){notify('Enter name','error');return}
+    if(suppliers.includes(name)){notify('Already exists','error');return}
+    pushUndo();
+    suppliers.push(name);
+    materialsBySupplier[name]=[];
+    activeSupplier=name;
+    const email=document.getElementById('newSupplierEmail')?.value.trim();
+    const phone=document.getElementById('newSupplierPhone')?.value.trim();
+    const address=document.getElementById('newSupplierAddress')?.value.trim();
+    if(email||phone||address)setSupplierInfo(name,{email,phone,address});
     if(api.getToken()){try{const r=await api.createSupplier(name);if(r.supplier&&window._supplierIdMap)window._supplierIdMap[name]=r.supplier.id}catch(e){console.warn('API:',e.message)}}
-    saveAll();renderSupplierTabs();renderMaterialTable();populateCategoryFilter();closeModal('addSupplierModal');notify(`"${name}" added`,'success')}
+    saveAll();renderSupplierTabs();renderMaterialTable();populateCategoryFilter();closeModal('addSupplierModal');notify(`"${name}" added`,'success');
+}
 function confirmDeleteSupplier(name){if(suppliers.length<=1){notify('Need at least one','error');return}document.getElementById('deleteSupplierName').textContent=name;document.getElementById('deleteSupplierModal').dataset.supplier=name;openModal('deleteSupplierModal')}
 async function deleteSupplier(){pushUndo();const name=document.getElementById('deleteSupplierModal').dataset.supplier;
     if(api.getToken()&&window._supplierIdMap?.[name]){try{await api.deleteSupplier(window._supplierIdMap[name]);delete window._supplierIdMap[name]}catch(e){console.warn('API:',e.message)}}
@@ -1317,7 +1488,7 @@ function v2TotalScopeSqft(r){
 // Update top header (eyebrow / title / subtitle) from form fields and current calc
 function updateCalcHeader(){
     const name=document.getElementById('calcProjectName')?.value?.trim();
-    const addr=document.getElementById('calcProjectAddress')?.value?.trim();
+    const addr=getProjectAddress();
     const titleEl=document.getElementById('calcV2Title');
     if(titleEl)titleEl.textContent=name||'New Estimate';
     const subtitleEl=document.getElementById('calcV2Subtitle');
@@ -1571,14 +1742,17 @@ let orderV2State = { _comparison: null, userPicks: {} };
 function orderV2ChipClass(cat){return String(cat||'').toLowerCase().replace(/\s+/g,'-')}
 
 // Order number "O-NNNN" derived from r.id (mirrors job slug J-NNNN).
+function nextOrderNumber(){
+    let n=parseInt(localStorage.getItem('esticount_order_counter')||'1',10);
+    if(!n||n<1)n=1;
+    localStorage.setItem('esticount_order_counter',String(n+1));
+    return String(n).padStart(3,'0');
+}
 function calcOrderNumber(r){
-    if(r&&r.id){
-        const digits=String(r.id).replace(/\D/g,'');
-        if(digits)return 'O-'+digits.slice(-4).padStart(4,'0');
-    }
-    const pn=(document.getElementById('calcProjectName')?.value||'').trim();
-    if(pn){const slug=pn.replace(/[^A-Za-z0-9]/g,'').slice(0,4).toUpperCase();return `O-${slug||'2419'}`}
-    const d=new Date();return `O-${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+    if(r&&r.orderNumber)return r.orderNumber;
+    const next=nextOrderNumber();
+    if(r)r.orderNumber=next;
+    return next;
 }
 function orderV2OrderNumber(){return calcOrderNumber(currentCalc)}
 function orderV2PoNumber(base,idx){return `${base||orderV2OrderNumber()}-${String.fromCharCode(65+(idx%26))}`}
@@ -1717,12 +1891,13 @@ function confirmOrderComparison(){
 // selections: { supplierName: [phase, phase, ...] }
 function renderOrderForm(r,selections){
     if(!r)return;
+    if(orderV2State)orderV2State._lastSelections=selections;
     const body=document.getElementById('orderTableBody');
     const totalsEl=document.getElementById('orderTotals');
     if(!body||!totalsEl)return;
 
     const pn=(document.getElementById('calcProjectName')?.value||'').trim();
-    const pa=(document.getElementById('calcProjectAddress')?.value||'').trim();
+    const pa=getProjectAddress();
     const orderNum=calcOrderNumber(r);
     const today=new Date().toISOString().split('T')[0];
 
@@ -1883,28 +2058,138 @@ function printOrder(){
     setTimeout(()=>{window.print();togglePrintWatermark(false);document.title=origTitle},100);
 }
 
+function buildOrderEmailGroups(){
+    if(!currentCalc)return[];
+    const selections=orderV2State&&orderV2State._lastSelections?orderV2State._lastSelections:null;
+    const out=[];
+    if(selections){
+        const opts=orderV2CalcOpts(currentCalc);
+        const waste=currentCalc.waste||0;
+        Object.keys(selections).forEach(supplier=>{
+            const phases=selections[supplier];
+            const res=calcForSupplier(supplier,waste,phases,opts);
+            const items=res.items.filter(i=>i.qty>0);
+            if(items.length){
+                const subtotal=items.reduce((s,i)=>s+i.lineTotal,0);
+                out.push({supplier,phases,items,subtotal});
+            }
+        });
+    }else{
+        const items=(currentCalc.items||[]).filter(i=>i.qty>0);
+        const subtotal=items.reduce((s,i)=>s+i.lineTotal,0);
+        out.push({supplier:currentCalc.supplier||'Supplier',phases:currentCalc.selectedPhases||[],items,subtotal});
+    }
+    return out;
+}
+
 function emailOrderToSupplier(){
     if(!currentCalc){notify('Generate an order first','error');return}
+    const groups=buildOrderEmailGroups();
+    if(!groups.length){notify('No items to send','error');return}
+
+    // Populate recipient rows — one per supplier, pre-filled with saved email
+    const recipWrap=document.getElementById('emailOrderRecipients');
+    recipWrap.innerHTML=groups.map(g=>{
+        const saved=getSupplierEmail(g.supplier);
+        return `<div class="email-recipient-row">
+            <label>${escHtml(g.supplier)}</label>
+            <input type="email" class="input email-order-to" data-supplier="${escAttr(g.supplier)}" value="${escAttr(saved)}" placeholder="orders@supplier.com" autocomplete="off">
+        </div>`;
+    }).join('');
+
+    // Subject
     const orderNum=calcOrderNumber(currentCalc);
     const pn=(document.getElementById('calcProjectName')?.value||'').trim();
-    const items=(currentCalc.items||[]).filter(i=>i.qty>0);
-    const subject=encodeURIComponent('Material Order'+(orderNum?' — '+orderNum:'')+(pn?' — '+pn:''));
-    let body='Order: '+orderNum+'\n';
-    if(pn)body+='Project: '+pn+'\n';
-    body+='\n';
-    items.forEach(i=>{body+=i.qty+' x '+i.name+' ('+i.sku+') @ $'+Number(i.pricePerUnit).toFixed(2)+' = $'+Number(i.lineTotal).toFixed(2)+'\n'});
-    body+='\nTotal: $'+Number(currentCalc.materialTotal||0).toFixed(2)+'\n';
-    const dn=(document.getElementById('calcDeliveryNotes')?.value||'').trim();
-    if(dn)body+='\nDelivery Notes:\n'+dn+'\n';
-    window.location.href='mailto:?subject='+subject+'&body='+encodeURIComponent(body);
+    const subjEl=document.getElementById('emailOrderSubject');
+    if(subjEl)subjEl.value='Material Order — '+orderNum+(pn?' — '+pn:'');
+
+    openModal('emailOrderModal');
+    refreshOrderEmailPreview();
 }
+window.emailOrderToSupplier=emailOrderToSupplier;
+
+async function refreshOrderEmailPreview(){
+    if(!currentCalc)return;
+    const groups=buildOrderEmailGroups();
+    if(!groups.length)return;
+    const pn=(document.getElementById('calcProjectName')?.value||'').trim();
+    const pa=getProjectAddress();
+    const dn=(document.getElementById('calcDeliveryNotes')?.value||'').trim();
+    let ci={name:'',address:'',phone:'',email:''};
+    if(typeof loadCompanyInfo==='function')try{ci=loadCompanyInfo()||ci}catch(_){}
+    try{
+        const res=await fetch('/api/order-email/preview',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+                orderNum:calcOrderNumber(currentCalc),
+                project:pn,address:pa,deliveryNotes:dn,company:ci,
+                groups,materialTotal:currentCalc.materialTotal||0
+            })
+        });
+        if(!res.ok)return;
+        const data=await res.json();
+        const iframe=document.getElementById('emailOrderPreview');
+        if(iframe&&data.html){
+            // Inject a viewport scale so the 640px email fits inside the preview pane.
+            const scaled=data.html.replace('<head>','<head><meta name="viewport" content="width=720, initial-scale=1"><style>html,body{zoom:0.78}</style>');
+            iframe.srcdoc=scaled;
+        }
+    }catch(e){console.warn('preview failed:',e.message)}
+}
+
+async function confirmSendOrderEmail(){
+    if(!currentCalc){notify('Generate an order first','error');return}
+    const subject=(document.getElementById('emailOrderSubject')?.value||'').trim();
+    const recipientInputs=Array.from(document.querySelectorAll('.email-order-to'));
+    const targets=recipientInputs.map(el=>({supplier:el.dataset.supplier,email:el.value.trim()})).filter(t=>t.email);
+    if(!targets.length){notify('Enter at least one email','error');return}
+    for(const t of targets){
+        if(!/.+@.+\..+/.test(t.email)){notify('Invalid email for '+t.supplier,'error');return}
+    }
+
+    const pn=(document.getElementById('calcProjectName')?.value||'').trim();
+    const pa=getProjectAddress();
+    const dn=(document.getElementById('calcDeliveryNotes')?.value||'').trim();
+    let ci={name:'',address:'',phone:'',email:''};
+    if(typeof loadCompanyInfo==='function')try{ci=loadCompanyInfo()||ci}catch(_){}
+    const allGroups=buildOrderEmailGroups();
+
+    let sent=0,failed=0;
+    for(const t of targets){
+        setSupplierEmail(t.supplier,t.email);
+        // Send only this supplier's items in their email
+        const supplierGroups=allGroups.filter(g=>g.supplier===t.supplier);
+        const subtotal=supplierGroups.reduce((s,g)=>s+g.subtotal,0);
+        try{
+            const res=await fetch('/api/order-email/send',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({
+                    to:t.email,
+                    subject,
+                    orderNum:calcOrderNumber(currentCalc),
+                    project:pn,address:pa,deliveryNotes:dn,company:ci,
+                    groups:supplierGroups,
+                    materialTotal:subtotal
+                })
+            });
+            if(!res.ok){const err=await res.json().catch(()=>({}));throw new Error(err.error||'Send failed')}
+            sent++;
+        }catch(e){failed++;console.warn('send failed for '+t.supplier+':',e.message)}
+    }
+    closeModal('emailOrderModal');
+    if(failed===0)notify(`Order sent to ${sent} supplier${sent===1?'':'s'}`,'success');
+    else notify(`Sent ${sent}, failed ${failed}`,'error');
+}
+window.confirmSendOrderEmail=confirmSendOrderEmail;
 window.emailOrderToSupplier=emailOrderToSupplier;
 
 function exportOrderCSV(){
     if(!requireLicense('export CSV'))return;
     if(!currentCalc)return;
     const pn=document.getElementById('calcProjectName')?.value||'';
-    const pa=document.getElementById('calcProjectAddress')?.value||'';
+    const pa=getProjectAddress();
     const orderNum=calcOrderNumber(currentCalc);
     const today=new Date().toISOString().split('T')[0];
     let csv=`"Project","${pn.replace(/"/g,'""')}"\n"Address","${pa.replace(/"/g,'""')}"\n"Order","${orderNum}"\n"Date","${today}"\n`;
@@ -1951,10 +2236,10 @@ function populateOrderPhaseFilter(){}
 
 // ===== SAVED JOBS (merged with templates) =====
 function saveJob(){if(!currentCalc){notify('Calculate first','error');return}
-    if(!isLicensed()&&savedJobs.length>=FREE_JOB_LIMIT){notify(`Free accounts can save up to ${FREE_JOB_LIMIT} jobs. Activate a license for unlimited.`,'error');return}
+    if(!isLicensed()){checkLicenseGate();return}
     const el=document.getElementById('saveJobName');el.value=document.getElementById('calcProjectName').value||'';document.getElementById('saveAsTemplate').checked=false;openModal('saveJobModal');el.focus()}
 async function doSaveJob(){const name=document.getElementById('saveJobName').value.trim();if(!name){notify('Enter name','error');return}const isTemplate=document.getElementById('saveAsTemplate').checked;
-    const job={id:'job-'+Date.now(),name,isTemplate,projectName:isTemplate?'':document.getElementById('calcProjectName').value,projectAddress:isTemplate?'':document.getElementById('calcProjectAddress').value,deliveryNotes:isTemplate?'':(document.getElementById('calcDeliveryNotes')?.value||''),supplier:currentCalc.supplier,sqft:currentCalc.totalSqft||0,linearFt:0,waste:currentCalc.waste,profitPct:currentCalc.profitPct,taxPct:currentCalc.taxPct,laborRate:currentCalc.laborRate,selectedPhases:currentCalc.selectedPhases||categories,phaseDims:currentCalc.phaseDims||{},drywallAreas:currentCalc.drywallAreas||[],selectedMaterials:currentCalc.selectedMaterials||{},materialTotal:currentCalc.materialTotal,sellingPrice:currentCalc.sellingPrice,savedAt:new Date().toISOString()};
+    const job={id:'job-'+Date.now(),name,isTemplate,projectName:isTemplate?'':document.getElementById('calcProjectName').value,projectAddress:isTemplate?'':getProjectAddress(),deliveryNotes:isTemplate?'':(document.getElementById('calcDeliveryNotes')?.value||''),supplier:currentCalc.supplier,sqft:currentCalc.totalSqft||0,linearFt:0,waste:currentCalc.waste,profitPct:currentCalc.profitPct,taxPct:currentCalc.taxPct,laborRate:currentCalc.laborRate,selectedPhases:currentCalc.selectedPhases||categories,phaseDims:currentCalc.phaseDims||{},drywallAreas:currentCalc.drywallAreas||[],selectedMaterials:currentCalc.selectedMaterials||{},materialTotal:currentCalc.materialTotal,sellingPrice:currentCalc.sellingPrice,savedAt:new Date().toISOString()};
     savedJobs.unshift(job);saveSavedJobs();
     // Save to API
     if(api.getToken()){
@@ -2078,7 +2363,7 @@ function renderSavedJobs(){
     // Filtered rows
     const rows=jobsV2FilterList();
     if(!savedJobs.length){
-        listEl.innerHTML=`<div class="jobs-v2-table-wrap"><div class="jobs-v2-empty"><div class="jobs-v2-empty-title">No saved jobs yet</div><div class="jobs-v2-empty-text">Save a calculation from the Calculator page to build your library.</div><button class="jobs-v2-cta" data-on-click="jobsV2NewJob">+ New job</button></div></div>`;
+        listEl.innerHTML=`<div class="jobs-v2-table-wrap"><div class="jobs-v2-empty"><div class="jobs-v2-empty-title">No saved jobs yet</div><div class="jobs-v2-empty-text">Save a calculation from the Calculator page to build your library.</div><button class="jobs-v2-cta" data-on-click="jobsV2NewJob">New job</button></div></div>`;
     }else if(!rows.length){
         listEl.innerHTML=`<div class="jobs-v2-table-wrap"><div class="jobs-v2-empty"><div class="jobs-v2-empty-title">No matches</div><div class="jobs-v2-empty-text">Try clearing the search or switching tabs.</div></div></div>`;
     }else{
@@ -2419,7 +2704,7 @@ async function renderDashboard(){
                     </div>
                     <div class="dash-v2-section-head-right">
                         <span>Showing ${recent.length} of ${nonTemplates.length}</span>
-                        <button class="dash-v2-section-link" data-on-click="showPage" data-args="savedJobs">All &rarr;</button>
+                        <button class="dash-v2-section-link" data-on-click="showPage" data-args="savedJobs">View all</button>
                     </div>
                 </div>
 
@@ -2655,16 +2940,271 @@ async function renderAccountPage(){
     setVal('companyEmail',ci.email);
 }
 
+// ===== ONBOARDING WIZARD =====
+let _onboardingStep=1;
+
+function onboardingCacheKey(){
+    return currentUser?'esticount_onboarded_'+currentUser.id:'';
+}
+function checkOnboarding(){
+    if(!currentUser)return;
+    if(currentUser.onboarding_completed)return;
+    // Fallback: if the user already completed onboarding in this browser but
+    // the backend can't persist it (schema migration not run yet), the local
+    // flag prevents the wizard from re-opening on every refresh.
+    try{
+        const key=onboardingCacheKey();
+        if(key&&localStorage.getItem(key)==='1'){
+            currentUser.onboarding_completed=true;
+            return;
+        }
+    }catch(_){}
+    openOnboardingWizard();
+}
+
+function openOnboardingWizard(){
+    _onboardingStep=1;
+    // Start blank — user enters everything fresh on first onboarding.
+    ['obCompanyName','obCompanyAddress','obCompanyPhone','obLicense'].forEach(id=>{
+        const el=document.getElementById(id);if(el)el.value='';
+    });
+    renderOnboardingStep();
+    openModal('onboardingModal');
+    // Attach Google Places autocomplete to the business address field (idempotent).
+    const addr=document.getElementById('obCompanyAddress');
+    if(addr&&typeof attachPlacesAutocomplete==='function')attachPlacesAutocomplete(addr);
+    // Auto-format phone as the user types (XXX-XXX-XXXX).
+    const phoneEl=document.getElementById('obCompanyPhone');
+    if(phoneEl&&!phoneEl.dataset.phoneFmt){
+        phoneEl.dataset.phoneFmt='1';
+        phoneEl.addEventListener('input',()=>{phoneEl.value=formatPhone(phoneEl.value)});
+    }
+    setTimeout(()=>document.getElementById('obCompanyName')?.focus(),60);
+}
+
+function renderOnboardingStep(){
+    document.querySelectorAll('#onboardingModal .onboarding-step').forEach(el=>{
+        el.style.display=Number(el.dataset.step)===_onboardingStep?'flex':'none';
+    });
+    document.querySelectorAll('#onboardingModal .onboarding-dot').forEach(el=>{
+        const n=Number(el.dataset.step);
+        el.classList.toggle('is-active',n===_onboardingStep);
+        el.classList.toggle('is-done',n<_onboardingStep);
+    });
+    document.getElementById('obBackBtn').style.display=_onboardingStep>1?'':'none';
+    document.getElementById('obNextBtn').textContent=_onboardingStep===3?'Finish':'Next';
+}
+
+function onboardingBack(){
+    if(_onboardingStep>1){_onboardingStep--;renderOnboardingStep()}
+}
+window.onboardingBack=onboardingBack;
+
+// Domains used by disposable / temporary email services. Blocking these catches
+// the majority of "fake email" attempts. Maintained as a single source of truth.
+const DISPOSABLE_EMAIL_DOMAINS=new Set([
+    'mailinator.com','guerrillamail.com','guerrillamail.net','guerrillamail.org','guerrillamail.biz','guerrillamail.de','sharklasers.com','grr.la',
+    '10minutemail.com','10minutemail.net','tempmail.com','temp-mail.org','temp-mail.io','tempmailaddress.com','tempr.email',
+    'throwaway.email','throwawaymail.com','maildrop.cc','yopmail.com','dispostable.com','fakeinbox.com','trashmail.com','trashmail.de',
+    'getnada.com','nada.email','mailnesia.com','mintemail.com','mohmal.com','mytemp.email','spamgourmet.com','spam4.me','spambox.us',
+    'emailondeck.com','dropmail.me','mailtothis.com','mail-temp.com','mvrht.net','tmail.ws','wegwerfmail.de','wegwerfmail.net',
+    'fakemail.net','fakemailgenerator.com','tempinbox.com','mailcatch.com','jetable.org','tempemail.com','tempemail.co','tempemail.net',
+    'tempmail.io','tempmail.ninja','tempmail.us.com','tempmail.email','tempinbox.co','snapmail.cc','burnermail.io','mailbox.org',
+    'incognitomail.com','filzmail.com','spamavert.com','mailexpire.com','tempmailo.com','dispomail.email','tempr.email',
+    // Common obvious-fake placeholders
+    'example.com','example.org','example.net','test.com','test.org','test.net','asdf.com','aaa.com','bbb.com','qwerty.com',
+    'mail.com','localhost.com','noreply.com','no-reply.com','none.com','null.com','fake.com','fakemail.com','dummy.com'
+]);
+
+// Validate a plausible business email. Catches obvious junk and disposable
+// providers. Doesn't verify the address actually receives mail — that needs
+// a confirmation email round-trip.
+function isValidEmail(s){
+    const v=String(s||'').trim().toLowerCase();
+    if(!v||v.length>254)return false;
+    if(!/^[a-z0-9](?:[a-z0-9._%+-]*[a-z0-9])?@[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$/.test(v))return false;
+    if(v.includes('..'))return false;
+    const at=v.lastIndexOf('@');
+    const local=v.slice(0,at);
+    const domain=v.slice(at+1);
+    // Block disposable domain providers.
+    if(DISPOSABLE_EMAIL_DOMAINS.has(domain))return false;
+    // Block any subdomain of a disposable provider, e.g. foo.mailinator.com
+    for(const d of DISPOSABLE_EMAIL_DOMAINS){if(domain.endsWith('.'+d))return false}
+    // Block obvious test/junk top-level domains.
+    if(/\.(?:test|example|invalid|localhost|local)$/i.test(domain))return false;
+    // Block common junk local parts like "test", "asdf", "abc", "123", "fake", "qwerty".
+    if(/^(?:test+|asdf+|aaa+|abc+|qwer+t*y*|fake+|dummy+|none+|x+|123+|abcd+|noreply|no-reply)$/i.test(local))return false;
+    // Block local parts that are entirely a single repeated character (aaaa, 1111).
+    if(/^(.)\1{2,}$/.test(local))return false;
+    return true;
+}
+
+// Format US phone digits as 555-555-1234 (or with area code dash).
+function formatPhone(s){
+    const d=String(s||'').replace(/\D/g,'').slice(0,10);
+    if(d.length<=3)return d;
+    if(d.length<=6)return d.slice(0,3)+'-'+d.slice(3);
+    return d.slice(0,3)+'-'+d.slice(3,6)+'-'+d.slice(6);
+}
+function isValidPhone(s){
+    const d=String(s||'').replace(/\D/g,'');
+    return d.length===10;
+}
+
+async function onboardingNext(){
+    if(_onboardingStep===1){
+        const name=document.getElementById('obCompanyName').value.trim();
+        const address=document.getElementById('obCompanyAddress').value.trim();
+        if(!name){notify('Company name is required','error');return}
+        if(!address){notify('Business address is required','error');return}
+        _onboardingStep=2;renderOnboardingStep();return;
+    }
+    if(_onboardingStep===2){
+        const phoneEl=document.getElementById('obCompanyPhone');
+        const phone=phoneEl.value.trim();
+        if(!phone){notify('Phone is required','error');phoneEl.focus();return}
+        if(!isValidPhone(phone)){notify('Enter a 10-digit phone number','error');phoneEl.focus();return}
+        _onboardingStep=3;renderOnboardingStep();return;
+    }
+    // Step 3 → submit. Business email isn't collected separately — the user's
+    // verified account email is used for letterhead and reply-to.
+    const payload={
+        company_name:document.getElementById('obCompanyName').value.trim(),
+        company_address:document.getElementById('obCompanyAddress').value.trim(),
+        company_phone:document.getElementById('obCompanyPhone').value.trim(),
+        contractor_license:document.getElementById('obLicense').value.trim()
+    };
+    // Always cache locally first so the user isn't stuck even if the backend
+    // hasn't run the company-columns migration yet. The supplier email pulls
+    // from this cache too.
+    localStorage.setItem('esticount_company_info',JSON.stringify({
+        name:payload.company_name,address:payload.company_address,
+        phone:payload.company_phone,email:currentUser?.email||'',license:payload.contractor_license
+    }));
+    // Always record completion locally so the wizard doesn't reappear on
+    // refresh even when the backend can't persist the flag.
+    try{const key=onboardingCacheKey();if(key)localStorage.setItem(key,'1')}catch(_){}
+    try{
+        const updated=await api.completeOnboarding(payload);
+        if(currentUser){
+            currentUser.company_name=updated.company_name;
+            currentUser.company_address=updated.company_address;
+            currentUser.company_phone=updated.company_phone;
+            currentUser.company_email=updated.company_email;
+            currentUser.contractor_license=updated.contractor_license;
+            currentUser.onboarding_completed=true;
+        }
+        closeModal('onboardingModal');
+        notify('All set! Welcome to EstiCount.','success');
+    }catch(e){
+        // Backend save failed (likely the schema migration hasn't run). Don't
+        // block the user — their company info is cached locally and orders
+        // will still work.
+        if(currentUser)currentUser.onboarding_completed=true;
+        closeModal('onboardingModal');
+        console.warn('[onboarding] backend save failed:',e.message);
+        notify('Saved locally. Sync to server failed — admin may need to run the schema migration.','info');
+    }
+}
+window.onboardingNext=onboardingNext;
+window.openOnboardingWizard=openOnboardingWizard;
+
+// ===== LICENSE GATE =====
+// Blocks the app if the user has no valid license. Lifetime users skip this.
+function hasActiveLicense(){
+    if(!currentUser)return false;
+    if(currentUser.role==='admin')return true;
+    if(currentUser.license_type==='lifetime')return true;
+    if(!currentUser.license_expires)return false;
+    return new Date(currentUser.license_expires)>new Date();
+}
+
+function checkLicenseGate(){
+    if(hasActiveLicense()){
+        closeModal('licenseGateModal');
+        return;
+    }
+    const titleEl=document.getElementById('licenseGateTitle');
+    const textEl=document.getElementById('licenseGateText');
+    const t=currentUser&&currentUser.license_type;
+    if(!t){
+        titleEl.textContent='License required';
+        textEl.textContent='Enter a license key to access EstiCount, or see plans to purchase.';
+    }else if(t==='trial'){
+        titleEl.textContent='Your trial has ended';
+        textEl.textContent='Enter a license key to continue, or see plans to upgrade.';
+    }else{
+        titleEl.textContent='Your license has expired';
+        textEl.textContent='Renew or enter a new license key to continue.';
+    }
+    const msgEl=document.getElementById('licenseGateMessage');
+    if(msgEl){msgEl.textContent='';msgEl.style.color=''}
+    document.getElementById('licenseGateInput').value='';
+    openModal('licenseGateModal');
+}
+window.checkLicenseGate=checkLicenseGate;
+
+async function activateLicenseGate(){
+    const input=document.getElementById('licenseGateInput');
+    const msg=document.getElementById('licenseGateMessage');
+    const key=(input?.value||'').trim().toUpperCase();
+    if(!key){if(msg){msg.textContent='Enter a key.';msg.style.color='var(--err,#ff6b6b)'}return}
+    try{
+        const r=await api.activateLicense(key);
+        if(currentUser){
+            currentUser.license_type=r.user.license_type;
+            currentUser.license_key=r.user.license_key;
+            currentUser.license_expires=r.user.license_expires;
+        }
+        if(msg){msg.textContent='Activated.';msg.style.color='var(--ok,#3fb950)'}
+        setTimeout(()=>{closeModal('licenseGateModal');checkOnboarding()},400);
+    }catch(e){
+        if(msg){msg.textContent=e.message||'Invalid key';msg.style.color='var(--err,#ff6b6b)'}
+    }
+}
+window.activateLicenseGate=activateLicenseGate;
+
 // ===== COMPANY INFO (account-v2 section) =====
-// Company Info — used on order form letterheads.
-// Persisted in localStorage; no backend sync in v1.
+// Company info — used on order form letterheads and supplier emails.
+// Primary source is the backend user record (currentUser.company_*).
+// localStorage is kept as a cache for offline reads and pre-account use.
 function loadCompanyInfo(){
+    const u=window.currentUser||currentUser||null;
+    if(u&&(u.company_name||u.company_address||u.company_phone||u.company_email||u.contractor_license)){
+        return{
+            name:u.company_name||'',
+            address:u.company_address||'',
+            license:u.contractor_license||'',
+            phone:u.company_phone||'',
+            email:u.company_email||u.email||''
+        };
+    }
     try{const raw=localStorage.getItem('esticount_company_info');if(raw){const o=JSON.parse(raw);return{name:o.name||'',address:o.address||'',license:o.license||'',phone:o.phone||'',email:o.email||''}}}catch(_){}
     return{name:'',address:'',license:'',phone:'',email:''};
 }
 function saveCompanyInfo(obj){
     const clean={name:String(obj.name||'').trim(),address:String(obj.address||'').trim(),license:String(obj.license||'').trim(),phone:String(obj.phone||'').trim(),email:String(obj.email||'').trim()};
     localStorage.setItem('esticount_company_info',JSON.stringify(clean));
+    // Best-effort: sync to the backend so it follows the user across devices.
+    if(api&&api.getToken&&api.getToken()&&typeof api.completeOnboarding==='function'){
+        api.completeOnboarding({
+            company_name:clean.name,
+            company_address:clean.address,
+            company_phone:clean.phone,
+            company_email:clean.email,
+            contractor_license:clean.license
+        }).then(updated=>{
+            if(currentUser){
+                currentUser.company_name=updated.company_name;
+                currentUser.company_address=updated.company_address;
+                currentUser.company_phone=updated.company_phone;
+                currentUser.company_email=updated.company_email;
+                currentUser.contractor_license=updated.contractor_license;
+                currentUser.onboarding_completed=true;
+            }
+        }).catch(e=>console.warn('Company info backend sync failed:',e.message));
+    }
     return clean;
 }
 function saveCompanyInfoFromForm(){
@@ -2794,6 +3334,44 @@ async function updateProfile(){
         setTimeout(()=>{accountV2SetMessage(msg,'','muted')},5000);
     }
 }
+
+// Account deletion
+function openDeleteAccountModal(){
+    document.getElementById('delAcctPassword').value='';
+    document.getElementById('delAcctConfirm').value='';
+    document.getElementById('delAcctMessage').textContent='';
+    openModal('deleteAccountModal');
+    setTimeout(()=>document.getElementById('delAcctPassword')?.focus(),60);
+}
+window.openDeleteAccountModal=openDeleteAccountModal;
+
+async function confirmDeleteAccount(){
+    const password=document.getElementById('delAcctPassword').value;
+    const confirm=document.getElementById('delAcctConfirm').value;
+    const msg=document.getElementById('delAcctMessage');
+    msg.textContent='';
+    if(!password){msg.textContent='Enter your password.';return}
+    if(confirm!=='DELETE'){msg.textContent='Type DELETE (in caps) to confirm.';return}
+    try{
+        await api.deleteAccount(password,confirm);
+        // Wipe local state and reload to the landing page
+        api.setToken(null);
+        try{
+            localStorage.removeItem('esticount_company_info');
+            localStorage.removeItem('esticount_supplier_info');
+            localStorage.removeItem('esticount_page');
+            localStorage.removeItem('esticount_order_counter');
+            // Clean up any per-user onboarding flags
+            Object.keys(localStorage).filter(k=>k.startsWith('esticount_onboarded_')).forEach(k=>localStorage.removeItem(k));
+        }catch(_){}
+        closeModal('deleteAccountModal');
+        notify('Account deleted.','success');
+        setTimeout(()=>{window.location.assign('/landing.html')},600);
+    }catch(e){
+        msg.textContent=e.message||'Could not delete account';
+    }
+}
+window.confirmDeleteAccount=confirmDeleteAccount;
 
 // Admin view toggle
 window.adminViewAsUser=false;
@@ -3117,8 +3695,11 @@ function getRecentMaterials(){return JSON.parse(localStorage.getItem('esticount_
 // ===== INIT =====
 async function initApp(){
     await loadData();
-    // Restore last page BEFORE showing app (prevents flash to dashboard)
-    const savedPage=localStorage.getItem('esticount_page');
+    // Restore last page BEFORE showing app (prevents flash to dashboard).
+    // The admin page is role-gated: never restore it for a non-admin, even if a
+    // stale esticount_page value survives from a previous user on this device.
+    let savedPage=localStorage.getItem('esticount_page');
+    if(savedPage==='admin'&&(!currentUser||currentUser.role!=='admin'))savedPage=null;
     if(savedPage&&document.getElementById(savedPage+'Page')){
         // Pre-activate the page without triggering render yet
         document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
@@ -3147,6 +3728,12 @@ async function initApp(){
 
     // Track recently used materials
     trackRecentMaterials();
+
+    // After app boots, gate access by license and show the onboarding wizard
+    // if the user hasn't completed it yet. Both helpers are no-ops if the
+    // state doesn't warrant them.
+    checkLicenseGate();
+    checkOnboarding();
 }
 
 document.addEventListener('DOMContentLoaded', async function(){

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../config/database');
 const { authenticate } = require('../middleware/auth');
-const crypto = require('crypto');
+const { createLicenseKey } = require('../lib/keys');
 
 // Admin-only middleware
 function adminOnly(req, res, next) {
@@ -62,12 +62,8 @@ router.post('/keys', async (req, res, next) => {
     const { type = 'monthly', duration_days = 30, count = 1, max_uses = 1 } = req.body;
     const keys = [];
     for (let i = 0; i < Math.min(count, 50); i++) {
-      const key = 'EC-' + type.toUpperCase().slice(0, 3) + '-' + crypto.randomBytes(8).toString('hex').toUpperCase();
-      const { data, error } = await supabase.from('license_keys').insert({
-        key, type, duration_days, max_uses, created_by: req.user.id
-      }).select().single();
-      if (error) throw error;
-      keys.push(data);
+      const row = await createLicenseKey({ type, duration_days, max_uses, created_by: req.user.id });
+      keys.push(row);
     }
     res.status(201).json({ keys });
   } catch (err) { next(err); }

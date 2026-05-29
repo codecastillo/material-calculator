@@ -74,6 +74,15 @@
     color: var(--v2-text-primary);
 }
 
+.login-v2-brand-lockup {
+    height: 32px;
+    width: auto;
+    display: block;
+}
+[data-theme="light"] .login-v2-brand-lockup {
+    filter: invert(1) hue-rotate(180deg);
+}
+
 .login-v2-brand-mark {
     width: 28px; height: 28px;
     background: #fff;

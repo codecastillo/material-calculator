@@ -304,6 +304,29 @@ tr.drag-over td{border-top:2px solid var(--pri)}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:500;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;min-width:380px;max-width:90vw;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.3);animation:modalIn .2s ease}
+.modal.modal-wide{min-width:960px;max-width:96vw}
+/* Onboarding wizard */
+.onboarding-sub{font-size:.9rem;color:var(--text2);margin:-8px 0 18px}
+.onboarding-stepper{display:flex;align-items:center;gap:8px;margin:0 auto 22px;max-width:280px}
+.onboarding-dot{width:30px;height:30px;border-radius:50%;background:var(--v2-bg-surface);border:1px solid var(--v2-border-hairline);display:inline-flex;align-items:center;justify-content:center;font-family:var(--v2-font-mono);font-size:.78rem;color:var(--text3);flex-shrink:0}
+.onboarding-dot.is-active{background:var(--v2-accent);border-color:var(--v2-accent);color:#fff}
+.onboarding-dot.is-done{background:var(--v2-accent-soft);border-color:var(--v2-accent);color:var(--v2-accent)}
+.onboarding-rule{flex:1;height:1px;background:var(--v2-border-hairline)}
+.onboarding-step{display:flex;flex-direction:column;gap:14px;margin-bottom:8px}
+#onboardingModal .modal{min-width:520px;max-width:560px}
+#onboardingModal h3{font-family:var(--v2-font-serif);font-weight:500;font-size:1.6rem;letter-spacing:-.01em;margin-bottom:6px}
+#licenseGateModal .modal{min-width:440px;max-width:480px}
+#licenseGateModal h3{font-family:var(--v2-font-serif);font-weight:500;font-size:1.4rem;letter-spacing:-.01em}
+.email-modal-grid{display:grid;grid-template-columns:340px 1fr;gap:24px;align-items:start}
+.email-modal-left{display:flex;flex-direction:column;gap:14px}
+.email-modal-right{display:flex;flex-direction:column;gap:8px;min-width:0}
+.email-modal-eyebrow{font-family:var(--v2-font-mono);font-size:.7rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text3)}
+.email-modal-preview{width:100%;height:520px;border:1px solid var(--border);border-radius:8px;background:#ffffff}
+.email-modal-hint{font-size:.78rem;color:var(--text3);margin:4px 0 0;line-height:1.5}
+.email-recipient-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.email-recipient-row label{flex:0 0 110px;font-size:.78rem;color:var(--text2);text-transform:none;letter-spacing:0;margin:0}
+.email-recipient-row input{flex:1;min-width:0}
+@media(max-width:1080px){.modal.modal-wide{min-width:0;width:96vw}.email-modal-grid{grid-template-columns:1fr}.email-modal-preview{height:360px}}
 @keyframes modalIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
 .modal h3{margin-bottom:18px;font-size:1.1rem;font-weight:600}
 .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
@@ -524,6 +547,9 @@ tr.drag-over td{border-top:2px solid var(--pri)}
     --v2-status-dot-amber:#4493f8;
     --v2-badge-surface-neutral:#1f242c;
 
+    /* shadows */
+    --v2-shadow-modal:0 8px 32px rgba(0,0,0,.4);
+
     /* fonts */
     /* --v2-font-serif is the display face (big titles, customer-price numbers, etc.).
        Name kept for backward compatibility; the current stack is the wide bold sans Akira
@@ -539,6 +565,31 @@ tr.drag-over td{border-top:2px solid var(--pri)}
     /* radii */
     --v2-r-card:10px; --v2-r-inner:8px; --v2-r-button:8px; --v2-r-input:6px; --v2-r-pill:999px;
 }
+
+/* Light-theme overrides for the v2 design tokens. Without these the v2
+   components stay dark even when the user toggles light mode, while the
+   legacy components flip to light — producing a mismatched look. */
+[data-theme="light"]{
+    --v2-bg-app:#f5f5f3;
+    --v2-bg-surface:#ffffff;
+    --v2-bg-surface-2:#fafaf8;
+    --v2-bg-surface-hover:#f0f0ec;
+    --v2-bg-input:#ffffff;
+    --v2-border-hairline:#e2e2dd;
+    --v2-border-strong:#cfcfc8;
+    --v2-text-primary:#111111;
+    --v2-text-secondary:#555555;
+    --v2-text-tertiary:#777777;
+    --v2-text-muted:#999999;
+    --v2-accent-soft:#e3eefb;
+    --v2-badge-surface-neutral:#f0f0ec;
+    --v2-shadow-modal:0 8px 32px rgba(0,0,0,.12);
+}
+
+/* The legacy "← Back" page header is redundant in v2 — every page has its
+   own header section now. Hide it everywhere so it doesn't show as a
+   white/dark band that fights with the page's own dark surface. */
+.page-header{display:none !important}
 
 /* ===== TOPNAV (v2) ===== */
 .v2-topnav{
@@ -562,6 +613,9 @@ tr.drag-over td{border-top:2px solid var(--pri)}
 .v2-topnav-left{display:flex;align-items:center;gap:var(--v2-s2);flex-shrink:0;justify-self:start}
 
 .v2-brand{display:inline-flex;align-items:center;gap:var(--v2-s2);text-decoration:none;color:var(--v2-text-primary)}
+.v2-brand-lockup{height:26px;width:auto;display:block}
+/* On light backgrounds, invert the on-dark lockup so the off-white text becomes near-black. */
+[data-theme="light"] .v2-brand-lockup{filter:invert(1) hue-rotate(180deg)}
 .v2-brand-mark{
     width:28px;height:28px;
     background:#fff;
@@ -1034,47 +1088,68 @@ select.calc-v2-input{cursor:pointer}
 
 .calc-v2-summary-ctas{display:flex;flex-direction:column;gap:8px}
 
-/* Google Places autocomplete dropdown — dark theme */
-.pac-container{
+/* Custom Google Places dropdown (REST API) */
+.places-dropdown{
+    position:fixed;
+    z-index:10000;
     background:var(--v2-bg-surface,#1a1d21);
     border:1px solid var(--v2-border-hairline,#2a2d31);
     border-radius:8px;
     box-shadow:0 8px 24px rgba(0,0,0,.5);
-    font-family:var(--v2-font-sans);
-    margin-top:4px;
-    z-index:10000;
+    max-height:400px;
+    overflow-y:auto;
+    overscroll-behavior:contain;
 }
-.pac-item{
+.places-item{
     padding:10px 14px;
-    border-top:1px solid var(--v2-border-hairline,#2a2d31);
     color:var(--v2-text-secondary,#9aa0a9);
+    font-family:var(--v2-font-sans);
     font-size:.88rem;
     cursor:pointer;
+    border-top:1px solid var(--v2-border-hairline,#2a2d31);
 }
-.pac-item:first-child{border-top:none}
-.pac-item:hover,.pac-item-selected{
+.places-item:first-child{border-top:none}
+.places-item:hover{
     background:var(--v2-bg-surface-hover,rgba(255,255,255,.04));
-}
-.pac-item-query{
     color:var(--v2-text-primary,#e8e6e1);
-    font-weight:500;
 }
-.pac-icon,.pac-icon-marker{display:none}
-.pac-matched{color:var(--v2-accent,#4a9eff)}
-
-[data-theme="light"] .pac-container{
+[data-theme="light"] .places-dropdown{
     background:#ffffff;
     border-color:#e2e2dd;
     box-shadow:0 8px 24px rgba(0,0,0,.12);
 }
-[data-theme="light"] .pac-item{
+[data-theme="light"] .places-item{
     border-color:#e2e2dd;
     color:#555;
 }
-[data-theme="light"] .pac-item:hover,
-[data-theme="light"] .pac-item-selected{background:#f5f5f3}
-[data-theme="light"] .pac-item-query{color:#111}
-[data-theme="light"] .pac-matched{color:#0066cc}
+[data-theme="light"] .places-item:hover{background:#f5f5f3;color:#111}
+
+/* Google Places autocomplete (new PlaceAutocompleteElement) */
+#placesAutocomplete{
+    width:100%;
+    height:40px;
+}
+#placesAutocomplete::part(input){
+    background:var(--v2-bg-input,#14161a);
+    border:1px solid var(--v2-border-hairline,#2a2d31);
+    border-radius:var(--v2-r-input,6px);
+    color:var(--v2-text-primary,#e8e6e1);
+    font-family:var(--v2-font-sans);
+    font-size:.92rem;
+    padding:8px 12px;
+    width:100%;
+    box-sizing:border-box;
+    outline:none;
+    transition:border-color .12s ease;
+}
+#placesAutocomplete::part(input):focus{
+    border-color:var(--v2-accent,#4a9eff);
+}
+[data-theme="light"] #placesAutocomplete::part(input){
+    background:#ffffff;
+    border-color:#e2e2dd;
+    color:#111;
+}
 
 /* Hide legacy result chrome in v2 (kept in DOM for compatibility) */
 .calc-v2-page #calcBreakdown,

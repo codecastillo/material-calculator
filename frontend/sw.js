@@ -1,4 +1,4 @@
-const CACHE_NAME = 'esticount-v15';
+const CACHE_NAME = 'esticount-v16';
 const APP_SHELL = [
   '/index.html',
   '/css/styles.css',
@@ -15,7 +15,8 @@ const APP_SHELL = [
   '/js/sw-register.js',
   '/js/app.js',
   '/js/api.js',
-  '/assets/logo.png'
+  '/assets/logo.png',
+  '/assets/esticount-lockup.png'
 ];
 
 // Install: cache the app shell

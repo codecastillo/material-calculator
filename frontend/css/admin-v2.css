@@ -169,7 +169,7 @@ body:has(#adminPage.admin-v2-page.active){background:var(--v2-bg-app)}
 
 /* ===== Tables row ===== */
 .admin-v2-tables{
-    display:grid;grid-template-columns:1fr 1fr;gap:24px;
+    display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;
 }
 .admin-v2-card{
     background:var(--v2-bg-surface);

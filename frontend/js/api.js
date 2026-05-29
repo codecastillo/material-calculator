@@ -108,9 +108,19 @@ const api = {
 
     // Profile
     async updateProfile(data) { return api._fetch('/auth/profile', { method: 'PUT', body: JSON.stringify(data) }); },
+    async deleteAccount(password, confirm) { return api._fetch('/auth/account', { method: 'DELETE', body: JSON.stringify({ password, confirm }) }); },
 
     // License
     async activateLicense(key) { return api._fetch('/auth/activate', { method: 'POST', body: JSON.stringify({ key }) }); },
+
+    // Onboarding
+    async getOnboarding() { return api._fetch('/onboarding/me'); },
+    async completeOnboarding(data) { return api._fetch('/onboarding/complete', { method: 'POST', body: JSON.stringify(data) }); },
+    async getOnboardingToken(token) { return api._fetch('/onboarding/token/' + encodeURIComponent(token)); },
+    async redeemOnboarding(body) { return api._fetch('/onboarding/redeem', { method: 'POST', body: JSON.stringify(body) }); },
+
+    // Stripe
+    async createCheckout(plan) { return api._fetch('/stripe/checkout', { method: 'POST', body: JSON.stringify({ plan }) }); },
 
     // Bulk price update
     async bulkPriceUpdate(supplier_id, percentage, category_id) {
@@ -238,7 +248,14 @@ async function doResendCode() {
         document.getElementById('verifyError').style.color = '';
     }
 }
-function doLogout() { api.setToken(null); currentUser = null; showLoginScreen(); }
+function doLogout() {
+    api.setToken(null);
+    currentUser = null;
+    // Clear per-session UI nav state so the next user on this device doesn't
+    // inherit the previous user's last page (e.g. an admin's Admin Panel).
+    try { localStorage.removeItem('esticount_page'); } catch (_) {}
+    showLoginScreen();
+}
 
 // Forgot password flow
 function showForgotPassword() {

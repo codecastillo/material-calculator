@@ -9,6 +9,14 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Onboarding / company profile columns (added in v4 onboarding)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS company_name TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS company_address TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS company_phone TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS company_email TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS contractor_license TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT FALSE;
+
 CREATE TABLE IF NOT EXISTS suppliers (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
@@ -63,6 +71,23 @@ CREATE TABLE IF NOT EXISTS supplier_categories (
     category_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
     PRIMARY KEY (supplier_id, category_id)
 );
+
+-- Onboarding magic-link tokens for Stripe purchases.
+-- A token is created when a Stripe checkout completes; the buyer clicks
+-- the magic link in their email to finish creating their account.
+CREATE TABLE IF NOT EXISTS onboarding_tokens (
+    id SERIAL PRIMARY KEY,
+    token TEXT UNIQUE NOT NULL,
+    email TEXT NOT NULL,
+    license_key TEXT NOT NULL,
+    stripe_session_id TEXT UNIQUE,
+    expires_at TIMESTAMPTZ NOT NULL,
+    used BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_onboarding_tokens_token ON onboarding_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_onboarding_tokens_session ON onboarding_tokens(stripe_session_id);
 
 -- Enable Row Level Security
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
