@@ -89,10 +89,23 @@ CREATE TABLE IF NOT EXISTS onboarding_tokens (
 CREATE INDEX IF NOT EXISTS idx_onboarding_tokens_token ON onboarding_tokens(token);
 CREATE INDEX IF NOT EXISTS idx_onboarding_tokens_session ON onboarding_tokens(stripe_session_id);
 
--- Enable Row Level Security
+-- Row Level Security as defense in depth.
+-- The backend connects with the Supabase secret (service) key, which bypasses
+-- RLS, so enabling it does not change how the API reads or writes data. With RLS
+-- on and no permissive policies, the public/anon key gets no access to any table,
+-- so an exposed anon key cannot read user data. No policies are added because the
+-- app does not use Supabase Auth or the anon key. IF EXISTS guards the tables that
+-- are created outside this file so re-running the script never errors.
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE suppliers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE materials ENABLE ROW LEVEL SECURITY;
 ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE supplier_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE onboarding_tokens ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS license_keys ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS verification_codes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS price_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS activity_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS clients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS invoices ENABLE ROW LEVEL SECURITY;
