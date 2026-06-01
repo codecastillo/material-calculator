@@ -63,23 +63,19 @@ function toggleCCFeeInput(event) {
   if (inp) inp.disabled = !cb.checked;
 }
 
-// --- Save Template: open the Save Job modal pre-checked as a template
-// (M12: the "Save template" header link previously called saveJob directly,
-//  which left the template flag unchecked — the label promises a template save). ---
+// --- Save Template: open the Save Job modal pre-checked as a template.
+// saveJob() leaves the template checkbox unchecked; force it true after the modal opens.
 function saveTemplate() {
   if (typeof saveJob !== 'function') return;
   saveJob();
-  // saveJob() defaults the checkbox to false; force it true after the modal opens.
   const tmpl = document.getElementById('saveAsTemplate');
   if (tmpl) tmpl.checked = true;
 }
 
 // --- Activate License from the login-v2 screen.
-// The existing activateLicense() in app.js reads from #licenseKeyInput (which lives
-// inside #appContainer's Account page). The login-v2 redesign introduces a separate
-// activate input (#loginLicenseKeyInput) so the two contexts don't collide.
-// This helper proxies the value into the legacy input element and dispatches the
-// existing handler, so server-side wiring and post-success navigation are unchanged.
+// #loginLicenseKeyInput is separate from #licenseKeyInput (Account page) so the two
+// contexts don't collide. Proxies into api.activateLicense directly; post-success
+// navigation mirrors what the in-app handler does.
 async function activateLicenseFromLogin() {
   const src = document.getElementById('loginLicenseKeyInput');
   const errEl = document.getElementById('loginError');
@@ -113,7 +109,7 @@ function loginV2PrefillEmail() {
   try {
     const stored = localStorage.getItem('esticount_last_email');
     if (stored && !el.value) el.value = stored;
-  } catch (_) {
+  } catch {
     /* localStorage may be unavailable */
   }
 }
@@ -124,7 +120,9 @@ function loginV2RememberEmail() {
   if (v && /@/.test(v)) {
     try {
       localStorage.setItem('esticount_last_email', v);
-    } catch (_) {}
+    } catch {
+      /* localStorage may be unavailable */
+    }
   }
 }
 function loginV2KeyShape(k) {

@@ -1,4 +1,4 @@
-// ===== API CLIENT =====
+// API client
 const API_BASE = window.location.origin + '/api';
 let authToken = localStorage.getItem('esticount_token') || null;
 let currentUser = null;
@@ -261,7 +261,7 @@ const api = {
   },
 };
 
-// ===== AUTH UI =====
+// Auth UI
 function hideLoadingScreen() {
   const el = document.getElementById('loadingScreen');
   if (el) el.style.display = 'none';
@@ -426,7 +426,9 @@ function doLogout() {
   // inherit the previous user's last page (e.g. an admin's Admin Panel).
   try {
     localStorage.removeItem('esticount_page');
-  } catch (_) {}
+  } catch {
+    /* localStorage may be unavailable */
+  }
   showLoginScreen();
 }
 

@@ -17,13 +17,13 @@
     if (raw.startsWith('[')) {
       try {
         return JSON.parse(raw);
-      } catch (_) {
-        /* fall through */
+      } catch {
+        /* fall through to single-value parse */
       }
     }
     try {
       return [JSON.parse(raw)];
-    } catch (_) {
+    } catch {
       return [raw];
     }
   }
