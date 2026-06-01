@@ -1,4 +1,4 @@
-// ===== DEFAULTS =====
+// Defaults
 const DEFAULT_CATEGORIES = ['Accessories', 'Lath', 'Gray Coat', 'Color Coat', 'Drywall', 'Stone'];
 const DEFAULT_SUPPLIERS = ['Pacific Supply', 'ABC Supply', 'Sherwin Williams'];
 const UNITS = [
@@ -33,7 +33,9 @@ function loadBusinessExpenses() {
         items: Array.isArray(o.items) ? o.items : [],
       };
     }
-  } catch (_) {}
+  } catch {
+    /* localStorage unavailable or malformed JSON; return defaults */
+  }
   return { avgJobsPerMonth: 4, items: [] };
 }
 function saveBusinessExpenses(state) {
@@ -434,9 +436,11 @@ const SUPPLIER_MATERIALS = {
   'ABC Supply': [...ALL_DEFAULT_MATERIALS],
   'Sherwin Williams': [...ALL_DEFAULT_MATERIALS],
 };
+// Per-supplier price multipliers applied to the shared catalog on reset: 1 = base,
+// >1 = markup (ABC charges 3% more), <1 = discount (Sherwin Williams runs 2% cheaper).
 const SUPPLIER_PRICE_MODS = { 'Pacific Supply': 1, 'ABC Supply': 1.03, 'Sherwin Williams': 0.98 };
 
-// ===== STATE =====
+// State
 let suppliers = [],
   categories = [],
   materialsBySupplier = {},
@@ -450,7 +454,8 @@ function loadSupplierInfo() {
   try {
     const raw = localStorage.getItem('esticount_supplier_info');
     supplierInfo = raw ? JSON.parse(raw) : {};
-  } catch (_) {
+  } catch {
+    /* localStorage unavailable or malformed JSON */
     supplierInfo = {};
   }
   // Migrate legacy email-only storage if present
@@ -465,7 +470,9 @@ function loadSupplierInfo() {
       saveSupplierInfo();
       localStorage.removeItem('esticount_supplier_emails');
     }
-  } catch (_) {}
+  } catch {
+    /* malformed legacy JSON; leave supplierInfo as-is */
+  }
 }
 function saveSupplierInfo() {
   localStorage.setItem('esticount_supplier_info', JSON.stringify(supplierInfo));
@@ -504,29 +511,26 @@ let dragSrcId = null;
 let pageHistory = ['dashboard'];
 let savedPhaseSelection = null; // preserve phase checkboxes across page nav
 
-// ===== PERSISTENCE (API + localStorage cache) =====
+// Persistence (API + localStorage cache)
 async function loadData() {
   const t = localStorage.getItem('stucco_theme');
   if (t) document.documentElement.setAttribute('data-theme', t);
 
   if (api.getToken()) {
     try {
-      // Load from API
       const [supData, catData, jobData] = await Promise.all([
         api.getSuppliers(),
         api.getCategories(),
         api.getJobs(),
       ]);
 
-      // Map API suppliers to our format
       suppliers = supData.suppliers.map((s) => s.name);
       const supplierIdMap = {};
       supData.suppliers.forEach((s) => {
         supplierIdMap[s.name] = s.id;
       });
-      window._supplierIdMap = supplierIdMap; // store for later API calls
+      window._supplierIdMap = supplierIdMap;
 
-      // Map categories
       categories = catData.categories.map((c) => c.name);
       const categoryIdMap = {};
       catData.categories.forEach((c) => {
@@ -534,7 +538,6 @@ async function loadData() {
       });
       window._categoryIdMap = categoryIdMap;
 
-      // Load materials for each supplier
       materialsBySupplier = {};
       await Promise.all(
         suppliers.map(async (name) => {
@@ -566,7 +569,6 @@ async function loadData() {
         })
       );
 
-      // Load jobs
       savedJobs = (jobData.jobs || []).map((j) => ({
         id: j.id,
         name: j.name,
@@ -586,7 +588,7 @@ async function loadData() {
         savedAt: j.created_at || new Date().toISOString(),
       }));
 
-      // Cache locally as fallback
+      // Cache in localStorage so the app can fall back when offline.
       localStorage.setItem('stucco_suppliers', JSON.stringify(suppliers));
       localStorage.setItem('stucco_categories', JSON.stringify(categories));
       localStorage.setItem('stucco_materials_v2', JSON.stringify(materialsBySupplier));
@@ -634,13 +636,13 @@ function loadFromLocalStorage() {
     } else resetAllToDefaults(true);
     if (j) savedJobs = JSON.parse(j);
   } catch {
+    /* corrupted localStorage; fall back to defaults */
     resetAllToDefaults(true);
   }
   if (suppliers.length > 0) activeSupplier = suppliers[0];
 }
 
 function saveAll() {
-  // Always save to localStorage as cache
   localStorage.setItem('stucco_suppliers', JSON.stringify(suppliers));
   localStorage.setItem('stucco_categories', JSON.stringify(categories));
   localStorage.setItem('stucco_materials_v2', JSON.stringify(materialsBySupplier));
@@ -706,7 +708,7 @@ function updateUndoButtons() {
 }
 
 // License check. Trial keys (auto-issued at signup) count as active until they
-// expire. Lifetime users and admins always pass. No more "3 free jobs" tier —
+// expire. Lifetime users and admins always pass. No more "3 free jobs" tier;
 // the trial key replaces it.
 function isLicensed() {
   if (!currentUser) return false;
@@ -804,7 +806,7 @@ function toggleTheme() {
   localStorage.setItem('stucco_theme', n);
 }
 
-// ===== GOOGLE PLACES AUTOCOMPLETE (proxy) =====
+// Google Places Autocomplete (proxy)
 // All Google API calls go through /api/places/* so the key never reaches the browser.
 let _placesDebounce = null;
 let _placesUserLocation = null;
@@ -927,8 +929,8 @@ async function fetchPlaceSuggestions(query, dd, input, onChange) {
         else if (typeof updateCalcHeader === 'function') updateCalcHeader();
       });
     });
-  } catch (_) {
-    // Network failure: leave the dropdown hidden, no breadcrumb noise
+  } catch {
+    /* network failure; leave the dropdown hidden */
   }
 }
 
@@ -942,8 +944,8 @@ async function fetchPlaceDetails(placeId) {
     if (!res.ok) return null;
     const data = await res.json();
     return data.formattedAddress || null;
-  } catch (_) {
-    return null;
+  } catch {
+    /* network failure; caller handles null */ return null;
   }
 }
 
@@ -951,7 +953,7 @@ function getProjectAddress() {
   return (document.getElementById('calcProjectAddress')?.value || '').trim();
 }
 
-// ===== NAVIGATION =====
+// Navigation
 const PAGE_TITLES = {
   dashboard: 'Dashboard',
   pricing: 'Material Pricing',
@@ -997,9 +999,7 @@ function showPage(id) {
   } else {
     hdr.style.display = 'none';
   }
-  // Track history
   if (pageHistory[pageHistory.length - 1] !== id) pageHistory.push(id);
-  // Init page
   if (id === 'dashboard') renderDashboard();
   if (id === 'pricing') {
     renderSupplierTabs();
@@ -1023,8 +1023,9 @@ function goBack() {
   showPage(prev);
 }
 
-// ===== SUPPLIERS =====
-// ===== PRICING v2 helpers =====
+// Suppliers
+
+// Pricing v2 helpers
 // Pretty short-dollar (used by supplier YTD spend in sidebar)
 function priceV2ShortMoney(n) {
   const v = Number(n || 0);
@@ -1119,7 +1120,7 @@ function renderSupplierTabs() {
     .join('');
 
   // Filter rows: All + every category present in active supplier.
-  // Spec §2.3: additive multi-select checkboxes — `All categories` is the
+  // Spec §2.3: additive multi-select checkboxes. `All categories` is the
   // first row and checked when the per-category selection is empty.
   const supplierPhases = getSupplierPhases(activeSupplier);
   const selected = window.priceV2FilterState.selected;
@@ -1160,7 +1161,7 @@ function renderSupplierTabs() {
   priceV2UpdateEyebrow();
   priceV2UpdateSubtitle();
 }
-// Sidebar filter click — sync the hidden #categoryFilter <select> + re-render table
+// Sidebar filter click: sync the hidden #categoryFilter <select> + re-render table
 function priceV2SetFilter(value) {
   const sel = document.getElementById('categoryFilter');
   if (!sel) return;
@@ -1173,7 +1174,7 @@ function priceV2SetFilter(value) {
   sel.value = value;
   renderMaterialTable();
 }
-// Multi-select filter handlers (spec §2.3 — additive checkboxes).
+// Multi-select filter handlers (spec §2.3, additive checkboxes).
 function priceV2ToggleFilterAll() {
   // Toggling "All categories" clears the selection (renders everything).
   window.priceV2FilterState.selected = null;
@@ -1307,7 +1308,7 @@ async function deleteSupplier() {
   notify(`"${name}" removed`, 'success');
 }
 
-// ===== CATEGORIES =====
+// Categories
 function getSupplierPhases(supplier) {
   const mats = materialsBySupplier[supplier] || [];
   return [...new Set(mats.map((m) => m.category))].sort(
@@ -1370,7 +1371,9 @@ async function deleteCategory() {
       for (const m of mats.filter((m) => m.category === name)) {
         try {
           await api.deleteMaterial(m.id);
-        } catch (e) {}
+        } catch {
+          /* best-effort; local deletion proceeds regardless */
+        }
       }
     }
     materialsBySupplier[activeSupplier] = (materialsBySupplier[activeSupplier] || []).filter(
@@ -1404,7 +1407,7 @@ async function deleteCategory() {
   }
 }
 
-// ===== MATERIAL TABLE with scope grouping =====
+// Material table (scope-grouped)
 function isStale(mat) {
   if (!mat.lastUpdated) return true;
   return Date.now() - mat.lastUpdated > 30 * 24 * 60 * 60 * 1000;
@@ -1464,7 +1467,7 @@ function renderMaterialTable() {
     return;
   }
 
-  // Build table head — 7 columns per spec §2.6. Actions reveal on row hover
+  // Build table head (7 columns per spec §2.6). Actions reveal on row hover
   // (CSS handles the visibility) rather than living in their own column.
   const head = `<colgroup>
         <col class="col-drag"><col class="col-sku"><col><col class="col-unit"><col class="col-cat"><col class="col-price"><col class="col-trend">
@@ -1511,7 +1514,7 @@ function renderMaterialTable() {
     let sectionBody = '';
     items.forEach((m) => {
       // Reuse the per-row markup we built above. We split `body` per-id
-      // earlier — simplest: re-render each row inline here using the same
+      // earlier; simplest: re-render each row inline here using the same
       // structure. To avoid duplicating ~30 lines we just include each
       // matched row from the pre-built body via re-iteration.
       sectionBody += renderMaterialRow(m, cat);
@@ -1545,7 +1548,7 @@ function renderMaterialTable() {
 // markup that used to live inside renderMaterialTable's mats.forEach loop.
 function renderMaterialRow(m, sectionCat) {
   if (editingId && String(editingId) === String(m.id)) {
-    // Inline edit row — re-use the same structure as before. The
+    // Inline edit row; re-use the same structure as before. The
     // category picker becomes a clickable chip set (multi-select).
     const chipSet = categories
       .map((cc) => {
@@ -1723,7 +1726,6 @@ function addMaterial() {
     doAddMaterial(filter);
     return;
   }
-  // Show category picker modal
   const sel = document.getElementById('addMaterialCategory');
   sel.innerHTML = categories.map((c) => `<option>${c}</option>`).join('');
   openModal('addMaterialModal');
@@ -1846,7 +1848,7 @@ async function doDuplicate() {
   notify(`Copied to ${target}`, 'success');
 }
 
-// Drag — invoked via delegation: `this` is the element (the <tr>), `e` is the event
+// Drag (invoked via delegation): `this` is the element (the <tr>), `e` is the event
 function dragStart(e) {
   const el = this;
   dragSrcId = el.dataset.id;
@@ -2038,7 +2040,7 @@ function handleCSVImport(event) {
 async function syncImportToBackend(newMats, updatedMats) {
   const supplierId = window._supplierIdMap?.[activeSupplier];
   if (!supplierId) {
-    notify('Imported locally only — supplier not synced to backend', 'info');
+    notify('Imported locally only (supplier not synced to backend)', 'info');
     return;
   }
   const calcTypeApi = (ct) => (ct === 'linear' ? 'linear_ft' : 'sqft');
@@ -2112,7 +2114,7 @@ function exportCSV() {
   notify('Exported', 'success');
 }
 
-// ===== CALCULATOR =====
+// Calculator
 function populateCalcSupplierDropdown() {
   const sel = document.getElementById('calcSupplier');
   const p = sel.value;
@@ -2132,7 +2134,6 @@ function getSelectedPhases() {
 function renderPhaseCheckboxes() {
   const wrap = document.getElementById('phaseCheckboxes');
   const supplier = document.getElementById('calcSupplier').value;
-  // Get phases from ALL suppliers if "All Suppliers"
   let sp;
   if (supplier === 'All Suppliers') {
     sp = [
@@ -2237,9 +2238,9 @@ function getDrywallSheets() {
   return sheets;
 }
 
-// ===== SMART MATERIAL PICKER =====
+// Smart material picker
 // Group materials inside a phase using the SKU's leading-letter prefix, then
-// pick the cheapest item per group as the default. Heuristic — tunable here.
+// pick the cheapest item per group as the default. Heuristic, tunable here.
 // Examples:
 //   HAP, HBD, HHL, HTNTL → "H"   (joint compounds collapse to one)
 //   PMT224-W/Y/B → "PMT"          (mesh tape colors collapse to one)
@@ -2519,7 +2520,7 @@ function getTaxFavorites() {
   try {
     return JSON.parse(localStorage.getItem('stucco_tax_favs')) || [];
   } catch {
-    return [];
+    /* malformed JSON; return empty */ return [];
   }
 }
 function saveTaxFavorite(state, rate) {
@@ -2595,7 +2596,7 @@ function calcForSupplier(supplier, waste, selectedPhases, opts = {}) {
   // IMPORTANT: picks are stored as material IDs which are supplier-specific.
   // When the dropdown is on a specific supplier, picks apply. When the dropdown
   // is "All Suppliers", calcForSupplier is invoked once per supplier inside the
-  // comparison loop — applying picks there would filter out OTHER suppliers'
+  // comparison loop; applying picks there would filter out OTHER suppliers'
   // materials (their IDs don't match the picked supplier's IDs) and break the
   // comparison. So we only apply picks when the dropdown matches THIS supplier.
   {
@@ -2676,7 +2677,6 @@ function calculateJob() {
     return;
   }
 
-  // Gather per-scope dimensions
   const phaseDims = {};
   const stuccoSqft = parseFloat(document.getElementById('calcStuccoSqft')?.value) || 0;
   const stuccoLf = parseFloat(document.getElementById('calcStuccoLinearFt')?.value) || 0;
@@ -2694,7 +2694,6 @@ function calculateJob() {
   const totalSqft =
     stuccoSqft + stoneSqft + paintSqft + drywallAreas.reduce((s, a) => s + (a.sqft || 0), 0);
 
-  // Validate at least some dimensions entered
   if (totalSqft <= 0 && stuccoLf <= 0 && stoneLf <= 0 && !drywallAreas.length) {
     notify('Enter dimensions for selected phases', 'error');
     return;
@@ -2825,7 +2824,7 @@ function calculateJob() {
   }
 }
 
-// ===== Calculator v2 helpers =====
+// Calculator v2 helpers
 // Pretty-print integers with thousands separators
 function v2FmtInt(n) {
   return Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
@@ -2939,13 +2938,11 @@ function renderCalcResults(r) {
   document.getElementById('calcResults').classList.remove('hidden');
   const bpp = r.bestPerPhase || {};
 
-  // Update header (title/subtitle) from current state
   updateCalcHeader();
 
   // Total sqft for downstream formulas (per-sqft pricing, labor total, etc.)
   const totalSqft = v2TotalScopeSqft(r);
 
-  // Build phase cards
   const stuccoPhases = ['Lath', 'Gray Coat', 'Color Coat'];
   const phaseDims = r.phaseDims || {};
   const activePhases = categories.filter((cat) => r.phases[cat] && r.phases[cat].count > 0);
@@ -2977,7 +2974,7 @@ function renderCalcResults(r) {
         miniPills.push(v2MiniPill(lblLF, v2FmtInt(dims.linearFt), 'lin·ft'));
       }
       if (cat === 'Gray Coat') {
-        // Thickness is a fixed display in spec — we don't model it; show a static default
+        // Thickness is a fixed display in spec; we don't model it, so show a static default
         miniPills.push(v2MiniPill('THICKNESS', '3/8', 'in'));
       }
       if (cat === 'Painting' && r.paintCoats > 1) {
@@ -3048,7 +3045,7 @@ function renderCalcResults(r) {
   const sg = document.getElementById('summaryGrid');
   if (sg) sg.innerHTML = '';
 
-  // ===== Summary sidebar =====
+  // Summary sidebar
   const sumEmpty = document.getElementById('calcV2SummaryEmpty');
   const sumContent = document.getElementById('calcV2SummaryContent');
   if (sumEmpty) sumEmpty.classList.add('hidden');
@@ -3061,7 +3058,7 @@ function renderCalcResults(r) {
   const psEl = document.getElementById('calcV2PerSqft');
   if (psEl) psEl.textContent = v2FmtMoney2(perSqft);
 
-  // Cost stack — spec §6.3 / §10 canonical order: Materials → Labor → Overhead → Markup → Total cost.
+  // Cost stack per spec §6.3 / §10: Materials, Labor, Overhead, Markup, Total cost.
   // Tax / Delivery / CC Fee remain in the data model and surface on the bid/order outputs but not in this sidebar.
   const totalItems = (r.items || []).reduce((s, i) => s + (i.qty > 0 ? 1 : 0), 0);
   const totalPhases = activePhases.length;
@@ -3183,7 +3180,7 @@ function renderComparison(waste, selectedPhases, calcOpts) {
   document.getElementById('comparisonSection').innerHTML = html;
 }
 
-// ===== ORDER (printable supplier order form — comparison-first flow) =====
+// Order (printable supplier order form, comparison-first flow)
 // This page is the canonical deliverable: contractors print a per-supplier
 // material-purchase sheet. Bid/proposal flow has been deleted entirely.
 //
@@ -3411,7 +3408,9 @@ function renderOrderForm(r, selections) {
   if (typeof window.loadCompanyInfo === 'function') {
     try {
       ci = window.loadCompanyInfo() || ci;
-    } catch (_) {}
+    } catch {
+      /* malformed localStorage; use empty letterhead */
+    }
   }
   const companyName = document.getElementById('orderCompanyName');
   const companyMeta = document.getElementById('orderCompanyMeta');
@@ -3447,7 +3446,7 @@ function renderOrderForm(r, selections) {
   const dp = document.getElementById('orderDeliverProject');
   if (dp)
     dp.innerHTML =
-      (pn ? escHtml(pn) : '&mdash;') +
+      (pn ? escHtml(pn) : '(no project)') +
       (jobCode ? ` <span class="job-slug">&middot; ${escHtml(jobCode)}</span>` : '');
   const da = document.getElementById('orderDeliverAddress');
   if (da) da.textContent = pa || '';
@@ -3671,7 +3670,7 @@ function emailOrderToSupplier() {
     return;
   }
 
-  // Populate recipient rows — one per supplier, pre-filled with saved email
+  // Populate recipient rows, one per supplier, pre-filled with saved email
   const recipWrap = document.getElementById('emailOrderRecipients');
   recipWrap.innerHTML = groups
     .map((g) => {
@@ -3687,7 +3686,7 @@ function emailOrderToSupplier() {
   const orderNum = calcOrderNumber(currentCalc);
   const pn = (document.getElementById('calcProjectName')?.value || '').trim();
   const subjEl = document.getElementById('emailOrderSubject');
-  if (subjEl) subjEl.value = 'Material Order — ' + orderNum + (pn ? ' — ' + pn : '');
+  if (subjEl) subjEl.value = 'Material Order: ' + orderNum + (pn ? ' - ' + pn : '');
 
   openModal('emailOrderModal');
   refreshOrderEmailPreview();
@@ -3705,7 +3704,9 @@ async function refreshOrderEmailPreview() {
   if (typeof loadCompanyInfo === 'function')
     try {
       ci = loadCompanyInfo() || ci;
-    } catch (_) {}
+    } catch {
+      /* malformed localStorage; send with empty company fields */
+    }
   try {
     const res = await fetch('/api/order-email/preview', {
       method: 'POST',
@@ -3764,7 +3765,9 @@ async function confirmSendOrderEmail() {
   if (typeof loadCompanyInfo === 'function')
     try {
       ci = loadCompanyInfo() || ci;
-    } catch (_) {}
+    } catch {
+      /* malformed localStorage; send with empty company fields */
+    }
   const allGroups = buildOrderEmailGroups();
 
   let sent = 0,
@@ -3860,7 +3863,7 @@ function generateOrderForm() {
 // repopulation don't throw. The new order flow has no phase-filter dropdown.
 function populateOrderPhaseFilter() {}
 
-// ===== SAVED JOBS (merged with templates) =====
+// Saved jobs (merged with templates)
 function saveJob() {
   if (!currentCalc) {
     notify('Calculate first', 'error');
@@ -3907,7 +3910,6 @@ async function doSaveJob() {
   };
   savedJobs.unshift(job);
   saveSavedJobs();
-  // Save to API
   if (api.getToken()) {
     try {
       const supId = window._supplierIdMap?.[currentCalc.supplier];
@@ -3934,7 +3936,7 @@ async function doSaveJob() {
   notify(isTemplate ? 'Template saved' : 'Job saved', 'success');
 }
 
-// ===== SAVED JOBS — v2 redesign =====
+// Saved jobs v2
 // Filter/search state for the saved-jobs page (in-memory; per-session)
 window.jobsV2State = window.jobsV2State || { tab: 'All', search: '' };
 
@@ -3976,7 +3978,7 @@ function jobsV2JobCode(j) {
   );
 }
 
-// Compact money — $28.4k, $612.4k, $1.2M
+// Compact money: $28.4k, $612.4k, $1.2M
 function jobsV2FmtCompactMoney(n) {
   const x = Number(n) || 0;
   if (x === 0) return '$0';
@@ -4067,7 +4069,6 @@ function renderSavedJobs() {
     const jobsN = counts.All - counts.Templates;
     subEl.innerHTML = `${jobsN} job${jobsN === 1 ? '' : 's'}<span class="sep">·</span>${counts.Templates} template${counts.Templates === 1 ? '' : 's'}<span class="sep">·</span>search, filter, duplicate`;
   }
-  // Restore search input value
   const sIn = document.getElementById('jobsV2Search');
   if (sIn && sIn.value !== window.jobsV2State.search) sIn.value = window.jobsV2State.search || '';
   // Filtered rows
@@ -4103,10 +4104,10 @@ function renderSavedJobs() {
           chips + (more ? `<span class="jobs-v2-phases-overflow">+${more}</span>` : '');
         const clientName = j.isTemplate ? 'Template' : j.projectName || j.supplier || '—';
         const sqftCell = j.isTemplate
-          ? `<div class="jobs-v2-sqft" style="color:var(--v2-text-tertiary);font-weight:400">&mdash;</div><div class="jobs-v2-date">${jobsV2FmtDate(j.savedAt)}</div>`
+          ? `<div class="jobs-v2-sqft" style="color:var(--v2-text-tertiary);font-weight:400">-</div><div class="jobs-v2-date">${jobsV2FmtDate(j.savedAt)}</div>`
           : `<div class="jobs-v2-sqft">${(j.sqft || 0).toLocaleString()}<span class="unit">sq&middot;ft</span></div><div class="jobs-v2-date">${jobsV2FmtDate(j.savedAt)}</div>`;
         const totalCell = j.isTemplate
-          ? `<td class="c-total jobs-v2-total dash">&mdash;</td>`
+          ? `<td class="c-total jobs-v2-total dash">-</td>`
           : `<td class="c-total jobs-v2-total">${jobsV2FmtCompactMoney(j.sellingPrice || j.materialTotal || 0)}</td>`;
         const idAttr = escAttr(j.id);
         return (
@@ -4253,7 +4254,7 @@ function loadJob(id) {
     if (typeof renderMaterialPicker === 'function') renderMaterialPicker();
     if (!job.isTemplate) calculateJob();
   }, 50);
-  notify(job.isTemplate ? 'Template loaded — enter project details' : 'Job loaded', 'info');
+  notify(job.isTemplate ? 'Template loaded - enter project details' : 'Job loaded', 'info');
 }
 function duplicateJob(id) {
   const job = savedJobs.find((j) => j.id === id);
@@ -4290,12 +4291,12 @@ function clearAllJobs() {
   notify('Cleared', 'info');
 }
 
-// ===== DASHBOARD (v2) =====
+// Dashboard (v2)
 // Material-calculator dashboard. Surfaces recent saved jobs, catalog size,
 // supplier coverage, and stale-price alerts. NOT a bid/estimating dashboard
-// — there are no Win/Lost/Sent statuses anywhere here.
+// There are no Win/Lost/Sent statuses anywhere here.
 //
-// Pure helpers — only used by renderDashboard.
+// Pure helpers, only used by renderDashboard.
 function dashV2ChipClass(phase) {
   // Map a phase name to the v2-chip palette class (defined in styles.css §7).
   const k = String(phase || '')
@@ -4574,10 +4575,10 @@ async function renderDashboard() {
 }
 window.renderDashboard = renderDashboard;
 
-// ===== ACCOUNT (v2) =====
+// Account (v2)
 
-// Deterministic pastel for the account avatar — same hash function as
-// admin-v2 user avatars so a user looks consistent across pages.
+// Deterministic pastel for the account avatar (same hash function as
+// admin-v2 user avatars) so a user looks consistent across pages.
 const ACCOUNT_V2_AVATAR_PALETTE = [
   '#efe2c2',
   '#f1d4dc',
@@ -4642,7 +4643,9 @@ async function renderAccountPage() {
     try {
       const r = await api.getMe();
       currentUser = r.user;
-    } catch (e) {}
+    } catch {
+      /* API unavailable; render with cached currentUser */
+    }
   }
 
   // Identity --------------------------------------------------------
@@ -4676,7 +4679,6 @@ async function renderAccountPage() {
   document.getElementById('accountEmailInput').value = currentUser.email || '';
   document.getElementById('accountPasswordInput').value = '';
 
-  // Clear any stale messages on render
   accountV2SetMessage(document.getElementById('profileMessage'), '', 'muted');
   accountV2HideLicenseMessage(document.getElementById('licenseMessage'));
 
@@ -4696,7 +4698,6 @@ async function renderAccountPage() {
   const licenseEl = document.getElementById('accountLicense');
   const licenseEyebrowMeta = document.getElementById('accountLicenseEyebrowMeta');
 
-  // Reset pill classes
   statusPill.classList.remove('is-active', 'is-trial', 'is-expired', 'is-none');
 
   let typeLabel, typeClass, statusText, daysLeft, planLabel;
@@ -4837,7 +4838,7 @@ async function renderAccountPage() {
   setVal('companyEmail', ci.email);
 }
 
-// ===== ONBOARDING WIZARD =====
+// Onboarding wizard
 let _onboardingStep = 1;
 
 function onboardingCacheKey() {
@@ -4855,13 +4856,15 @@ function checkOnboarding() {
       currentUser.onboarding_completed = true;
       return;
     }
-  } catch (_) {}
+  } catch {
+    /* localStorage unavailable; proceed to wizard */
+  }
   openOnboardingWizard();
 }
 
 function openOnboardingWizard() {
   _onboardingStep = 1;
-  // Start blank — user enters everything fresh on first onboarding.
+  // Start blank; user enters everything fresh on first onboarding.
   ['obCompanyName', 'obCompanyAddress', 'obCompanyPhone', 'obLicense'].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.value = '';
@@ -4992,7 +4995,7 @@ const DISPOSABLE_EMAIL_DOMAINS = new Set([
 ]);
 
 // Validate a plausible business email. Catches obvious junk and disposable
-// providers. Doesn't verify the address actually receives mail — that needs
+// providers. Doesn't verify the address actually receives mail; that needs
 // a confirmation email round-trip.
 function isValidEmail(s) {
   const v = String(s || '')
@@ -5076,7 +5079,7 @@ async function onboardingNext() {
     renderOnboardingStep();
     return;
   }
-  // Step 3 → submit. Business email isn't collected separately — the user's
+  // Step 3: submit. Business email isn't collected separately; the user's
   // verified account email is used for letterhead and reply-to.
   const payload = {
     company_name: document.getElementById('obCompanyName').value.trim(),
@@ -5102,7 +5105,9 @@ async function onboardingNext() {
   try {
     const key = onboardingCacheKey();
     if (key) localStorage.setItem(key, '1');
-  } catch (_) {}
+  } catch {
+    /* localStorage unavailable; onboarding state won't persist locally */
+  }
   try {
     const updated = await api.completeOnboarding(payload);
     if (currentUser) {
@@ -5117,13 +5122,13 @@ async function onboardingNext() {
     notify('All set! Welcome to EstiCount.', 'success');
   } catch (e) {
     // Backend save failed (likely the schema migration hasn't run). Don't
-    // block the user — their company info is cached locally and orders
+    // block the user; their company info is cached locally and orders
     // will still work.
     if (currentUser) currentUser.onboarding_completed = true;
     closeModal('onboardingModal');
     console.warn('[onboarding] backend save failed:', e.message);
     notify(
-      'Saved locally. Sync to server failed — admin may need to run the schema migration.',
+      'Saved locally. Sync to server failed; admin may need to run the schema migration.',
       'info'
     );
   }
@@ -5131,7 +5136,7 @@ async function onboardingNext() {
 window.onboardingNext = onboardingNext;
 window.openOnboardingWizard = openOnboardingWizard;
 
-// ===== LICENSE GATE =====
+// License gate
 // Blocks the app if the user has no valid license. Lifetime users skip this.
 function hasActiveLicense() {
   if (!currentUser) return false;
@@ -5204,8 +5209,8 @@ async function activateLicenseGate() {
 }
 window.activateLicenseGate = activateLicenseGate;
 
-// ===== COMPANY INFO (account-v2 section) =====
-// Company info — used on order form letterheads and supplier emails.
+// Company info (account-v2 section)
+// Company info: used on order form letterheads and supplier emails.
 // Primary source is the backend user record (currentUser.company_*).
 // localStorage is kept as a cache for offline reads and pre-account use.
 function loadCompanyInfo() {
@@ -5238,7 +5243,9 @@ function loadCompanyInfo() {
         email: o.email || '',
       };
     }
-  } catch (_) {}
+  } catch {
+    /* malformed localStorage; return empty company info */
+  }
   return { name: '', address: '', license: '', phone: '', email: '' };
 }
 function saveCompanyInfo(obj) {
@@ -5314,14 +5321,16 @@ function saveCompanyInfoFromForm() {
       } else if (r.supplier) {
         renderOrderForm(r, { [r.supplier]: orderV2PhasesPresent(r) });
       }
-    } catch (_) {}
+    } catch {
+      /* order page not yet rendered; update will appear on next navigation */
+    }
   }
 }
 window.loadCompanyInfo = loadCompanyInfo;
 window.saveCompanyInfo = saveCompanyInfo;
 window.saveCompanyInfoFromForm = saveCompanyInfoFromForm;
 
-// ===== BUSINESS EXPENSES (account-v2 section) =====
+// Business expenses (account-v2 section)
 function bizExpensesRender() {
   const state = loadBusinessExpenses();
   const jpmEl = document.getElementById('bizJobsPerMonth');
@@ -5472,7 +5481,9 @@ async function confirmDeleteAccount() {
       Object.keys(localStorage)
         .filter((k) => k.startsWith('esticount_onboarded_'))
         .forEach((k) => localStorage.removeItem(k));
-    } catch (_) {}
+    } catch {
+      /* localStorage unavailable; local data may persist but account is deleted */
+    }
     closeModal('deleteAccountModal');
     notify('Account deleted.', 'success');
     setTimeout(() => {
@@ -5527,9 +5538,9 @@ async function activateLicense() {
   }
 }
 
-// ===== ADMIN PANEL (v2) =====
+// Admin panel (v2)
 
-// Avatar palette — deterministic mapping so the same user always gets the
+// Avatar palette: deterministic mapping so the same user always gets the
 // same color across the app. Soft, slightly desaturated swatches.
 const ADMIN_V2_AVATAR_PALETTE = [
   '#3e6b3a',
@@ -5841,12 +5852,14 @@ function copyKey(key, ev) {
       ta.select();
       try {
         document.execCommand('copy');
-      } catch (_) {}
+      } catch {
+        /* execCommand not supported; clipboard copy silently skipped */
+      }
       document.body.removeChild(ta);
       finish();
     }
-  } catch (_) {
-    finish();
+  } catch {
+    /* clipboard API and execCommand both unavailable; still notify */ finish();
   }
 }
 
@@ -5935,7 +5948,7 @@ async function bulkPriceUpdate() {
   }
 }
 
-// ===== CALC QTY OVERRIDE =====
+// Calc qty override
 function overrideCalcQty(id, val) {
   if (!currentCalc) return;
   // When invoked via delegation, `this` is the input and `val` is the event; pull value from the element.
@@ -5945,10 +5958,8 @@ function overrideCalcQty(id, val) {
   if (!item) return;
   item.qty = qty;
   item.lineTotal = qty * item.pricePerUnit;
-  // Update line total display
   const el = document.querySelector(`.calc-line-total[data-id="${id}"]`);
   if (el) el.textContent = fmt(item.lineTotal);
-  // Recalculate phase totals and grand total
   let materialTotal = 0;
   categories.forEach((cat) => {
     const phaseItems = currentCalc.items.filter((i) => i.category === cat);
@@ -5957,7 +5968,6 @@ function overrideCalcQty(id, val) {
     materialTotal += total;
   });
   currentCalc.materialTotal = materialTotal;
-  // Recalc financials
   const r = currentCalc;
   r.taxAmount = r.materialTotal * (r.taxPct / 100);
   r.materialPlusTax = r.materialTotal + r.taxAmount;
@@ -5973,9 +5983,8 @@ function overrideCalcQty(id, val) {
   renderCalcResults(r);
 }
 
-// ===== RECENTLY USED MATERIALS =====
+// Recently used materials
 function trackRecentMaterials() {
-  // Render recently used materials on pricing page (v2 styling)
   const el = document.getElementById('recentMaterials');
   if (!el) return;
   const recent = getRecentMaterials();
@@ -6009,7 +6018,7 @@ function getRecentMaterials() {
   return JSON.parse(localStorage.getItem('esticount_recent_mats') || '[]');
 }
 
-// ===== INIT =====
+// Init
 async function initApp() {
   await loadData();
   // Restore last page BEFORE showing app (prevents flash to dashboard).
@@ -6087,7 +6096,7 @@ async function initApp() {
 }
 
 document.addEventListener('DOMContentLoaded', async function () {
-  // Check if user has a valid token — if so, skip login
+  // Check if user has a valid token; if so, skip login
   const loggedIn = await checkAuth();
   if (loggedIn) initApp();
 });
