@@ -3,9 +3,9 @@
  *
  * Adapter pattern for integrating with supplier pricing APIs.
  * Each adapter implements a common interface:
- *   - fetchPricing()    — Get full product/pricing catalog
- *   - searchProducts()  — Search for products by keyword
- *   - getProductDetail() — Get detail for a specific product/SKU
+ *   - fetchPricing(): get full product/pricing catalog
+ *   - searchProducts(): search for products by keyword
+ *   - getProductDetail(): get detail for a specific product/SKU
  *
  * To add a new supplier:
  *   1. Create a new adapter object with the three methods above
@@ -127,50 +127,51 @@ const abcSupply = {
    *   return response.json();
    */
   fetchPricing() {
-    // ABC Supply prices are ~3% higher than Pacific Supply in this stub
-    const priceModifier = 1.03;
+    // ABC Supply carries a 3% markup over Pacific Supply baseline prices.
+    // The frontend mirrors this in SUPPLIER_PRICE_MODS for client-side display.
+    const ABC_PRICE_MARKUP = 1.03;
     return {
       products: [
         {
           sku: 'ABC-LATH-001',
           name: '2.5 LB Diamond Lath',
           unit: 'sheet',
-          price: +(4.5 * priceModifier).toFixed(2),
+          price: +(4.5 * ABC_PRICE_MARKUP).toFixed(2),
           category: 'Lath',
         },
         {
           sku: 'ABC-LATH-002',
           name: '3.4 LB Diamond Lath',
           unit: 'sheet',
-          price: +(6.75 * priceModifier).toFixed(2),
+          price: +(6.75 * ABC_PRICE_MARKUP).toFixed(2),
           category: 'Lath',
         },
         {
           sku: 'ABC-GRAY-001',
           name: 'Portland Cement (94lb)',
           unit: 'bag',
-          price: +(14.5 * priceModifier).toFixed(2),
+          price: +(14.5 * ABC_PRICE_MARKUP).toFixed(2),
           category: 'Gray Coat',
         },
         {
           sku: 'ABC-GRAY-002',
           name: 'Plaster Sand (ton)',
           unit: 'ton',
-          price: +(45.0 * priceModifier).toFixed(2),
+          price: +(45.0 * ABC_PRICE_MARKUP).toFixed(2),
           category: 'Gray Coat',
         },
         {
           sku: 'ABC-CLR-001',
           name: 'Omega One Coat Stucco',
           unit: 'bag',
-          price: +(22.0 * priceModifier).toFixed(2),
+          price: +(22.0 * ABC_PRICE_MARKUP).toFixed(2),
           category: 'Color Coat',
         },
         {
           sku: 'ABC-STN-001',
           name: 'Cultured Stone Veneer',
           unit: 'sqft',
-          price: +(8.5 * priceModifier).toFixed(2),
+          price: +(8.5 * ABC_PRICE_MARKUP).toFixed(2),
           category: 'Stone',
         },
       ],

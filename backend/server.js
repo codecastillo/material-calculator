@@ -6,8 +6,8 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 
-// Initialize Supabase connection
-const supabase = require('./config/database');
+// Boot-time env check: validates SUPABASE_* vars and exits if missing.
+require('./config/database');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -86,7 +86,7 @@ app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/forgot-password', authLimiter);
 app.use('/api/auth/reset-password', authLimiter);
 
-// Body parsing — skip JSON for the Stripe webhook so signature verification
+// Body parsing: skip JSON for the Stripe webhook so signature verification
 // has access to the raw body (the stripe router uses express.raw on that path).
 app.use((req, res, next) => {
   if (req.originalUrl === '/api/stripe/webhook') return next();
@@ -156,7 +156,7 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   console.log(`Material Calculator API running on http://localhost:${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`Database: ${process.env.DB_PATH || './data/calculator.db'}`);
+  console.log(`Supabase: ${process.env.SUPABASE_URL || '(not set)'}`);
   console.log(`Frontend: ${frontendPath}`);
 });
 
@@ -171,4 +171,3 @@ process.on('SIGTERM', () => {
 });
 
 module.exports = app;
-// redeploy 1779148342
