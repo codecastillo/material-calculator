@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const { Resend } = require('resend');
 const supabase = require('../config/database');
+const { JWT_SECRET } = require('../config/auth');
 const router = express.Router();
 
 // RFC-ish email validation: single @, sane local and domain parts, real TLD.
@@ -27,7 +28,7 @@ async function loadCompanyFromToken(req) {
   try {
     const auth = req.headers && req.headers.authorization;
     if (!auth || !auth.startsWith('Bearer ')) return null;
-    const decoded = jwt.verify(auth.slice(7), process.env.JWT_SECRET);
+    const decoded = jwt.verify(auth.slice(7), JWT_SECRET);
     const { data } = await supabase
       .from('users')
       .select(

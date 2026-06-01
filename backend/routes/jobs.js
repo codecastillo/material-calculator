@@ -40,7 +40,7 @@ function validateNumericFields(body) {
 
     const value = Number(body[key]);
 
-    if (!isFinite(value) || isNaN(value)) {
+    if (!isFinite(value)) {
       return { ok: false, message: `Invalid value for ${key}` };
     }
     if (value < 0) {
