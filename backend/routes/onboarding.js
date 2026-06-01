@@ -1,13 +1,11 @@
 const express = require('express');
-const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { Resend } = require('resend');
 const supabase = require('../config/database');
 const { authenticate } = require('../middleware/auth');
+const { JWT_SECRET, JWT_EXPIRY } = require('../config/auth');
 
 const router = express.Router();
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 const COMPANY_FIELDS = [
   'company_name',
@@ -149,14 +147,12 @@ function validateCompanyPatch(patch) {
 }
 
 function generateToken(user) {
-  return jwt.sign(
-    { id: user.id, email: user.email, role: user.role || 'user' },
-    process.env.JWT_SECRET,
-    { expiresIn: '30d' }
-  );
+  return jwt.sign({ id: user.id, email: user.email, role: user.role || 'user' }, JWT_SECRET, {
+    expiresIn: JWT_EXPIRY,
+  });
 }
 
-// GET /api/onboarding/me  — return the authenticated user's company profile
+// GET /api/onboarding/me: return the authenticated user's company profile
 router.get('/me', authenticate, async (req, res, next) => {
   try {
     const { data, error } = await supabase
@@ -167,7 +163,7 @@ router.get('/me', authenticate, async (req, res, next) => {
       .eq('id', req.user.id)
       .single();
     if (error) {
-      // Schema not migrated — return blanks so the frontend wizard can run.
+      // Schema not migrated: return blanks so the frontend wizard can run.
       console.warn('[onboarding/me] schema not migrated yet:', error.message);
       return res.json({});
     }
@@ -177,7 +173,7 @@ router.get('/me', authenticate, async (req, res, next) => {
   }
 });
 
-// POST /api/onboarding/complete — save company info and mark onboarding done
+// POST /api/onboarding/complete: save company info and mark onboarding done
 router.post('/complete', authenticate, async (req, res, next) => {
   try {
     const patch = pickCompanyFields(req.body || {});
@@ -194,14 +190,14 @@ router.post('/complete', authenticate, async (req, res, next) => {
       .single();
     if (error) {
       // Most likely the company_* columns / onboarding_completed flag haven't
-      // been added to Supabase yet. Don't fail the user's onboarding — echo
+      // been added to Supabase yet. Don't fail the user's onboarding, echo
       // their input back and warn the admin in the response. The frontend
       // caches the data in localStorage so order emails still work.
       console.warn('[onboarding] schema not migrated yet:', error.message);
       return res.json({
         ...patch,
         _warning:
-          'Backend schema not migrated — values not persisted. Run supabase-schema.sql in Supabase.',
+          'Backend schema not migrated - values not persisted. Run supabase-schema.sql in Supabase.',
       });
     }
     res.json(data);
@@ -210,7 +206,7 @@ router.post('/complete', authenticate, async (req, res, next) => {
   }
 });
 
-// GET /api/onboarding/token/:token — validate a Stripe magic-link token
+// GET /api/onboarding/token/:token: validate a Stripe magic-link token
 router.get('/token/:token', async (req, res, next) => {
   try {
     const { data, error } = await supabase
@@ -238,7 +234,7 @@ router.get('/token/:token', async (req, res, next) => {
   }
 });
 
-// POST /api/onboarding/redeem — create the account from a magic-link token
+// POST /api/onboarding/redeem: create the account from a magic-link token
 // Body: { token, password, name, company_name?, company_address?, ... }
 router.post('/redeem', async (req, res, next) => {
   try {

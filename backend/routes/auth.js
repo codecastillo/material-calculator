@@ -8,14 +8,14 @@ const { authenticate } = require('../middleware/auth');
 const { Resend } = require('resend');
 const { createLicenseKey, expiryFor } = require('../lib/keys');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'change-this';
+const { JWT_SECRET, JWT_EXPIRY } = require('../config/auth');
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 function generateToken(user) {
   return jwt.sign(
     { id: user.id, email: user.email, name: user.name, role: user.role || 'user' },
     JWT_SECRET,
-    { expiresIn: '24h' }
+    { expiresIn: JWT_EXPIRY }
   );
 }
 
@@ -60,7 +60,7 @@ async function sendVerificationEmail(email, code) {
         <tr><td style="padding:0 32px"><div style="border-top:1px solid #e5e7eb"></div></td></tr>
         <!-- Footer -->
         <tr><td style="padding:20px 32px 28px;text-align:center">
-          <p style="margin:0;color:#8b949e;font-size:12px">EstiCount &mdash; Built for contractors</p>
+          <p style="margin:0;color:#8b949e;font-size:12px">EstiCount - Built for contractors</p>
           <p style="margin:4px 0 0;color:#b0b8c1;font-size:11px"><a href="https://esticount.com" style="color:#0969da;text-decoration:none">esticount.com</a></p>
         </td></tr>
       </table>
@@ -334,7 +334,7 @@ router.put('/profile', authenticate, async (req, res, next) => {
   }
 });
 
-// DELETE /account — permanently delete the authenticated user's account.
+// DELETE /account: permanently delete the authenticated user's account.
 // Requires confirmation: current password + `confirm` field that equals "DELETE".
 // Cascading FKs (suppliers, categories, jobs, supplier_categories) clean up
 // dependent rows automatically.
@@ -355,7 +355,7 @@ router.delete('/account', authenticate, async (req, res, next) => {
     if (!bcrypt.compareSync(password, user.password_hash)) {
       return res.status(401).json({ error: 'Wrong password' });
     }
-    // Admins cannot self-delete via this endpoint — too risky. Use the admin panel.
+    // Admins cannot self-delete via this endpoint (too risky). Use the admin panel.
     if (user.role === 'admin') {
       return res.status(403).json({ error: 'Admin accounts must be removed by another admin' });
     }
@@ -409,7 +409,7 @@ router.post('/activate', authenticate, async (req, res, next) => {
   }
 });
 
-// POST /forgot-password — send reset code (no auth required)
+// POST /forgot-password: send reset code (no auth required)
 router.post('/forgot-password', async (req, res, next) => {
   try {
     const { email } = req.body;
@@ -460,7 +460,7 @@ router.post('/forgot-password', async (req, res, next) => {
         </td></tr>
         <tr><td style="padding:0 32px"><div style="border-top:1px solid #e5e7eb"></div></td></tr>
         <tr><td style="padding:20px 32px 28px;text-align:center">
-          <p style="margin:0;color:#8b949e;font-size:12px">EstiCount &mdash; Built for contractors</p>
+          <p style="margin:0;color:#8b949e;font-size:12px">EstiCount - Built for contractors</p>
           <p style="margin:4px 0 0"><a href="https://esticount.com" style="color:#0969da;text-decoration:none;font-size:11px">esticount.com</a></p>
         </td></tr>
       </table>
@@ -477,7 +477,7 @@ router.post('/forgot-password', async (req, res, next) => {
   }
 });
 
-// POST /reset-password — verify code and set new password (no auth required)
+// POST /reset-password: verify code and set new password (no auth required)
 router.post('/reset-password', async (req, res, next) => {
   try {
     const { email, code, password } = req.body;
@@ -521,7 +521,7 @@ router.post('/reset-password', async (req, res, next) => {
   }
 });
 
-// GET /referral-stats — get user's referral code and count of referred users
+// GET /referral-stats: get user's referral code and count of referred users
 router.get('/referral-stats', authenticate, async (req, res, next) => {
   try {
     const { data: user } = await supabase
