@@ -32,6 +32,10 @@ const errorHandler = require('./middleware/errorHandler');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Behind Railway's proxy, so trust the first hop. Without this, express-rate-limit
+// keys every request on the proxy IP and the per-client limits never bite.
+app.set('trust proxy', 1);
+
 // ---------------------------------------------------------------------------
 // Middleware
 // ---------------------------------------------------------------------------

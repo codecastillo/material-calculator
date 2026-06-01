@@ -132,7 +132,7 @@ router.post(
         // Magic-link token, valid 7 days.
         const token = crypto.randomUUID();
         const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-        await supabase.from('onboarding_tokens').insert({
+        const { error: insertError } = await supabase.from('onboarding_tokens').insert({
           token,
           email,
           license_key: key.key,
@@ -140,6 +140,15 @@ router.post(
           expires_at: expiresAt,
           used: false,
         });
+        if (insertError) {
+          // Unique violation on stripe_session_id means a concurrent delivery of
+          // the same event already created the token. Treat as idempotent success
+          // and skip the duplicate welcome email rather than erroring.
+          if (insertError.code === '23505') {
+            return res.json({ received: true, idempotent: true });
+          }
+          throw insertError;
+        }
 
         // Send the welcome email with the onboarding link.
         const base = process.env.APP_BASE_URL || 'http://localhost:3000';

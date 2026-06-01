@@ -3059,7 +3059,7 @@ function renderCalcResults(r) {
   if (psEl) psEl.textContent = v2FmtMoney2(perSqft);
 
   // Cost stack per spec §6.3 / §10: Materials, Labor, Overhead, Markup, Total cost.
-  // Tax / Delivery / CC Fee remain in the data model and surface on the bid/order outputs but not in this sidebar.
+  // Tax / Delivery / CC Fee remain in the data model and surface on the order outputs but not in this sidebar.
   const totalItems = (r.items || []).reduce((s, i) => s + (i.qty > 0 ? 1 : 0), 0);
   const totalPhases = activePhases.length;
   // Overhead: combine ancillary line items (tax + delivery + cc fee) under one "Overhead" row so the spec's
@@ -3182,7 +3182,7 @@ function renderComparison(waste, selectedPhases, calcOpts) {
 
 // Order (printable supplier order form, comparison-first flow)
 // This page is the canonical deliverable: contractors print a per-supplier
-// material-purchase sheet. Bid/proposal flow has been deleted entirely.
+// material-purchase sheet. The proposal flow has been deleted entirely.
 //
 // Flow:
 //   1. User clicks "Generate order" on calculator.
@@ -4293,7 +4293,7 @@ function clearAllJobs() {
 
 // Dashboard (v2)
 // Material-calculator dashboard. Surfaces recent saved jobs, catalog size,
-// supplier coverage, and stale-price alerts. NOT a bid/estimating dashboard
+// supplier coverage, and stale-price alerts. NOT an estimating dashboard
 // There are no Win/Lost/Sent statuses anywhere here.
 //
 // Pure helpers, only used by renderDashboard.
@@ -4711,7 +4711,7 @@ async function renderAccountPage() {
   } else if (!lt) {
     typeLabel = 'No license';
     typeClass = 'is-none';
-    statusText = 'Activate a key below to unlock unlimited jobs and bidding.';
+    statusText = 'Activate a key below to unlock unlimited saved jobs.';
     planLabel = 'Free tier';
     statusPill.classList.add('is-none');
     statusPill.textContent = 'No license';
