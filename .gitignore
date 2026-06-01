@@ -1,5 +1,15 @@
 node_modules/
 backend/data/
-backend/.env
+
+# Environment files: never commit real secrets, keep only the example.
+.env
+.env.*
+!.env.example
+
 .DS_Store
 *.log
+
+# Editor swap files (can contain unsaved secrets from an open .env)
+*.swp
+*.swo
+*.swn
