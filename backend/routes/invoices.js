@@ -5,7 +5,6 @@ const { authenticate } = require('../middleware/auth');
 
 router.use(authenticate);
 
-// GET / — list user's invoices with client and job names
 router.get('/', async (req, res, next) => {
   try {
     const { data: invoices, error } = await supabase
@@ -20,7 +19,6 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// GET /:id — get single invoice with full details
 router.get('/:id', async (req, res, next) => {
   try {
     const { data: invoice, error } = await supabase
@@ -37,14 +35,12 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-// POST / — create invoice with auto-generated invoice number
 router.post('/', async (req, res, next) => {
   try {
     const { job_id, client_id, due_date, notes, total } = req.body;
     if (!job_id || !client_id)
       return res.status(400).json({ error: 'job_id and client_id are required' });
 
-    // Auto-generate invoice number: INV-YYYY-XXXX
     const year = new Date().getFullYear();
     const seq = String(Math.floor(1000 + Math.random() * 9000));
     const invoice_number = `INV-${year}-${seq}`;
@@ -70,7 +66,6 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-// PUT /:id — update invoice
 router.put('/:id', async (req, res, next) => {
   try {
     const updates = {};
@@ -101,7 +96,6 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
-// DELETE /:id — delete invoice
 router.delete('/:id', async (req, res, next) => {
   try {
     const { error } = await supabase

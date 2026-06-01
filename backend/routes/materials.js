@@ -104,7 +104,6 @@ router.put('/:id', async (req, res, next) => {
     });
     updates.updated_at = new Date().toISOString();
 
-    // Fetch old price before update if price is changing
     let oldPrice = null;
     if (updates.price_per_unit !== undefined) {
       const { data: existing } = await supabase
@@ -123,7 +122,6 @@ router.put('/:id', async (req, res, next) => {
       .single();
     if (error) throw error;
 
-    // Insert price history record if price changed
     if (
       updates.price_per_unit !== undefined &&
       oldPrice !== null &&
@@ -183,7 +181,6 @@ router.post('/duplicate', async (req, res, next) => {
   }
 });
 
-// POST /bulk-price-update - increase/decrease all prices for a supplier by percentage
 router.post('/bulk-price-update', async (req, res, next) => {
   try {
     const { supplier_id, percentage, category_id } = req.body;

@@ -13,7 +13,6 @@ function adminOnly(req, res, next) {
 router.use(authenticate);
 router.use(adminOnly);
 
-// GET /admin/users - list all users
 router.get('/users', async (req, res, next) => {
   try {
     const { data: users, error } = await supabase
@@ -29,7 +28,6 @@ router.get('/users', async (req, res, next) => {
   }
 });
 
-// PUT /admin/users/:id - update user (activate/deactivate, change role)
 router.put('/users/:id', async (req, res, next) => {
   try {
     const updates = {};
@@ -49,7 +47,6 @@ router.put('/users/:id', async (req, res, next) => {
   }
 });
 
-// DELETE /admin/users/:id
 router.delete('/users/:id', async (req, res, next) => {
   try {
     if (parseInt(req.params.id) === req.user.id)
@@ -62,7 +59,6 @@ router.delete('/users/:id', async (req, res, next) => {
   }
 });
 
-// GET /admin/keys - list all license keys
 router.get('/keys', async (req, res, next) => {
   try {
     const { data: keys, error } = await supabase
@@ -76,11 +72,11 @@ router.get('/keys', async (req, res, next) => {
   }
 });
 
-// POST /admin/keys - generate license key(s)
 router.post('/keys', async (req, res, next) => {
   try {
     const { type = 'monthly', duration_days = 30, count = 1, max_uses = 1 } = req.body;
     const keys = [];
+    // Cap at 50 per request to prevent accidental runaway key generation.
     for (let i = 0; i < Math.min(count, 50); i++) {
       const row = await createLicenseKey({
         type,
@@ -96,7 +92,6 @@ router.post('/keys', async (req, res, next) => {
   }
 });
 
-// DELETE /admin/keys/:id
 router.delete('/keys/:id', async (req, res, next) => {
   try {
     const { error } = await supabase.from('license_keys').delete().eq('id', req.params.id);
@@ -107,7 +102,6 @@ router.delete('/keys/:id', async (req, res, next) => {
   }
 });
 
-// GET /admin/stats - dashboard stats
 router.get('/stats', async (req, res, next) => {
   try {
     const { count: userCount } = await supabase

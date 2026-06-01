@@ -43,7 +43,8 @@ async function loadCompanyFromToken(req) {
       email: data.company_email || data.email || '',
       license: data.contractor_license || '',
     };
-  } catch (_) {
+  } catch {
+    // Malformed company payload: fall back to no prefilled company info.
     return null;
   }
 }
