@@ -4,11 +4,25 @@ const { Resend } = require('resend');
 const supabase = require('../config/database');
 const router = express.Router();
 
+// RFC-ish email validation: single @, sane local and domain parts, real TLD.
+// Deliberately avoids pathological edge cases (IP literals, quoted locals) that
+// are vanishingly rare for supplier addresses.
+const EMAIL_RE =
+  /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
+const EMAIL_MAX_LENGTH = 254; // RFC 5321 hard limit
+
+// Generous field limits that stop payload abuse without breaking real use cases.
+const ORDER_NUM_MAX = 64;
+const PROJECT_MAX = 200;
+const ADDRESS_MAX = 300;
+const NOTES_MAX = 2000;
+const SUBJECT_MAX = 200;
+
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Best-effort: look up the authenticated user's saved company info so the
 // letterhead is correct even if the frontend localStorage cache is empty.
-// Not gated by authentication — anonymous order sends still work.
+// Not gated by authentication; anonymous order sends still work.
 async function loadCompanyFromToken(req) {
   try {
     const auth = req.headers && req.headers.authorization;
@@ -147,7 +161,7 @@ function buildOrderHtml({
         <!-- Deliver to -->
         <tr><td style="padding:20px 28px 4px">
           <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Deliver to</div>
-          <div style="font-size:15px;font-weight:600;color:#111827">${esc(project || '—')}</div>
+          <div style="font-size:15px;font-weight:600;color:#111827">${esc(project || '')}</div>
           ${address ? `<div style="font-size:14px;color:#374151;margin-top:2px">${esc(stripCountry(address))}</div>` : ''}
         </td></tr>
         <!-- Notes -->
@@ -212,8 +226,23 @@ router.post('/send', async (req, res, next) => {
       groups,
       materialTotal,
     } = req.body || {};
-    if (!to || !/.+@.+\..+/.test(to)) {
+    if (!to || to.length > EMAIL_MAX_LENGTH || !EMAIL_RE.test(to)) {
       return res.status(400).json({ error: 'Valid recipient email required' });
+    }
+    if (customSubject && String(customSubject).trim().length > SUBJECT_MAX) {
+      return res.status(400).json({ error: 'Subject too long' });
+    }
+    if (orderNum && String(orderNum).length > ORDER_NUM_MAX) {
+      return res.status(400).json({ error: 'Order number too long' });
+    }
+    if (project && String(project).length > PROJECT_MAX) {
+      return res.status(400).json({ error: 'Project name too long' });
+    }
+    if (address && String(address).length > ADDRESS_MAX) {
+      return res.status(400).json({ error: 'Address too long' });
+    }
+    if (deliveryNotes && String(deliveryNotes).length > NOTES_MAX) {
+      return res.status(400).json({ error: 'Delivery notes too long' });
     }
     if (!Array.isArray(groups) || !groups.length) {
       return res.status(400).json({ error: 'Order has no items' });
@@ -231,7 +260,7 @@ router.post('/send', async (req, res, next) => {
     });
     const subject =
       (customSubject && String(customSubject).trim()) ||
-      `Material Order — ${orderNum}${project ? ' — ' + project : ''}`;
+      `Material Order - ${orderNum}${project ? ' - ' + project : ''}`;
     const fromName = mergedCompany.name || 'EstiCount';
     await resend.emails.send({
       from: `${fromName} <orders@esticount.com>`,
