@@ -63,20 +63,6 @@ describe('POST /api/stripe/webhook - valid signature', () => {
     const payload = JSON.stringify(event);
     const sig = signedHeader(payload);
 
-    // After the idempotency lookup the route inserts a new token row.
-    // The fake.setResponse for 'onboarding_tokens' will serve both the
-    // maybeSingle() lookup (null) and then the insert (we need to reconfigure
-    // after the first call). Since both hit the same table and our fake always
-    // returns the latest configured response, we set null first, then reset
-    // so the insert call returns a non-error response.
-    //
-    // Simplest approach: configure the fake to return null for the lookup.
-    // The insert call is chained (.insert().select()... but insert in our
-    // route is in lib/keys stub + then supabase.from('onboarding_tokens').insert(...)
-    // We just need no error on that insert. Default response is { data: null, error: null }.
-
-    fake.setResponse('onboarding_tokens', null); // maybeSingle lookup -> not found
-
     const res = await request(app)
       .post('/api/stripe/webhook')
       .set('Content-Type', 'application/json')
