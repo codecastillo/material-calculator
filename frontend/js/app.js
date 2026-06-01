@@ -1061,9 +1061,9 @@ window.priceV2FilterState = window.priceV2FilterState || {
 // 30D trend cell content (uses material.previousPrice when present)
 function priceV2Trend(m) {
   if (m.previousPrice == null || !isFinite(m.previousPrice) || m.previousPrice <= 0)
-    return { cls: 'flat', label: '—' };
+    return { cls: 'flat', label: '-' };
   const delta = ((m.pricePerUnit - m.previousPrice) / m.previousPrice) * 100;
-  if (Math.abs(delta) < 0.05) return { cls: 'flat', label: '—' };
+  if (Math.abs(delta) < 0.05) return { cls: 'flat', label: '-' };
   const sign = delta > 0 ? '+' : '';
   const arrow = delta > 0 ? '↑' : '↓';
   const cls = delta > 0 ? 'up' : 'down';
@@ -1092,7 +1092,7 @@ function priceV2UpdateSubtitle() {
       const mm = String(d.getMinutes()).padStart(2, '0');
       phEl.textContent = `Last sync ${hh}:${mm}${sameDay ? ' today' : ''}`;
     } else {
-      phEl.textContent = 'Last sync —';
+      phEl.textContent = 'Last sync -';
     }
   }
 }
@@ -2340,7 +2340,7 @@ function renderMaterialPicker() {
         const safeId = escAttr(String(m.id));
         return `<label class="calc-v2-material-row${checked ? '' : ' is-off'}">
                 <input type="checkbox"${checked ? ' checked' : ''} data-on-change="toggleMaterialPick" data-args='["${safePhase}","${safeId}"]'>
-                <span class="calc-v2-material-sku">${escHtml(m.sku || '—')}</span>
+                <span class="calc-v2-material-sku">${escHtml(m.sku || '-')}</span>
                 <span class="calc-v2-material-name">${escHtml(m.name || '')}</span>
                 <span class="calc-v2-material-price">${fmt(m.pricePerUnit || 0)}</span>
             </label>`;
@@ -2415,7 +2415,7 @@ function materialPickerSearch(phase, event) {
           const safeId = escAttr(String(m.id));
           return `<label class="calc-v2-material-row${checked ? '' : ' is-off'}">
             <input type="checkbox"${checked ? ' checked' : ''} data-on-change="toggleMaterialPick" data-args='["${safePhase}","${safeId}"]'>
-            <span class="calc-v2-material-sku">${escHtml(m.sku || '—')}</span>
+            <span class="calc-v2-material-sku">${escHtml(m.sku || '-')}</span>
             <span class="calc-v2-material-name">${escHtml(m.name || '')}</span>
             <span class="calc-v2-material-price">${fmt(m.pricePerUnit || 0)}</span>
         </label>`;
@@ -2865,7 +2865,7 @@ function v2ItemUnitSlug(item) {
 // Coverage display string ("432 sqft/roll", "5,000/box", "per cu yd")
 function v2CoverageStr(item) {
   const cov = item.coveragePerUnit;
-  if (!cov || cov <= 0) return '—';
+  if (!cov || cov <= 0) return '-';
   const u = item.unit || 'unit';
   const unit = item.calcType === 'linear' ? 'lf' : 'sqft';
   return `${v2FmtInt(cov)} ${unit}/${u}`;
@@ -2985,7 +2985,7 @@ function renderCalcResults(r) {
         .map((i) => {
           const unitSlug = v2ItemUnitSlug(i);
           return `<tr>
-                <td class="cell-sku calc-v2-cell-sku">${escHtml(i.sku || '—')}</td>
+                <td class="cell-sku calc-v2-cell-sku">${escHtml(i.sku || '-')}</td>
                 <td class="cell-item">
                     <div class="calc-v2-cell-item-name">${escHtml(i.name)}</div>
                     <div class="calc-v2-cell-item-unit">${escHtml(unitSlug)}</div>
@@ -3171,7 +3171,7 @@ function renderComparison(waste, selectedPhases, calcOpts) {
     html += `<tr${isBest ? ' class="best-price"' : ''}><td>${escHtml(r.supplier)}${isBest ? ' ★' : ''}</td>`;
     activePhases.forEach((c) => {
       const val = r.phases[c]?.total || 0;
-      html += `<td class="text-right mono"${val === 0 ? ' style="color:var(--text3)"' : ''}>${val > 0 ? fmt(val) : '—'}</td>`;
+      html += `<td class="text-right mono"${val === 0 ? ' style="color:var(--text3)"' : ''}>${val > 0 ? fmt(val) : '-'}</td>`;
     });
     const diff = r.total - minTotal;
     html += `<td class="text-right mono" style="font-weight:700">${fmt(r.total)}</td><td class="text-right mono" style="color:${diff === 0 ? 'var(--ok)' : 'var(--err)'}">${diff === 0 ? 'Best' : '+' + fmt(diff)}</td></tr>`;
@@ -3990,7 +3990,7 @@ function jobsV2FmtCompactMoney(n) {
 // ISO-ish yyyy-mm-dd date.
 function jobsV2FmtDate(iso) {
   const d = new Date(iso);
-  if (isNaN(d)) return '—';
+  if (isNaN(d)) return '-';
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
@@ -4102,7 +4102,7 @@ function renderSavedJobs() {
           .join('');
         const chipsHtml =
           chips + (more ? `<span class="jobs-v2-phases-overflow">+${more}</span>` : '');
-        const clientName = j.isTemplate ? 'Template' : j.projectName || j.supplier || '—';
+        const clientName = j.isTemplate ? 'Template' : j.projectName || j.supplier || '-';
         const sqftCell = j.isTemplate
           ? `<div class="jobs-v2-sqft" style="color:var(--v2-text-tertiary);font-weight:400">-</div><div class="jobs-v2-date">${jobsV2FmtDate(j.savedAt)}</div>`
           : `<div class="jobs-v2-sqft">${(j.sqft || 0).toLocaleString()}<span class="unit">sq&middot;ft</span></div><div class="jobs-v2-date">${jobsV2FmtDate(j.savedAt)}</div>`;
@@ -4322,9 +4322,9 @@ function dashV2FmtMoneyK(n) {
   return '$' + v.toFixed(0);
 }
 function dashV2FmtRelative(ts) {
-  if (!ts) return '—';
+  if (!ts) return '-';
   const d = new Date(ts);
-  if (isNaN(d.getTime())) return '—';
+  if (isNaN(d.getTime())) return '-';
   const diffMs = Date.now() - d.getTime();
   const day = 24 * 60 * 60 * 1000;
   if (diffMs < day && d.toDateString() === new Date().toDateString()) return 'Today';
@@ -4488,7 +4488,7 @@ async function renderDashboard() {
                         <td class="dash-v2-job-cell-phase"><div class="dash-v2-job-phase-chips">${chipsHtml}</div></td>
                         <td class="dash-v2-job-due">
                             <span class="dash-v2-job-due-sqft">${(Number(j.sqft) || 0).toLocaleString()}</span>
-                            ${dateStr && dateStr !== '—' ? `<span class="dash-v2-job-due-date">${escHtml(dateStr)}</span>` : ''}
+                            ${dateStr && dateStr !== '-' ? `<span class="dash-v2-job-due-date">${escHtml(dateStr)}</span>` : ''}
                         </td>
                         <td class="dash-v2-job-total">${dashV2FmtMoneyK(j.sellingPrice || j.materialTotal || 0)}</td>
                         <td class="dash-v2-job-chev" aria-hidden="true">&rsaquo;</td>
@@ -4761,7 +4761,7 @@ async function renderAccountPage() {
     ? keyFull.length > 10
       ? keyFull.slice(0, 7) + '…' + keyFull.slice(-4)
       : keyFull
-    : '—';
+    : '-';
 
   licenseEl.innerHTML = `
         <div class="account-v2-license-row">
@@ -4777,7 +4777,7 @@ async function renderAccountPage() {
             </div>
             <div class="account-v2-license-meta-cell">
                 <div class="account-v2-license-meta-label">${isLifetimeNow ? 'EXPIRES' : isExpired ? 'EXPIRED ON' : isLicensedNow ? 'EXPIRES' : 'STATUS'}</div>
-                <div class="account-v2-license-meta-value ${!isLicensedNow ? 'is-muted' : ''}">${isLifetimeNow ? 'Never' : isLicensedNow && exp ? expStr : isLicensedNow ? '—' : 'inactive'}</div>
+                <div class="account-v2-license-meta-value ${!isLicensedNow ? 'is-muted' : ''}">${isLifetimeNow ? 'Never' : isLicensedNow && exp ? expStr : isLicensedNow ? '-' : 'inactive'}</div>
             </div>
             <div class="account-v2-license-meta-cell">
                 <div class="account-v2-license-meta-label">KEY</div>
@@ -4793,7 +4793,7 @@ async function renderAccountPage() {
       ? savedJobs.filter((j) => j && j.isTemplate).length
       : 0;
     const realJobs = totalJobs - templates;
-    let lastSavedLabel = '—';
+    let lastSavedLabel = '-';
     if (Array.isArray(savedJobs) && savedJobs.length) {
       const dated = savedJobs
         .map((j) => (j && j.savedAt ? new Date(j.savedAt) : null))
@@ -5582,7 +5582,7 @@ function adminV2PrefixFor(type) {
 function adminV2DurLabel(type, days) {
   if (type === 'lifetime') return '∞';
   if (typeof days === 'number' && days > 0) return days + 'd';
-  return { trial: '7d', monthly: '30d', yearly: '365d' }[type] || '—';
+  return { trial: '7d', monthly: '30d', yearly: '365d' }[type] || '-';
 }
 function adminV2ShortName(name) {
   const parts = String(name || '')

@@ -1,4 +1,4 @@
-// Delegated event handlers — replaces inline onXxx= attributes blocked by CSP.
+// Delegated event handlers: replaces inline onXxx= attributes blocked by CSP.
 //
 // Markup convention:
 //   <button data-on-click="funcName">                  zero-arg call

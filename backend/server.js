@@ -95,7 +95,7 @@ app.use((req, res, next) => {
 app.use(express.urlencoded({ extended: true }));
 
 // ---------------------------------------------------------------------------
-// Static files — serve frontend
+// Static files: serve frontend
 // ---------------------------------------------------------------------------
 const frontendPath = path.join(__dirname, '..', 'frontend');
 
