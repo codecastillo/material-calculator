@@ -440,6 +440,62 @@ const SUPPLIER_MATERIALS = {
 // >1 = markup (ABC charges 3% more), <1 = discount (Sherwin Williams runs 2% cheaper).
 const SUPPLIER_PRICE_MODS = { 'Pacific Supply': 1, 'ABC Supply': 1.03, 'Sherwin Williams': 0.98 };
 
+// Per-phase recipe: the curated set of materials (by SKU) a real job in that
+// phase actually uses. When a phase is selected, only its recipe materials are
+// auto-calculated; other catalog items in the same category stay editable and
+// can still be added manually, but are left out of the default count.
+//
+// Quantities use each product's own coverage/length by default. To pin a real
+// crew consumption rate to a line, add an override: `area` (sqft per unit) for
+// area materials, `linear` (ft per unit) for linear materials. Lines whose SKU a
+// supplier does not carry are skipped. Phases not listed here fall back to
+// category-based inclusion, so Accessories and Painting are unchanged until a
+// recipe is added. Commented lines are job-dependent items to enable as needed.
+const PHASE_RECIPES = {
+  Lath: [
+    { sku: 'WL-2536150' }, // wire lath 2.5 lb, area
+    { sku: 'PB-2P60-150' }, // 2-ply 60min paper, area
+    { sku: 'ST-716-10K' }, // staples, area
+    { sku: 'SFN-15-25' }, // self-furring nails, area
+    { sku: 'WS-26-10' }, // weep screed, linear (perimeter)
+    { sku: 'CA-26-10' }, // corner aid, linear
+    { sku: 'CB-26-10' }, // casing bead, linear
+  ],
+  'Gray Coat': [
+    { sku: 'PC-TS-94' }, // portland cement, area
+    { sku: 'PS-TON' }, // plaster sand, area
+    { sku: 'HL-TS-50' }, // hydrated lime, area
+    { sku: 'FM-1LB' }, // fiber mesh, area
+    // { sku: 'BA-WC-5G' }, // bonding agent: dense or re-stucco substrates
+  ],
+  'Color Coat': [
+    { sku: 'LH-XK-65' }, // finish coat, area
+    { sku: 'LH-PIG-1' }, // color pigment, area
+    // { sku: 'FS-30-80' }, // finish sand: job dependent
+    // { sku: 'AA-QR-1G' }, // acrylic additive: job dependent
+  ],
+  Stone: [
+    { sku: 'SV-FLAT-BOX' }, // flat stone veneer, area
+    { sku: 'SV-CORN-BOX' }, // stone corners, linear
+    { sku: 'SM-MRT-80' }, // stone mortar, area
+    { sku: 'SM-GRT-50' }, // stone grout, area
+    { sku: 'ML-ST-25' }, // metal lath for stone, area
+    { sku: 'SC-ST-94' }, // scratch coat cement, area
+  ],
+  Drywall: [
+    { sku: 'DW-12-48' }, // 1/2 in sheet (drywall-areas UI narrows which sheets)
+    { sku: 'DW-58-48' }, // 5/8 in sheet
+    { sku: 'DS-12-48' }, // tile backer sheet
+    { sku: 'RD-AP-45G' }, // all-purpose joint compound, area
+    { sku: 'PJT-500' }, // paper joint tape, area
+    { sku: 'CB-MT-8' }, // metal corner bead, linear
+    { sku: 'SD-150-25' }, // sanding discs, area
+    // { sku: 'TNT-LT-45G' }, // lite topping: enable if you skim-coat
+    // { sku: 'MJT-300' }, // mesh tape: alternative to paper tape
+    // { sku: 'SD-120-25' }, // 120-grit discs: alternative grit
+  ],
+};
+
 // State
 let suppliers = [],
   categories = [],
@@ -2586,7 +2642,27 @@ function calcForSupplier(supplier, waste, selectedPhases, opts = {}) {
   const stuccoPhases = ['Lath', 'Gray Coat', 'Color Coat'];
 
   let mats = materialsBySupplier[supplier] || [];
-  if (selectedPhases?.length > 0) mats = mats.filter((m) => selectedPhases.includes(m.category));
+  // Recipe-aware filter: when phases are selected, include only each phase's
+  // recipe SKUs. Phases with no recipe entry fall back to category inclusion so
+  // nothing breaks. recipeOverrideBySku is consumed in the qty math below.
+  let recipeOverrideBySku = null;
+  if (selectedPhases?.length > 0) {
+    const allowedSkus = new Set();
+    const phasesWithoutRecipe = [];
+    recipeOverrideBySku = {};
+    selectedPhases.forEach((phase) => {
+      const recipe = PHASE_RECIPES[phase];
+      if (!recipe) {
+        phasesWithoutRecipe.push(phase);
+        return;
+      }
+      recipe.forEach((line) => {
+        allowedSkus.add(line.sku);
+        recipeOverrideBySku[line.sku] = line;
+      });
+    });
+    mats = mats.filter((m) => allowedSkus.has(m.sku) || phasesWithoutRecipe.includes(m.category));
+  }
   if (hasDrywallAreas)
     mats = mats.filter((m) => !m.isDrywallSheet || sheetSqftMap[m.sku] !== undefined);
   // Smart material picker: honor per-phase user picks. Drywall sheets are
@@ -2630,7 +2706,11 @@ function calcForSupplier(supplier, waste, selectedPhases, opts = {}) {
       const dims = phaseDims[dimKey] || { sqft: 0, linearFt: 0 };
       base = m.calcType === 'linear' ? (dims.linearFt || 0) * w : (dims.sqft || 0) * w;
     }
-    let qty = base > 0 ? Math.ceil(base / m.coveragePerUnit) : 0;
+    // Use the recipe line's rate override when set, else the product's coverage.
+    const ovr = recipeOverrideBySku && recipeOverrideBySku[m.sku];
+    const ovrRate = ovr ? (m.calcType === 'linear' ? ovr.linear : ovr.area) : undefined;
+    const rate = ovrRate > 0 ? ovrRate : m.coveragePerUnit;
+    let qty = base > 0 ? Math.ceil(base / rate) : 0;
     if (m.isPaint && paintCoats > 1) qty = qty * paintCoats;
     const lineTotal = qty * m.pricePerUnit;
     if (phases[m.category]) {
