@@ -1,14 +1,20 @@
 const express = require('express');
-const db = require('../config/database');
+const supabase = require('../config/database');
 const { authenticate } = require('../middleware/auth');
 const { adapters } = require('../services/supplierApi');
 
 const router = express.Router();
 
+// Reject CSV payloads that would make per-row processing unreasonable.
+// 512 KB covers thousands of realistic pricing rows; 5 000 rows is a practical
+// ceiling for a single import batch (larger sets should use a background job).
+const CSV_MAX_BYTES = 512 * 1024;
+const CSV_MAX_ROWS = 5000;
+
 // All routes require authentication
 router.use(authenticate);
 
-// GET /api/pricing/fetch/:supplierName — stub for supplier API integration
+// GET /api/pricing/fetch/:supplierName: stub for supplier API integration
 router.get('/fetch/:supplierName', (req, res, next) => {
   try {
     const { supplierName } = req.params;
@@ -22,7 +28,7 @@ router.get('/fetch/:supplierName', (req, res, next) => {
         available_adapters: Object.keys(adapters),
         // Adapter pattern: register new supplier adapters in services/supplierApi.js
         // Each adapter implements: fetchPricing(), searchProducts(), getProductDetail()
-        hint: 'Add a new adapter in services/supplierApi.js to support this supplier'
+        hint: 'Add a new adapter in services/supplierApi.js to support this supplier',
       });
     }
 
@@ -38,16 +44,16 @@ router.get('/fetch/:supplierName', (req, res, next) => {
         adapter: normalizedName,
         fetched_at: new Date().toISOString(),
         is_stub: true,
-        note: 'Replace stub adapters in services/supplierApi.js with real API integrations'
-      }
+        note: 'Replace stub adapters in services/supplierApi.js with real API integrations',
+      },
     });
   } catch (err) {
     next(err);
   }
 });
 
-// POST /api/pricing/import — import CSV pricing data
-router.post('/import', (req, res, next) => {
+// POST /api/pricing/import: import CSV pricing data for a supplier
+router.post('/import', async (req, res, next) => {
   try {
     const { supplier_id, csv_data } = req.body;
 
@@ -55,21 +61,41 @@ router.post('/import', (req, res, next) => {
       return res.status(400).json({ error: 'supplier_id and csv_data are required' });
     }
 
-    // Verify supplier belongs to user
-    const supplier = db.prepare(
-      'SELECT * FROM suppliers WHERE id = ? AND user_id = ?'
-    ).get(supplier_id, req.user.id);
+    // Enforce size bounds before any parsing work
+    if (Buffer.byteLength(csv_data, 'utf8') > CSV_MAX_BYTES) {
+      return res.status(400).json({
+        error: `CSV exceeds maximum allowed size of ${CSV_MAX_BYTES / 1024} KB`,
+      });
+    }
+
+    const lines = csv_data.trim().split('\n');
+    const dataLines = lines.slice(1); // everything after the header
+
+    if (dataLines.length > CSV_MAX_ROWS) {
+      return res.status(400).json({
+        error: `CSV exceeds maximum of ${CSV_MAX_ROWS} data rows per import`,
+      });
+    }
+
+    // Verify supplier belongs to the authenticated user
+    const { data: supplier } = await supabase
+      .from('suppliers')
+      .select('id')
+      .eq('id', supplier_id)
+      .eq('user_id', req.user.id)
+      .single();
 
     if (!supplier) {
       return res.status(404).json({ error: 'Supplier not found' });
     }
 
-    // Parse CSV data
-    // Expected format: name,sku,unit,price_per_unit,category_name,coverage_per_unit,calc_type
-    const lines = csv_data.trim().split('\n');
-    const header = lines[0].toLowerCase().split(',').map(h => h.trim());
+    // Parse CSV header
+    // Expected columns: name,sku,unit,price_per_unit,category_name,coverage_per_unit,calc_type
+    const header = lines[0]
+      .toLowerCase()
+      .split(',')
+      .map((h) => h.trim());
 
-    // Validate required columns
     const nameIdx = header.indexOf('name');
     if (nameIdx === -1) {
       return res.status(400).json({ error: 'CSV must have a "name" column' });
@@ -82,62 +108,70 @@ router.post('/import', (req, res, next) => {
     const coverageIdx = header.indexOf('coverage_per_unit');
     const calcTypeIdx = header.indexOf('calc_type');
 
+    // Pre-fetch all categories for this user once so each row doesn't hit the DB
+    const categoryCache = new Map();
+    if (categoryIdx !== -1) {
+      const { data: categories } = await supabase
+        .from('categories')
+        .select('id, name')
+        .eq('user_id', req.user.id);
+      for (const cat of categories || []) {
+        categoryCache.set(cat.name.toLowerCase(), cat.id);
+      }
+    }
+
     const imported = [];
     const errors = [];
 
-    const insertMaterial = db.prepare(`
-      INSERT INTO materials (supplier_id, name, sku, unit, price_per_unit, category_id, coverage_per_unit, calc_type)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
+    for (let i = 0; i < dataLines.length; i++) {
+      const lineNum = i + 2; // 1-indexed, +1 for header row
+      const cols = dataLines[i].split(',').map((c) => c.trim());
 
-    const importTransaction = db.transaction((dataLines) => {
-      for (let i = 0; i < dataLines.length; i++) {
-        const lineNum = i + 2; // +2 for 1-indexed and header row
-        const cols = dataLines[i].split(',').map(c => c.trim());
-
-        const name = cols[nameIdx];
-        if (!name) {
-          errors.push({ line: lineNum, error: 'Missing name' });
-          continue;
-        }
-
-        // Look up category if provided
-        let category_id = null;
-        if (categoryIdx !== -1 && cols[categoryIdx]) {
-          const cat = db.prepare(
-            'SELECT id FROM categories WHERE name = ? AND user_id = ?'
-          ).get(cols[categoryIdx], req.user.id);
-          if (cat) {
-            category_id = cat.id;
-          }
-        }
-
-        try {
-          const result = insertMaterial.run(
-            supplier_id,
-            name,
-            skuIdx !== -1 ? (cols[skuIdx] || '') : '',
-            unitIdx !== -1 ? (cols[unitIdx] || 'each') : 'each',
-            priceIdx !== -1 ? (parseFloat(cols[priceIdx]) || 0) : 0,
-            category_id,
-            coverageIdx !== -1 ? (parseFloat(cols[coverageIdx]) || 0) : 0,
-            calcTypeIdx !== -1 ? (cols[calcTypeIdx] || 'sqft') : 'sqft'
-          );
-          imported.push({ id: result.lastInsertRowid, name, line: lineNum });
-        } catch (insertErr) {
-          errors.push({ line: lineNum, name, error: insertErr.message });
-        }
+      const name = cols[nameIdx];
+      if (!name) {
+        errors.push({ line: lineNum, error: 'Missing name' });
+        continue;
       }
-    });
 
-    importTransaction(lines.slice(1)); // Skip header
+      let category_id = null;
+      if (categoryIdx !== -1 && cols[categoryIdx]) {
+        category_id = categoryCache.get(cols[categoryIdx].toLowerCase()) || null;
+      }
+
+      const price_per_unit = Math.max(0, priceIdx !== -1 ? parseFloat(cols[priceIdx]) || 0 : 0);
+      const coverage_per_unit = Math.max(
+        0,
+        coverageIdx !== -1 ? parseFloat(cols[coverageIdx]) || 0 : 0
+      );
+
+      const { data: material, error: insertErr } = await supabase
+        .from('materials')
+        .insert({
+          supplier_id,
+          name,
+          sku: skuIdx !== -1 ? cols[skuIdx] || '' : '',
+          unit: unitIdx !== -1 ? cols[unitIdx] || 'each' : 'each',
+          price_per_unit,
+          category_id,
+          coverage_per_unit,
+          calc_type: calcTypeIdx !== -1 ? cols[calcTypeIdx] || 'sqft' : 'sqft',
+        })
+        .select('id')
+        .single();
+
+      if (insertErr) {
+        errors.push({ line: lineNum, name, error: insertErr.message });
+      } else {
+        imported.push({ id: material.id, name, line: lineNum });
+      }
+    }
 
     res.json({
       message: `Imported ${imported.length} materials`,
       imported_count: imported.length,
       error_count: errors.length,
       imported,
-      errors: errors.length > 0 ? errors : undefined
+      errors: errors.length > 0 ? errors : undefined,
     });
   } catch (err) {
     next(err);

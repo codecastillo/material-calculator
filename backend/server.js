@@ -6,8 +6,8 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 
-// Initialize Supabase connection
-const supabase = require('./config/database');
+// Boot-time env check: validates SUPABASE_* vars and exits if missing.
+require('./config/database');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -24,6 +24,7 @@ const priceHistoryRoutes = require('./routes/priceHistory');
 const orderEmailRoutes = require('./routes/orderEmail');
 const onboardingRoutes = require('./routes/onboarding');
 const stripeRoutes = require('./routes/stripe');
+const placesRoutes = require('./routes/places');
 
 // Import error handler
 const errorHandler = require('./middleware/errorHandler');
@@ -36,26 +37,30 @@ const PORT = process.env.PORT || 3000;
 // ---------------------------------------------------------------------------
 
 // Security headers
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "https://maps.googleapis.com"],
-      scriptSrcAttr: ["'none'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "https://maps.gstatic.com", "https://maps.googleapis.com"],
-      connectSrc: ["'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com", "https://maps.googleapis.com", "https://maps.gstatic.com", "https://places.googleapis.com"],
-      manifestSrc: ["'self'"]
-    }
-  }
-}));
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        scriptSrcAttr: ["'none'"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+        imgSrc: ["'self'", 'data:'],
+        connectSrc: ["'self'", 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
+        manifestSrc: ["'self'"],
+      },
+    },
+  })
+);
 
 // CORS
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5500',
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || 'http://localhost:5500',
+    credentials: true,
+  })
+);
 
 // Rate limiting
 const limiter = rateLimit({
@@ -63,7 +68,7 @@ const limiter = rateLimit({
   max: 100, // limit each IP to 100 requests per window
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many requests, please try again later' }
+  message: { error: 'Too many requests, please try again later' },
 });
 app.use('/api/', limiter);
 
@@ -74,14 +79,14 @@ const authLimiter = rateLimit({
   max: process.env.NODE_ENV === 'production' ? 20 : 200,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many auth attempts, please try again later' }
+  message: { error: 'Too many auth attempts, please try again later' },
 });
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/forgot-password', authLimiter);
 app.use('/api/auth/reset-password', authLimiter);
 
-// Body parsing — skip JSON for the Stripe webhook so signature verification
+// Body parsing: skip JSON for the Stripe webhook so signature verification
 // has access to the raw body (the stripe router uses express.raw on that path).
 app.use((req, res, next) => {
   if (req.originalUrl === '/api/stripe/webhook') return next();
@@ -90,7 +95,7 @@ app.use((req, res, next) => {
 app.use(express.urlencoded({ extended: true }));
 
 // ---------------------------------------------------------------------------
-// Static files — serve frontend
+// Static files: serve frontend
 // ---------------------------------------------------------------------------
 const frontendPath = path.join(__dirname, '..', 'frontend');
 
@@ -118,16 +123,11 @@ app.use('/api/price-history', priceHistoryRoutes);
 app.use('/api/order-email', orderEmailRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/stripe', stripeRoutes);
+app.use('/api/places', placesRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-app.get('/api/config', (req, res) => {
-    res.json({
-        googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY || ''
-    });
 });
 
 // ---------------------------------------------------------------------------
@@ -151,27 +151,25 @@ app.get('*', (req, res, next) => {
 app.use(errorHandler);
 
 // ---------------------------------------------------------------------------
-// Start server
+// Start server only when run directly (`node server.js`). When required by the
+// test suite the app is used in-process via supertest, so we skip listen().
 // ---------------------------------------------------------------------------
-app.listen(PORT, () => {
-  console.log(`Material Calculator API running on http://localhost:${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`Database: ${process.env.DB_PATH || './data/calculator.db'}`);
-  console.log(`Frontend: ${frontendPath}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Material Calculator API running on http://localhost:${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`Supabase: ${process.env.SUPABASE_URL || '(not set)'}`);
+    console.log(`Frontend: ${frontendPath}`);
+  });
 
-// Graceful shutdown
-process.on('SIGINT', () => {
-  console.log('\nShutting down...');
-  process.exit(0);
-});
+  process.on('SIGINT', () => {
+    console.log('\nShutting down...');
+    process.exit(0);
+  });
 
-process.on('SIGTERM', () => {
-  process.exit(0);
-});
+  process.on('SIGTERM', () => {
+    process.exit(0);
+  });
+}
 
 module.exports = app;
-// redeploy 1779148342
-
-
-

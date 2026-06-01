@@ -1,4 +1,4 @@
-// Delegated event handlers — replaces inline onXxx= attributes blocked by CSP.
+// Delegated event handlers: replaces inline onXxx= attributes blocked by CSP.
 //
 // Markup convention:
 //   <button data-on-click="funcName">                  zero-arg call
@@ -15,9 +15,17 @@
   function parseArgs(raw) {
     if (raw == null || raw === '') return [];
     if (raw.startsWith('[')) {
-      try { return JSON.parse(raw); } catch (_) { /* fall through */ }
+      try {
+        return JSON.parse(raw);
+      } catch {
+        /* fall through to single-value parse */
+      }
     }
-    try { return [JSON.parse(raw)]; } catch (_) { return [raw]; }
+    try {
+      return [JSON.parse(raw)];
+    } catch {
+      return [raw];
+    }
   }
 
   function invoke(fnName, el, event) {

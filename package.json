@@ -4,9 +4,20 @@
   "private": true,
   "scripts": {
     "start": "node backend/server.js",
-    "postinstall": "cd backend && npm install"
+    "postinstall": "cd backend && npm install",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "node --test 'backend/__tests__/*.test.js'"
   },
   "engines": {
     "node": "22.x"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^9.1.0",
+    "globals": "^15.14.0",
+    "prettier": "^3.4.2"
   }
 }

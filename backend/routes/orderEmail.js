@@ -2,21 +2,38 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const { Resend } = require('resend');
 const supabase = require('../config/database');
+const { JWT_SECRET } = require('../config/auth');
 const router = express.Router();
+
+// RFC-ish email validation: single @, sane local and domain parts, real TLD.
+// Deliberately avoids pathological edge cases (IP literals, quoted locals) that
+// are vanishingly rare for supplier addresses.
+const EMAIL_RE =
+  /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
+const EMAIL_MAX_LENGTH = 254; // RFC 5321 hard limit
+
+// Generous field limits that stop payload abuse without breaking real use cases.
+const ORDER_NUM_MAX = 64;
+const PROJECT_MAX = 200;
+const ADDRESS_MAX = 300;
+const NOTES_MAX = 2000;
+const SUBJECT_MAX = 200;
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Best-effort: look up the authenticated user's saved company info so the
 // letterhead is correct even if the frontend localStorage cache is empty.
-// Not gated by authentication — anonymous order sends still work.
+// Not gated by authentication; anonymous order sends still work.
 async function loadCompanyFromToken(req) {
   try {
     const auth = req.headers && req.headers.authorization;
     if (!auth || !auth.startsWith('Bearer ')) return null;
-    const decoded = jwt.verify(auth.slice(7), process.env.JWT_SECRET);
+    const decoded = jwt.verify(auth.slice(7), JWT_SECRET);
     const { data } = await supabase
       .from('users')
-      .select('company_name, company_address, company_phone, company_email, contractor_license, name, email')
+      .select(
+        'company_name, company_address, company_phone, company_email, contractor_license, name, email'
+      )
       .eq('id', decoded.id)
       .single();
     if (!data) return null;
@@ -25,9 +42,10 @@ async function loadCompanyFromToken(req) {
       address: data.company_address || '',
       phone: data.company_phone || '',
       email: data.company_email || data.email || '',
-      license: data.contractor_license || ''
+      license: data.contractor_license || '',
     };
-  } catch (_) {
+  } catch {
+    // Malformed company payload: fall back to no prefilled company info.
     return null;
   }
 }
@@ -36,7 +54,7 @@ function mergeCompany(bodyCompany, dbCompany) {
   if (!dbCompany) return bodyCompany || {};
   const out = { ...dbCompany };
   if (bodyCompany) {
-    Object.keys(bodyCompany).forEach(k => {
+    Object.keys(bodyCompany).forEach((k) => {
       const v = bodyCompany[k];
       if (v != null && String(v).trim() !== '') out[k] = v;
     });
@@ -53,24 +71,45 @@ function esc(s) {
 }
 
 function fmt(n) {
-  return '$' + Number(n || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return (
+    '$' +
+    Number(n || 0)
+      .toFixed(2)
+      .replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  );
 }
 
 function stripCountry(addr) {
-  return String(addr || '').replace(/,\s*USA\s*$/i, '').replace(/,\s*United States\s*$/i, '').trim();
+  return String(addr || '')
+    .replace(/,\s*USA\s*$/i, '')
+    .replace(/,\s*United States\s*$/i, '')
+    .trim();
 }
 
-function buildOrderHtml({ orderNum, project, address, deliveryNotes, company, groups, materialTotal }) {
-  const rowsHtml = groups.map(g => {
-    const items = (g.items || []).map(i => `
+function buildOrderHtml({
+  orderNum,
+  project,
+  address,
+  deliveryNotes,
+  company,
+  groups,
+  materialTotal,
+}) {
+  const rowsHtml = groups
+    .map((g) => {
+      const items = (g.items || [])
+        .map(
+          (i) => `
       <tr>
         <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:12px;color:#374151">${esc(i.sku || '')}</td>
         <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#111827">${esc(i.name || '')}</td>
         <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;text-align:right;font-size:14px;color:#111827">${i.qty} ${esc(i.unit || '')}</td>
         <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;text-align:right;font-size:14px;color:#111827">${fmt(i.pricePerUnit)}</td>
         <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;text-align:right;font-size:14px;color:#111827;font-weight:600">${fmt(i.lineTotal)}</td>
-      </tr>`).join('');
-    return `
+      </tr>`
+        )
+        .join('');
+      return `
       <div style="margin-bottom:24px">
         <div style="background:#f3f4f6;padding:12px 14px;border-radius:8px 8px 0 0;font-weight:600">
           ${esc(g.supplier)} &middot; ${esc((g.phases || []).join(', '))}
@@ -88,13 +127,16 @@ function buildOrderHtml({ orderNum, project, address, deliveryNotes, company, gr
           <tbody>${items}</tbody>
         </table>
       </div>`;
-  }).join('');
+    })
+    .join('');
 
-  const notesHtml = deliveryNotes ? `
+  const notesHtml = deliveryNotes
+    ? `
     <div style="background:#fffbeb;border-left:4px solid #f59e0b;padding:12px 16px;margin:16px 0;border-radius:0 6px 6px 0">
       <div style="font-size:11px;font-weight:600;color:#92400e;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Delivery Notes</div>
       <div style="font-size:14px;color:#451a03;white-space:pre-wrap">${esc(deliveryNotes)}</div>
-    </div>` : '';
+    </div>`
+    : '';
 
   return `<!DOCTYPE html>
 <html>
@@ -121,7 +163,7 @@ function buildOrderHtml({ orderNum, project, address, deliveryNotes, company, gr
         <!-- Deliver to -->
         <tr><td style="padding:20px 28px 4px">
           <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Deliver to</div>
-          <div style="font-size:15px;font-weight:600;color:#111827">${esc(project || '—')}</div>
+          <div style="font-size:15px;font-weight:600;color:#111827">${esc(project || '')}</div>
           ${address ? `<div style="font-size:14px;color:#374151;margin-top:2px">${esc(stripCountry(address))}</div>` : ''}
         </td></tr>
         <!-- Notes -->
@@ -152,7 +194,8 @@ function buildOrderHtml({ orderNum, project, address, deliveryNotes, company, gr
 
 router.post('/preview', async (req, res, next) => {
   try {
-    const { orderNum, project, address, deliveryNotes, company, groups, materialTotal } = req.body || {};
+    const { orderNum, project, address, deliveryNotes, company, groups, materialTotal } =
+      req.body || {};
     if (!Array.isArray(groups) || !groups.length) {
       return res.status(400).json({ error: 'Order has no items' });
     }
@@ -164,7 +207,7 @@ router.post('/preview', async (req, res, next) => {
       deliveryNotes: deliveryNotes || '',
       company: mergeCompany(company, dbCompany),
       groups,
-      materialTotal: materialTotal || 0
+      materialTotal: materialTotal || 0,
     });
     res.json({ html });
   } catch (err) {
@@ -174,9 +217,34 @@ router.post('/preview', async (req, res, next) => {
 
 router.post('/send', async (req, res, next) => {
   try {
-    const { to, subject: customSubject, orderNum, project, address, deliveryNotes, company, groups, materialTotal } = req.body || {};
-    if (!to || !/.+@.+\..+/.test(to)) {
+    const {
+      to,
+      subject: customSubject,
+      orderNum,
+      project,
+      address,
+      deliveryNotes,
+      company,
+      groups,
+      materialTotal,
+    } = req.body || {};
+    if (!to || to.length > EMAIL_MAX_LENGTH || !EMAIL_RE.test(to)) {
       return res.status(400).json({ error: 'Valid recipient email required' });
+    }
+    if (customSubject && String(customSubject).trim().length > SUBJECT_MAX) {
+      return res.status(400).json({ error: 'Subject too long' });
+    }
+    if (orderNum && String(orderNum).length > ORDER_NUM_MAX) {
+      return res.status(400).json({ error: 'Order number too long' });
+    }
+    if (project && String(project).length > PROJECT_MAX) {
+      return res.status(400).json({ error: 'Project name too long' });
+    }
+    if (address && String(address).length > ADDRESS_MAX) {
+      return res.status(400).json({ error: 'Address too long' });
+    }
+    if (deliveryNotes && String(deliveryNotes).length > NOTES_MAX) {
+      return res.status(400).json({ error: 'Delivery notes too long' });
     }
     if (!Array.isArray(groups) || !groups.length) {
       return res.status(400).json({ error: 'Order has no items' });
@@ -190,16 +258,18 @@ router.post('/send', async (req, res, next) => {
       deliveryNotes: deliveryNotes || '',
       company: mergedCompany,
       groups,
-      materialTotal: materialTotal || 0
+      materialTotal: materialTotal || 0,
     });
-    const subject = (customSubject && String(customSubject).trim()) || `Material Order — ${orderNum}${project ? ' — ' + project : ''}`;
+    const subject =
+      (customSubject && String(customSubject).trim()) ||
+      `Material Order - ${orderNum}${project ? ' - ' + project : ''}`;
     const fromName = mergedCompany.name || 'EstiCount';
     await resend.emails.send({
       from: `${fromName} <orders@esticount.com>`,
       to,
       reply_to: mergedCompany.email || undefined,
       subject,
-      html
+      html,
     });
     res.json({ ok: true });
   } catch (err) {

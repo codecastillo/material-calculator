@@ -14,17 +14,17 @@ Add Google Places autocomplete to the project address field so addresses are alw
 
 ### Configuration
 
-- `types: ['address']` — only street addresses, not businesses or regions.
-- `componentRestrictions: { country: 'us' }` — US addresses only.
-- `fields: ['formatted_address']` — minimize billing by only requesting the formatted string.
+- `types: ['address']`: only street addresses, not businesses or regions.
+- `componentRestrictions: { country: 'us' }`: US addresses only.
+- `fields: ['formatted_address']`: minimize billing by only requesting the formatted string.
 
 ### Behavior
 
 - On `place_changed` event: write `place.formatted_address` into the input, then call `updateCalcHeader()` to refresh the subtitle.
-- If the user types manually without selecting a suggestion, the plain text value is kept. No validation gate — the autocomplete enhances but doesn't block.
+- If the user types manually without selecting a suggestion, the plain text value is kept. No validation gate: the autocomplete enhances but doesn't block.
 - The Google `pac-container` dropdown receives CSS overrides to match the app's dark theme (dark background, light text, accent highlight on hover).
 
-### Existing flows — no changes needed
+### Existing flows: no changes needed
 
 - Save/load job: `projectAddress` is already a plain text field; the full address string is stored the same way.
 - Order form: `#orderDeliverAddress` already reads from `projectAddress`.
@@ -55,7 +55,7 @@ Add Google Places autocomplete to the project address field so addresses are alw
   - Eyebrow label: "DELIVERY NOTES"
   - Content: the notes text, preserving line breaks.
   - Positioned between the deliver-to block and the first supplier material group.
-- When empty, the section stays hidden — no empty box on the printout.
+- When empty, the section stays hidden: no empty box on the printout.
 
 ### Email to supplier
 
@@ -63,15 +63,15 @@ Add Google Places autocomplete to the project address field so addresses are alw
 
 ## Files modified
 
-- `frontend/index.html` — Google Maps script tag, delivery notes textarea, possible config endpoint.
-- `frontend/js/app.js` — Places autocomplete init, delivery notes save/load/render, order form notes rendering, email body update.
-- `frontend/css/styles.css` — Dark theme overrides for `.pac-container`, delivery notes textarea styling.
-- `frontend/css/orders-v2.css` — Print styles for the delivery notes section.
-- `backend/.env` — `GOOGLE_PLACES_API_KEY` variable.
+- `frontend/index.html`: Google Maps script tag, delivery notes textarea, possible config endpoint.
+- `frontend/js/app.js`: Places autocomplete init, delivery notes save/load/render, order form notes rendering, email body update.
+- `frontend/css/styles.css`: Dark theme overrides for `.pac-container`, delivery notes textarea styling.
+- `frontend/css/orders-v2.css`: Print styles for the delivery notes section.
+- `backend/.env`: `GOOGLE_PLACES_API_KEY` variable.
 
 ## Out of scope
 
-- Structured address fields (separate city/state/zip inputs) — the single formatted string is sufficient for supplier delivery.
+- Structured address fields (separate city/state/zip inputs): the single formatted string is sufficient for supplier delivery.
 - Map preview or pin-drop UI.
 - Address validation/verification beyond what Google Places provides.
 - Backend `delivery_notes` column migration (can be added later).

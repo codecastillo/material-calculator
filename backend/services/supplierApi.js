@@ -3,9 +3,9 @@
  *
  * Adapter pattern for integrating with supplier pricing APIs.
  * Each adapter implements a common interface:
- *   - fetchPricing()    — Get full product/pricing catalog
- *   - searchProducts()  — Search for products by keyword
- *   - getProductDetail() — Get detail for a specific product/SKU
+ *   - fetchPricing(): get full product/pricing catalog
+ *   - searchProducts(): search for products by keyword
+ *   - getProductDetail(): get detail for a specific product/SKU
  *
  * To add a new supplier:
  *   1. Create a new adapter object with the three methods above
@@ -33,15 +33,51 @@ const pacificSupply = {
   fetchPricing() {
     return {
       products: [
-        { sku: 'PS-LATH-001', name: '2.5 LB Diamond Lath', unit: 'sheet', price: 4.50, category: 'Lath' },
-        { sku: 'PS-LATH-002', name: '3.4 LB Diamond Lath', unit: 'sheet', price: 6.75, category: 'Lath' },
-        { sku: 'PS-GRAY-001', name: 'Portland Cement (94lb)', unit: 'bag', price: 14.50, category: 'Gray Coat' },
-        { sku: 'PS-GRAY-002', name: 'Plaster Sand (ton)', unit: 'ton', price: 45.00, category: 'Gray Coat' },
-        { sku: 'PS-CLR-001', name: 'Omega One Coat Stucco', unit: 'bag', price: 22.00, category: 'Color Coat' },
-        { sku: 'PS-STN-001', name: 'Cultured Stone Veneer', unit: 'sqft', price: 8.50, category: 'Stone' },
+        {
+          sku: 'PS-LATH-001',
+          name: '2.5 LB Diamond Lath',
+          unit: 'sheet',
+          price: 4.5,
+          category: 'Lath',
+        },
+        {
+          sku: 'PS-LATH-002',
+          name: '3.4 LB Diamond Lath',
+          unit: 'sheet',
+          price: 6.75,
+          category: 'Lath',
+        },
+        {
+          sku: 'PS-GRAY-001',
+          name: 'Portland Cement (94lb)',
+          unit: 'bag',
+          price: 14.5,
+          category: 'Gray Coat',
+        },
+        {
+          sku: 'PS-GRAY-002',
+          name: 'Plaster Sand (ton)',
+          unit: 'ton',
+          price: 45.0,
+          category: 'Gray Coat',
+        },
+        {
+          sku: 'PS-CLR-001',
+          name: 'Omega One Coat Stucco',
+          unit: 'bag',
+          price: 22.0,
+          category: 'Color Coat',
+        },
+        {
+          sku: 'PS-STN-001',
+          name: 'Cultured Stone Veneer',
+          unit: 'sqft',
+          price: 8.5,
+          category: 'Stone',
+        },
       ],
       _stub: true,
-      _note: 'Replace with real Pacific Supply API integration'
+      _note: 'Replace with real Pacific Supply API integration',
     };
   },
 
@@ -54,9 +90,8 @@ const pacificSupply = {
     // const response = await fetch(`${this.baseUrl}/api/v1/products/search?q=${query}`);
     const allProducts = this.fetchPricing().products;
     const lowerQuery = (query || '').toLowerCase();
-    return allProducts.filter(p =>
-      p.name.toLowerCase().includes(lowerQuery) ||
-      p.sku.toLowerCase().includes(lowerQuery)
+    return allProducts.filter(
+      (p) => p.name.toLowerCase().includes(lowerQuery) || p.sku.toLowerCase().includes(lowerQuery)
     );
   },
 
@@ -68,8 +103,8 @@ const pacificSupply = {
     // TODO: Replace with real API call
     // const response = await fetch(`${this.baseUrl}/api/v1/products/${sku}`);
     const allProducts = this.fetchPricing().products;
-    return allProducts.find(p => p.sku === sku) || null;
-  }
+    return allProducts.find((p) => p.sku === sku) || null;
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -92,35 +127,71 @@ const abcSupply = {
    *   return response.json();
    */
   fetchPricing() {
-    // ABC Supply prices are ~3% higher than Pacific Supply in this stub
-    const priceModifier = 1.03;
+    // ABC Supply carries a 3% markup over Pacific Supply baseline prices.
+    // The frontend mirrors this in SUPPLIER_PRICE_MODS for client-side display.
+    const ABC_PRICE_MARKUP = 1.03;
     return {
       products: [
-        { sku: 'ABC-LATH-001', name: '2.5 LB Diamond Lath', unit: 'sheet', price: +(4.50 * priceModifier).toFixed(2), category: 'Lath' },
-        { sku: 'ABC-LATH-002', name: '3.4 LB Diamond Lath', unit: 'sheet', price: +(6.75 * priceModifier).toFixed(2), category: 'Lath' },
-        { sku: 'ABC-GRAY-001', name: 'Portland Cement (94lb)', unit: 'bag', price: +(14.50 * priceModifier).toFixed(2), category: 'Gray Coat' },
-        { sku: 'ABC-GRAY-002', name: 'Plaster Sand (ton)', unit: 'ton', price: +(45.00 * priceModifier).toFixed(2), category: 'Gray Coat' },
-        { sku: 'ABC-CLR-001', name: 'Omega One Coat Stucco', unit: 'bag', price: +(22.00 * priceModifier).toFixed(2), category: 'Color Coat' },
-        { sku: 'ABC-STN-001', name: 'Cultured Stone Veneer', unit: 'sqft', price: +(8.50 * priceModifier).toFixed(2), category: 'Stone' },
+        {
+          sku: 'ABC-LATH-001',
+          name: '2.5 LB Diamond Lath',
+          unit: 'sheet',
+          price: +(4.5 * ABC_PRICE_MARKUP).toFixed(2),
+          category: 'Lath',
+        },
+        {
+          sku: 'ABC-LATH-002',
+          name: '3.4 LB Diamond Lath',
+          unit: 'sheet',
+          price: +(6.75 * ABC_PRICE_MARKUP).toFixed(2),
+          category: 'Lath',
+        },
+        {
+          sku: 'ABC-GRAY-001',
+          name: 'Portland Cement (94lb)',
+          unit: 'bag',
+          price: +(14.5 * ABC_PRICE_MARKUP).toFixed(2),
+          category: 'Gray Coat',
+        },
+        {
+          sku: 'ABC-GRAY-002',
+          name: 'Plaster Sand (ton)',
+          unit: 'ton',
+          price: +(45.0 * ABC_PRICE_MARKUP).toFixed(2),
+          category: 'Gray Coat',
+        },
+        {
+          sku: 'ABC-CLR-001',
+          name: 'Omega One Coat Stucco',
+          unit: 'bag',
+          price: +(22.0 * ABC_PRICE_MARKUP).toFixed(2),
+          category: 'Color Coat',
+        },
+        {
+          sku: 'ABC-STN-001',
+          name: 'Cultured Stone Veneer',
+          unit: 'sqft',
+          price: +(8.5 * ABC_PRICE_MARKUP).toFixed(2),
+          category: 'Stone',
+        },
       ],
       _stub: true,
-      _note: 'Replace with real ABC Supply API integration'
+      _note: 'Replace with real ABC Supply API integration',
     };
   },
 
   searchProducts(query) {
     const allProducts = this.fetchPricing().products;
     const lowerQuery = (query || '').toLowerCase();
-    return allProducts.filter(p =>
-      p.name.toLowerCase().includes(lowerQuery) ||
-      p.sku.toLowerCase().includes(lowerQuery)
+    return allProducts.filter(
+      (p) => p.name.toLowerCase().includes(lowerQuery) || p.sku.toLowerCase().includes(lowerQuery)
     );
   },
 
   getProductDetail(sku) {
     const allProducts = this.fetchPricing().products;
-    return allProducts.find(p => p.sku === sku) || null;
-  }
+    return allProducts.find((p) => p.sku === sku) || null;
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -165,17 +236,66 @@ const sherwinWilliams = {
   fetchPricing() {
     return {
       products: [
-        { sku: 'SW-DW-001', name: 'USG Sheetrock 4x8 1/2"', unit: 'sheet', price: 12.50, category: 'Drywall' },
-        { sku: 'SW-DW-002', name: 'USG Sheetrock 4x12 1/2"', unit: 'sheet', price: 18.75, category: 'Drywall' },
-        { sku: 'SW-DW-003', name: 'Joint Compound (5 gal)', unit: 'bucket', price: 16.00, category: 'Drywall' },
-        { sku: 'SW-DW-004', name: 'Paper Tape (500ft)', unit: 'roll', price: 5.50, category: 'Drywall' },
-        { sku: 'SW-PT-001', name: 'Duration Exterior Latex', unit: 'gallon', price: 72.00, category: 'Painting' },
-        { sku: 'SW-PT-002', name: 'SuperPaint Interior Latex', unit: 'gallon', price: 62.00, category: 'Painting' },
-        { sku: 'SW-PT-003', name: 'PrimeRx Primer', unit: 'gallon', price: 48.00, category: 'Painting' },
-        { sku: 'SW-PT-004', name: 'Caulk Paintable (10oz)', unit: 'tube', price: 6.50, category: 'Painting' },
+        {
+          sku: 'SW-DW-001',
+          name: 'USG Sheetrock 4x8 1/2"',
+          unit: 'sheet',
+          price: 12.5,
+          category: 'Drywall',
+        },
+        {
+          sku: 'SW-DW-002',
+          name: 'USG Sheetrock 4x12 1/2"',
+          unit: 'sheet',
+          price: 18.75,
+          category: 'Drywall',
+        },
+        {
+          sku: 'SW-DW-003',
+          name: 'Joint Compound (5 gal)',
+          unit: 'bucket',
+          price: 16.0,
+          category: 'Drywall',
+        },
+        {
+          sku: 'SW-DW-004',
+          name: 'Paper Tape (500ft)',
+          unit: 'roll',
+          price: 5.5,
+          category: 'Drywall',
+        },
+        {
+          sku: 'SW-PT-001',
+          name: 'Duration Exterior Latex',
+          unit: 'gallon',
+          price: 72.0,
+          category: 'Painting',
+        },
+        {
+          sku: 'SW-PT-002',
+          name: 'SuperPaint Interior Latex',
+          unit: 'gallon',
+          price: 62.0,
+          category: 'Painting',
+        },
+        {
+          sku: 'SW-PT-003',
+          name: 'PrimeRx Primer',
+          unit: 'gallon',
+          price: 48.0,
+          category: 'Painting',
+        },
+        {
+          sku: 'SW-PT-004',
+          name: 'Caulk Paintable (10oz)',
+          unit: 'tube',
+          price: 6.5,
+          category: 'Painting',
+        },
       ],
       _stub: true,
-      _note: 'Replace with real Sherwin Williams API integration. See OAuth2 example in comments above.'
+      _note:
+        'Replace with real Sherwin Williams API integration. See OAuth2 example in comments above.',
     };
   },
 
@@ -184,9 +304,8 @@ const sherwinWilliams = {
     // const response = await fetch(`https://api.sherwin-williams.com/v1/products/search?q=${query}`, { ... });
     const allProducts = this.fetchPricing().products;
     const lowerQuery = (query || '').toLowerCase();
-    return allProducts.filter(p =>
-      p.name.toLowerCase().includes(lowerQuery) ||
-      p.sku.toLowerCase().includes(lowerQuery)
+    return allProducts.filter(
+      (p) => p.name.toLowerCase().includes(lowerQuery) || p.sku.toLowerCase().includes(lowerQuery)
     );
   },
 
@@ -194,8 +313,8 @@ const sherwinWilliams = {
     // TODO: Use Sherwin Williams product detail API
     // const response = await fetch(`https://api.sherwin-williams.com/v1/products/${sku}`, { ... });
     const allProducts = this.fetchPricing().products;
-    return allProducts.find(p => p.sku === sku) || null;
-  }
+    return allProducts.find((p) => p.sku === sku) || null;
+  },
 };
 
 // ---------------------------------------------------------------------------

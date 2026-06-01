@@ -16,51 +16,55 @@ const APP_SHELL = [
   '/js/app.js',
   '/js/api.js',
   '/assets/logo.png',
-  '/assets/esticount-lockup.png'
+  '/assets/esticount-lockup.png',
 ];
 
 // Install: cache the app shell
-self.addEventListener('install', event => {
+self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(APP_SHELL))
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => cache.addAll(APP_SHELL))
       .then(() => self.skipWaiting())
   );
 });
 
 // Activate: clean up old caches
-self.addEventListener('activate', event => {
+self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
       )
-    ).then(() => self.clients.claim())
+      .then(() => self.clients.claim())
   );
 });
 
 // Fetch: network-first for API, cache-first for static assets
-self.addEventListener('fetch', event => {
+self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // Network-first for API calls
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(event.request)
-        .then(response => {
+        .then((response) => {
           // Cache successful GET responses
           if (event.request.method === 'GET' && response.ok) {
             const clone = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           }
           return response;
         })
         .catch(() =>
-          caches.match(event.request).then(cached =>
-            cached || new Response(JSON.stringify({ error: 'Offline' }), {
-              status: 503,
-              headers: { 'Content-Type': 'application/json' }
-            })
+          caches.match(event.request).then(
+            (cached) =>
+              cached ||
+              new Response(JSON.stringify({ error: 'Offline' }), {
+                status: 503,
+                headers: { 'Content-Type': 'application/json' },
+              })
           )
         )
     );
@@ -73,33 +77,37 @@ self.addEventListener('fetch', event => {
 
   if (isFreshFirst) {
     event.respondWith(
-      fetch(event.request).then(response => {
-        if (response.ok && url.origin === self.location.origin) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-        }
-        return response;
-      }).catch(() =>
-        caches.match(event.request).then(cached => {
-          if (cached) return cached;
-          if (event.request.mode === 'navigate') return caches.match('/index.html');
-          return new Response('Offline', { status: 503 });
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok && url.origin === self.location.origin) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
         })
-      )
+        .catch(() =>
+          caches.match(event.request).then((cached) => {
+            if (cached) return cached;
+            if (event.request.mode === 'navigate') return caches.match('/index.html');
+            return new Response('Offline', { status: 503 });
+          })
+        )
     );
     return;
   }
 
   event.respondWith(
-    caches.match(event.request).then(cached => {
+    caches.match(event.request).then((cached) => {
       if (cached) return cached;
-      return fetch(event.request).then(response => {
-        if (response.ok && url.origin === self.location.origin) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-        }
-        return response;
-      }).catch(() => new Response('Offline', { status: 503 }));
+      return fetch(event.request)
+        .then((response) => {
+          if (response.ok && url.origin === self.location.origin) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => new Response('Offline', { status: 503 }));
     })
   );
 });
