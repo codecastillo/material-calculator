@@ -1,31 +1,31 @@
-# Material Calculator
+# EstiCount
 
 Full-stack material estimating and order management for stucco, stone, drywall, and painting contractors.
 
 ## Features
 
-- **Multi-supplier pricing** -- track material costs across vendors and compare side-by-side
-- **Phase-based calculations** -- Lath, Gray Coat, Color Coat, Stone, Drywall, Painting
-- **Job calculator** -- enter square footage, pick phases, see totals with profit/margin
-- **Order forms** -- generate printable order sheets filtered by phase or supplier
-- **Saved jobs** -- save, load, and revisit past estimates
-- **CSV import/export** -- bulk-load pricing or export data for spreadsheets
-- **Supplier price comparison** -- see which vendor saves you money on each material
-- **Dark/light theme** -- easy on the eyes in the office or on-site
+- **Multi-supplier pricing**: track material costs across vendors and compare side-by-side
+- **Phase-based calculations**: Lath, Gray Coat, Color Coat, Stone, Drywall, Painting
+- **Job calculator**: enter square footage, pick phases, see totals with profit/margin
+- **Order forms**: generate printable order sheets filtered by phase or supplier
+- **Saved jobs**: save, load, and revisit past estimates
+- **CSV import/export**: bulk-load pricing or export data for spreadsheets
+- **Supplier price comparison**: see which vendor saves you money on each material
+- **Dark/light theme**: easy on the eyes in the office or on-site
 
 ## Tech Stack
 
 | Layer    | Technology                    |
 | -------- | ----------------------------- |
 | Frontend | Vanilla HTML, CSS, JavaScript |
-| Backend  | Node.js, Express, SQLite      |
+| Backend  | Node.js, Express, Supabase    |
 | Auth     | JWT (JSON Web Tokens)         |
 
 ## Quick Start
 
 ### Frontend Only (no server needed)
 
-Open `frontend/index.html` in any browser. All calculator features work locally -- data is stored in your browser.
+Open `frontend/index.html` in any browser. All calculator features work locally with data stored in your browser.
 
 ### Full Stack (server + database)
 
@@ -49,8 +49,7 @@ projects/
   backend/
     server.js               # Express server entry point
     routes/                 # API route handlers
-    models/                 # SQLite data layer
-    data/                   # database file (auto-created)
+    config/                 # Supabase and database config
     .env                    # environment config (not committed)
   docs/
     SETUP.md                # installation & setup

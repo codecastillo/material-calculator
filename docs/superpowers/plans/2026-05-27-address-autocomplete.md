@@ -4,7 +4,7 @@
 
 **Goal:** Add Google Places autocomplete to the project address field and a delivery notes textarea that prints on orders and is included in supplier emails.
 
-**Architecture:** Google Maps JS SDK loaded via script tag with API key from backend `.env`. The `Autocomplete` widget attaches to the existing address input — no custom dropdown code. A new `<textarea>` for delivery notes sits below the address field, persists with saved jobs, and renders on the printed order form.
+**Architecture:** Google Maps JS SDK loaded via script tag with API key from backend `.env`. The `Autocomplete` widget attaches to the existing address input: no custom dropdown code. A new `<textarea>` for delivery notes sits below the address field, persists with saved jobs, and renders on the printed order form.
 
 **Tech Stack:** Google Maps Places API (JS SDK), vanilla JS, CSS
 
@@ -23,7 +23,7 @@
 
 ---
 
-### Task 1: Backend — API key and config endpoint
+### Task 1: Backend: API key and config endpoint
 
 **Files:**
 
@@ -157,7 +157,7 @@ The Google `pac-container` dropdown needs dark theme styling to match the app.
 In `frontend/css/styles.css`, find the `/* Hide legacy result chrome in v2 */` comment (around line 1030). Add this block **above** it:
 
 ```css
-/* Google Places autocomplete dropdown — dark theme */
+/* Google Places autocomplete dropdown: dark theme */
 .pac-container {
   background: var(--v2-bg-surface, #1a1d21);
   border: 1px solid var(--v2-border-hairline, #2a2d31);
@@ -452,8 +452,8 @@ Also add print overrides inside the existing `@media print` block (the first one
 1. Enter an address and delivery notes like "Lot 42, leave at back gate"
 2. Calculate, then Generate Order
 3. The notes should appear between the deliver-to address and the first supplier section
-4. Click Download — notes should appear in the PDF/print preview
-5. Clear the notes field, regenerate — the notes section should be hidden
+4. Click Download: notes should appear in the PDF/print preview
+5. Clear the notes field, regenerate: the notes section should be hidden
 
 - [ ] **Step 5: Commit**
 

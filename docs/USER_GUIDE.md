@@ -22,7 +22,7 @@ Materials are organized by phase category (Lath, Gray Coat, Color Coat, Stone, D
 4. Enter the price for each supplier
 5. Click **Save**
 
-To edit a material, click on it in the list. To reorder, drag and drop. To duplicate, click the copy icon -- handy when adding a similar material with different sizing.
+To edit a material, click on it in the list. To reorder, drag and drop. To duplicate, click the copy icon (handy when adding a similar material with different sizing).
 
 ### Importing Prices from CSV
 
@@ -30,7 +30,7 @@ If your supplier sends you a price sheet:
 
 1. Select the supplier from the dropdown
 2. Click **Import CSV**
-3. Upload the file -- it should have columns for `material_name` and `price`
+3. Upload the file (should have columns for `material_name` and `price`)
 4. Review the preview and confirm
 
 The import matches materials by name. Anything it can't match gets flagged so you can fix it.
@@ -73,7 +73,7 @@ Once you have an estimate, you can generate order forms to hand to your supplier
 3. Filter by phase if you're ordering in stages (e.g., just Lath materials first)
 4. Click **Print** to get a clean printable sheet with quantities, units, and the supplier name
 
-The order form leaves off your pricing and margin -- it just shows what to order and how much.
+The order form leaves off your pricing and margin. It shows what to order and how much.
 
 ---
 

@@ -2,8 +2,8 @@
 
 ## Prerequisites
 
-- **Node.js 18+** -- download from [nodejs.org](https://nodejs.org)
-- **npm** -- comes with Node.js
+- **Node.js 18+**: download from [nodejs.org](https://nodejs.org)
+- **npm**: comes with Node.js
 
 Check your versions:
 
@@ -31,12 +31,13 @@ npm install
 cp .env.example .env
 ```
 
-Edit `.env` and set a real secret key:
+Edit `.env` and add your Supabase credentials and other settings:
 
 ```
 PORT=3000
 JWT_SECRET=pick-something-random-here
-DB_PATH=./data/calculator.db
+SUPABASE_URL=your-supabase-url
+SUPABASE_SERVICE_KEY=your-service-key
 CORS_ORIGIN=http://localhost:5500
 ```
 
@@ -50,16 +51,17 @@ The server starts on `http://localhost:3000` and serves the frontend automatical
 
 ## Environment Variables
 
-| Variable      | What it does                                     | Default                 |
-| ------------- | ------------------------------------------------ | ----------------------- |
-| `PORT`        | Port the server runs on                          | `3000`                  |
-| `JWT_SECRET`  | Secret key for login tokens -- keep this private | (none -- must be set)   |
-| `DB_PATH`     | Path to the SQLite database file                 | `./data/calculator.db`  |
-| `CORS_ORIGIN` | Allowed origin for cross-origin requests         | `http://localhost:5500` |
+| Variable               | What it does                               | Default                 |
+| ---------------------- | ------------------------------------------ | ----------------------- |
+| `PORT`                 | Port the server runs on                    | `3000`                  |
+| `JWT_SECRET`           | Secret key for login tokens (keep private) | (none, must be set)     |
+| `SUPABASE_URL`         | Your Supabase project URL                  | (none, must be set)     |
+| `SUPABASE_SERVICE_KEY` | Your Supabase service role key             | (none, must be set)     |
+| `CORS_ORIGIN`          | Allowed origin for cross-origin requests   | `http://localhost:5500` |
 
 ## Database
 
-The SQLite database is created automatically the first time you start the server. No manual setup needed. The file lives at the path you set in `DB_PATH` (default: `backend/data/calculator.db`).
+The app uses Supabase as the backend database. Tables are created automatically when you start the server. Make sure your Supabase credentials are set in `.env` before running.
 
 ### Seeding Default Data
 
@@ -69,9 +71,4 @@ On first run, the server seeds the database with:
 - Common materials for each category with typical coverage ratios
 - A sample supplier entry
 
-To reset to defaults, stop the server, delete the database file, and restart:
-
-```bash
-rm backend/data/calculator.db
-npm start
-```
+To reset to defaults, manually delete the relevant tables in Supabase and restart the server.
