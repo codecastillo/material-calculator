@@ -447,14 +447,16 @@ const SUPPLIER_PRICE_MODS = { 'Pacific Supply': 1, 'ABC Supply': 1.03, 'Sherwin 
 //
 // Quantities use each product's own coverage/length by default. To pin a real
 // crew consumption rate to a line, add an override: `area` (sqft per unit) for
-// area materials, `linear` (ft per unit) for linear materials. Lines whose SKU a
-// supplier does not carry are skipped. Phases not listed here fall back to
-// category-based inclusion, so Accessories and Painting are unchanged until a
-// recipe is added. Commented lines are job-dependent items to enable as needed.
+// area materials, `linear` (ft per unit) for linear materials. A line can also
+// be tied to another material's count with `per` (the base SKU) and `ratio`
+// (units of this per 1 of the base), e.g. 3 rolls of paper per roll of wire.
+// Lines whose SKU a supplier does not carry are skipped. Phases not listed here
+// fall back to category-based inclusion, so Accessories and Painting are
+// unchanged until a recipe is added. Commented lines are job-dependent items.
 const PHASE_RECIPES = {
   Lath: [
     { sku: 'WL-2536150' }, // wire lath 2.5 lb, area
-    { sku: 'PB-2P60-150' }, // 2-ply 60min paper, area
+    { sku: 'PB-2P60-150', per: 'WL-2536150', ratio: 3 }, // 3 paper rolls per roll of wire
     { sku: 'ST-716-10K' }, // staples, area
     { sku: 'SFN-15-25' }, // self-furring nails, area
     { sku: 'WS-26-10' }, // weep screed, linear (perimeter)
@@ -2690,10 +2692,9 @@ function calcForSupplier(supplier, waste, selectedPhases, opts = {}) {
     }
   }
 
-  const phases = {};
-  categories.forEach((c) => (phases[c] = { total: 0, count: 0 }));
-  let materialTotal = 0;
-  const items = mats.map((m) => {
+  // First pass: each material's own quantity from its dimensions and rate.
+  const selfQtyBySku = {};
+  const computed = mats.map((m) => {
     let base;
     if (m.isDrywallSheet && hasDrywallAreas) {
       base = sheetSqftMap[m.sku] || 0;
@@ -2710,8 +2711,22 @@ function calcForSupplier(supplier, waste, selectedPhases, opts = {}) {
     const ovr = recipeOverrideBySku && recipeOverrideBySku[m.sku];
     const ovrRate = ovr ? (m.calcType === 'linear' ? ovr.linear : ovr.area) : undefined;
     const rate = ovrRate > 0 ? ovrRate : m.coveragePerUnit;
-    let qty = base > 0 ? Math.ceil(base / rate) : 0;
-    if (m.isPaint && paintCoats > 1) qty = qty * paintCoats;
+    let selfQty = base > 0 ? Math.ceil(base / rate) : 0;
+    if (m.isPaint && paintCoats > 1) selfQty = selfQty * paintCoats;
+    selfQtyBySku[m.sku] = selfQty;
+    return { m, ovr, selfQty };
+  });
+
+  // Second pass: a ratio line derives its quantity from a base material's count
+  // (for example 3 rolls of 2-ply paper per 1 roll of wire lath).
+  const phases = {};
+  categories.forEach((c) => (phases[c] = { total: 0, count: 0 }));
+  let materialTotal = 0;
+  const items = computed.map(({ m, ovr, selfQty }) => {
+    let qty = selfQty;
+    if (ovr && ovr.per && ovr.ratio > 0) {
+      qty = Math.ceil((selfQtyBySku[ovr.per] || 0) * ovr.ratio);
+    }
     const lineTotal = qty * m.pricePerUnit;
     if (phases[m.category]) {
       phases[m.category].total += lineTotal;
