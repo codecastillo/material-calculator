@@ -601,18 +601,16 @@ async function loadData() {
     loadFromLocalStorage();
   }
 
-  try {
-    const cfg = await fetch('/api/config').then((r) => r.json());
-    console.log('[Places] config response:', cfg);
-    if (cfg.googlePlacesApiKey) {
-      console.log('[Places] loading SDK...');
-      loadGooglePlaces(cfg.googlePlacesApiKey);
-    } else {
-      console.log('[Places] no API key in config');
-    }
-  } catch (e) {
-    console.error('[Places] config fetch failed:', e);
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        _placesUserLocation = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+      },
+      () => {},
+      { timeout: 5000, maximumAge: 600000 }
+    );
   }
+  initPlacesAutocomplete();
 }
 
 function loadFromLocalStorage() {
@@ -806,28 +804,13 @@ function toggleTheme() {
   localStorage.setItem('stucco_theme', n);
 }
 
-// ===== GOOGLE PLACES AUTOCOMPLETE (REST API) =====
-// Uses the Places API (New) directly via fetch, no SDK. We control the dropdown.
-let _placesApiKey = '';
+// ===== GOOGLE PLACES AUTOCOMPLETE (proxy) =====
+// All Google API calls go through /api/places/* so the key never reaches the browser.
 let _placesDebounce = null;
 let _placesUserLocation = null;
 
-function loadGooglePlaces(apiKey) {
-  if (!apiKey) return;
-  _placesApiKey = apiKey;
-  // Request geolocation once to bias suggestions toward the user's area.
-  // If denied or unavailable, we fall back to nationwide search.
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        _placesUserLocation = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
-      },
-      () => {},
-      { timeout: 5000, maximumAge: 600000 }
-    );
-  }
-  initPlacesAutocomplete();
-}
+const PLACES_MIN_LENGTH = 3;
+const PLACES_DEBOUNCE_MS = 250;
 
 function initPlacesAutocomplete() {
   attachPlacesAutocomplete(document.getElementById('calcProjectAddress'), () => {
@@ -836,8 +819,7 @@ function initPlacesAutocomplete() {
 }
 
 // Attach the dropdown to any address input. Optional onChange runs on each
-// keystroke and on selection. Safe to call before the SDK key has loaded —
-// it just no-ops until the key arrives.
+// keystroke and on selection.
 function attachPlacesAutocomplete(input, onChange) {
   if (!input || input.dataset.placesAttached) return;
   input.dataset.placesAttached = '1';
@@ -860,14 +842,14 @@ function attachPlacesAutocomplete(input, onChange) {
     const q = input.value.trim();
     if (typeof onChange === 'function') onChange();
     clearTimeout(debounce);
-    if (q.length < 3 || !_placesApiKey) {
+    if (q.length < PLACES_MIN_LENGTH) {
       dd.style.display = 'none';
       return;
     }
     debounce = setTimeout(() => {
       positionDropdown();
       fetchPlaceSuggestions(q, dd, input, onChange);
-    }, 250);
+    }, PLACES_DEBOUNCE_MS);
   });
   input.addEventListener('blur', () =>
     setTimeout(() => {
@@ -894,13 +876,9 @@ function attachPlacesAutocomplete(input, onChange) {
 window.attachPlacesAutocomplete = attachPlacesAutocomplete;
 
 async function fetchPlaceSuggestions(query, dd, input, onChange) {
-  if (!_placesApiKey) return;
+  const token = api.getToken();
   try {
-    const body = {
-      input: query,
-      regionCode: 'us',
-      includedPrimaryTypes: ['street_address', 'premise', 'subpremise'],
-    };
+    const body = { input: query };
     if (_placesUserLocation) {
       body.locationBias = {
         circle: {
@@ -909,27 +887,27 @@ async function fetchPlaceSuggestions(query, dd, input, onChange) {
         },
       };
     }
-    const res = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+    const res = await fetch('/api/places/autocomplete', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Goog-Api-Key': _placesApiKey,
+        Authorization: 'Bearer ' + token,
       },
       body: JSON.stringify(body),
     });
     if (!res.ok) {
-      console.warn('[Places] suggestions request failed:', res.status);
+      dd.style.display = 'none';
       return;
     }
     const data = await res.json();
-    const suggestions = (data.suggestions || []).map((s) => s.placePrediction).filter(Boolean);
+    const suggestions = data.suggestions || [];
     if (!suggestions.length) {
       dd.style.display = 'none';
       return;
     }
     dd.innerHTML = suggestions
       .map((s) => {
-        const text = s.text?.text || '';
+        const text = s.text || '';
         const placeId = s.placeId || '';
         return `<div class="places-item" data-text="${escAttr(text)}" data-place-id="${escAttr(placeId)}">${escHtml(text)}</div>`;
       })
@@ -949,29 +927,22 @@ async function fetchPlaceSuggestions(query, dd, input, onChange) {
         else if (typeof updateCalcHeader === 'function') updateCalcHeader();
       });
     });
-  } catch (e) {
-    console.error('[Places] fetch failed:', e);
+  } catch (_) {
+    // Network failure: leave the dropdown hidden, no breadcrumb noise
   }
 }
 
 async function fetchPlaceDetails(placeId) {
-  if (!_placesApiKey || !placeId) return null;
+  if (!placeId) return null;
+  const token = api.getToken();
   try {
-    const res = await fetch(
-      'https://places.googleapis.com/v1/places/' + encodeURIComponent(placeId),
-      {
-        headers: {
-          'X-Goog-Api-Key': _placesApiKey,
-          'X-Goog-FieldMask': 'formattedAddress,addressComponents',
-        },
-      }
-    );
+    const res = await fetch('/api/places/details/' + encodeURIComponent(placeId), {
+      headers: { Authorization: 'Bearer ' + token },
+    });
     if (!res.ok) return null;
     const data = await res.json();
-    // formattedAddress includes street, city, state, zip, country
     return data.formattedAddress || null;
-  } catch (e) {
-    console.error('[Places] details fetch failed:', e);
+  } catch (_) {
     return null;
   }
 }

@@ -24,6 +24,7 @@ const priceHistoryRoutes = require('./routes/priceHistory');
 const orderEmailRoutes = require('./routes/orderEmail');
 const onboardingRoutes = require('./routes/onboarding');
 const stripeRoutes = require('./routes/stripe');
+const placesRoutes = require('./routes/places');
 
 // Import error handler
 const errorHandler = require('./middleware/errorHandler');
@@ -41,19 +42,12 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", 'https://maps.googleapis.com'],
+        scriptSrc: ["'self'"],
         scriptSrcAttr: ["'none'"],
         styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-        imgSrc: ["'self'", 'data:', 'https://maps.gstatic.com', 'https://maps.googleapis.com'],
-        connectSrc: [
-          "'self'",
-          'https://fonts.googleapis.com',
-          'https://fonts.gstatic.com',
-          'https://maps.googleapis.com',
-          'https://maps.gstatic.com',
-          'https://places.googleapis.com',
-        ],
+        imgSrc: ["'self'", 'data:'],
+        connectSrc: ["'self'", 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
         manifestSrc: ["'self'"],
       },
     },
@@ -129,16 +123,11 @@ app.use('/api/price-history', priceHistoryRoutes);
 app.use('/api/order-email', orderEmailRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/stripe', stripeRoutes);
+app.use('/api/places', placesRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-app.get('/api/config', (req, res) => {
-  res.json({
-    googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY || '',
-  });
 });
 
 // ---------------------------------------------------------------------------
