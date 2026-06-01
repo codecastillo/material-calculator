@@ -1,6 +1,6 @@
-/* admin-v2 — page-scoped redesign. See docs/calc-redesign/pages-spec.md §6 */
+/* admin-v2: page-scoped redesign. See docs/calc-redesign/pages-spec.md §6 */
 
-/* ===== Page wrapper ===== */
+/* Page wrapper */
 #adminPage.admin-v2-page {
   padding: 24px 40px 64px;
   max-width: 1440px;
@@ -30,7 +30,7 @@ body:has(#adminPage.admin-v2-page.active) {
   display: block;
 }
 
-/* ===== Header zone ===== */
+/* Header zone */
 .admin-v2-header {
   display: flex;
   align-items: flex-start;
@@ -120,7 +120,7 @@ body:has(#adminPage.admin-v2-page.active) {
   font-weight: 400;
 }
 
-/* ===== Metric strip ===== */
+/* Metric strip */
 .admin-v2-metrics {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -177,7 +177,7 @@ body:has(#adminPage.admin-v2-page.active) {
   margin-right: 2px;
 }
 
-/* ===== Generate keys form ===== */
+/* Generate keys form */
 .admin-v2-genform {
   background: var(--v2-bg-surface);
   border: 1px solid var(--v2-border-hairline);
@@ -283,7 +283,7 @@ body:has(#adminPage.admin-v2-page.active) {
   color: var(--v2-text-tertiary);
 }
 
-/* ===== Tables row ===== */
+/* Tables row */
 .admin-v2-tables {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -523,7 +523,7 @@ body:has(#adminPage.admin-v2-page.active) {
   color: var(--v2-text-tertiary);
 }
 
-/* ===== Mobile ===== */
+/* Mobile */
 @media (max-width: 1100px) {
   .admin-v2-tables {
     grid-template-columns: 1fr;
@@ -588,7 +588,7 @@ body:has(#adminPage.admin-v2-page.active) {
   }
 }
 
-/* Hover-reveal row actions on Admin tables (spec §6.6 — actions are
+/* Hover-reveal row actions on Admin tables (spec §6.6, actions are
  * affordances tucked behind hover, not always-on columns). */
 .admin-v2-table tbody tr .admin-v2-rowaction {
   opacity: 0;

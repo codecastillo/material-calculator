@@ -6,7 +6,7 @@
   box-sizing: border-box;
 }
 
-/* ===== Akira Expanded (display face) — disabled until font file is supplied =====
+/* Akira Expanded (display face) - disabled until font file is supplied
    To enable: drop a real .woff2 at frontend/assets/fonts/akira-expanded.woff2,
    then uncomment the @font-face block below. The browser will pick it up via
    the --v2-font-serif cascade (Akira Expanded → Russo One → Arial Black).
@@ -23,7 +23,7 @@
 }
 */
 
-/* ===== THEMES ===== */
+/* THEMES */
 [data-theme='dark'] {
   --bg: #0f1419;
   --bg2: #161b22;
@@ -91,7 +91,7 @@ html {
   overflow-x: hidden;
 }
 
-/* ===== TOP NAV ===== */
+/* TOP NAV */
 .topnav {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
@@ -258,7 +258,7 @@ html {
   }
 }
 
-/* ===== BUTTONS ===== */
+/* BUTTONS */
 .btn {
   padding: 10px 20px;
   border: 1px solid transparent;
@@ -344,7 +344,7 @@ html {
   cursor: not-allowed;
 }
 
-/* ===== FORMS ===== */
+/* FORMS */
 .field {
   margin-bottom: 14px;
 }
@@ -407,7 +407,7 @@ textarea.input {
   gap: 16px;
 }
 
-/* ===== TOOLBAR ===== */
+/* TOOLBAR */
 .toolbar {
   display: flex;
   gap: 8px;
@@ -462,7 +462,7 @@ textarea.input {
   color: var(--text3);
 }
 
-/* ===== SUPPLIER PILLS ===== */
+/* SUPPLIER PILLS */
 .supplier-pills {
   display: flex;
   gap: 6px;
@@ -499,7 +499,7 @@ textarea.input {
   background: var(--ok-soft);
 }
 
-/* ===== SCOPE GROUPS ===== */
+/* SCOPE GROUPS */
 .scope-group {
   margin-bottom: 20px;
   border: 1px solid var(--border);
@@ -546,7 +546,7 @@ textarea.input {
   border-radius: 0;
 }
 
-/* ===== TABLES ===== */
+/* TABLES */
 .table-wrap {
   overflow-x: auto;
   border-radius: 10px;
@@ -742,7 +742,7 @@ tr.drag-over td {
   color: var(--warn);
 }
 
-/* ===== CALCULATOR ===== */
+/* CALCULATOR */
 .calc-section {
   margin-bottom: 20px;
   padding: 20px;
@@ -968,7 +968,7 @@ tr.drag-over td {
   background: var(--ok-soft) !important;
 }
 
-/* ===== ORDER FORM ===== */
+/* ORDER FORM */
 .order-controls {
   display: flex;
   gap: 12px;
@@ -1019,7 +1019,7 @@ tr.drag-over td {
   box-shadow: 0 0 0 2px var(--pri-soft);
 }
 
-/* ===== BID SUMMARY ===== */
+/* BID SUMMARY */
 .bid-paper {
   max-width: 700px;
   margin: 0 auto;
@@ -1073,7 +1073,7 @@ tr.drag-over td {
   color: var(--pri);
 }
 
-/* ===== DASHBOARD ===== */
+/* DASHBOARD */
 .dash-hero {
   text-align: center;
   padding: 48px 20px 36px;
@@ -1280,7 +1280,7 @@ tr.drag-over td {
   border-radius: 10px;
 }
 
-/* ===== SAVED JOBS ===== */
+/* SAVED JOBS */
 .page-intro {
   display: flex;
   align-items: center;
@@ -1610,7 +1610,7 @@ tr.drag-over td {
   margin-top: 6px;
 }
 
-/* ===== RESPONSIVE ===== */
+/* RESPONSIVE */
 @media (max-width: 900px) {
   .topnav-links {
     display: none;
@@ -1804,7 +1804,7 @@ tr.drag-over td {
   }
 }
 
-/* ===== PRINT ===== */
+/* PRINT */
 @media print {
   * {
     color-adjust: exact;
@@ -2037,7 +2037,7 @@ tr.drag-over td {
     margin: 0.75in;
   }
 }
-/* ===== LOGIN SCREEN ===== */
+/* LOGIN SCREEN */
 .login-screen {
   min-height: 100vh;
   display: flex;
@@ -2181,7 +2181,7 @@ tr.drag-over td {
   background: var(--v2-bg-app);
 }
 
-/* ===== ACCOUNT PAGE ===== */
+/* ACCOUNT PAGE */
 .account-card {
   display: flex;
   align-items: center;
@@ -2265,7 +2265,7 @@ tr.drag-over td {
   box-shadow: 0 6px 24px rgba(68, 147, 248, 0.5);
 }
 
-/* ===== MOBILE MENU ===== */
+/* MOBILE MENU */
 .mobile-menu-btn {
   display: none;
   background: none;
@@ -2380,12 +2380,9 @@ tr.drag-over td {
   display: none;
 }
 
-/* ===========================================================
-   === Calculator refresh (v2) ===============================
-   New design tokens, typography, topnav restyle (.v2-*),
+/* Calculator refresh (v2): new design tokens, typography, topnav restyle (.v2-*),
    and the redesigned Calculator page (.calc-v2-*).
-   Scoped to new prefixed classes; legacy classes untouched.
-   =========================================================== */
+   Scoped to new prefixed classes; legacy classes untouched. */
 
 :root {
   /* v2 surfaces & text */
@@ -2440,7 +2437,7 @@ tr.drag-over td {
 
 /* Light-theme overrides for the v2 design tokens. Without these the v2
    components stay dark even when the user toggles light mode, while the
-   legacy components flip to light — producing a mismatched look. */
+   legacy components flip to light, producing a mismatched look. */
 [data-theme='light'] {
   --v2-bg-app: #f5f5f3;
   --v2-bg-surface: #ffffff;
@@ -2458,20 +2455,20 @@ tr.drag-over td {
   --v2-shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.12);
 }
 
-/* The legacy "← Back" page header is redundant in v2 — every page has its
+/* The legacy "← Back" page header is redundant in v2; every page has its
    own header section now. Hide it everywhere so it doesn't show as a
    white/dark band that fights with the page's own dark surface. */
 .page-header {
   display: none !important;
 }
 
-/* ===== TOPNAV (v2) ===== */
+/* TOPNAV (v2) */
 .v2-topnav {
   background: var(--v2-bg-app);
   border-bottom: 1px solid var(--v2-border-hairline);
   box-shadow: none;
 }
-/* Light theme: keep the v2 topnav legible (dark surface) — matches the design language */
+/* Light theme: keep the v2 topnav legible (dark surface) - matches the design language */
 [data-theme='light'] .v2-topnav {
   background: #13171d;
   border-bottom-color: #1f242c;
@@ -2694,7 +2691,7 @@ tr.drag-over td {
   background: transparent;
 }
 
-/* ===== CALCULATOR PAGE (v2) ===== */
+/* CALCULATOR PAGE (v2) */
 .calc-v2-page {
   font-family: var(--v2-font-sans);
   color: var(--v2-text-primary);
@@ -3730,7 +3727,7 @@ select.calc-v2-input {
   display: none;
 }
 
-/* Responsive — collapse two-column grid earlier so the sidebar doesn't squeeze the table,
+/* Responsive: collapse two-column grid earlier so the sidebar doesn't squeeze the table,
    but defer full mobile stacking (per spec §9) to the 768px breakpoint. */
 @media (max-width: 1100px) {
   .calc-v2-grid {
@@ -3740,7 +3737,7 @@ select.calc-v2-input {
     position: static;
   }
 }
-/* Mobile breakpoint — spec §9 explicitly: "At narrow widths (< 768px)" */
+/* Mobile breakpoint: spec §9 explicitly: "At narrow widths (< 768px)" */
 @media (max-width: 768px) {
   .v2-topnav-inner {
     grid-template-columns: 1fr auto;
@@ -3823,7 +3820,7 @@ body[data-page='calculator'] .main-container {
   margin: 0;
 }
 
-/* Spec §9.10 — extend tabular numerals globally to every v2 namespace so any
+/* Spec §9.10: extend tabular numerals globally to every v2 namespace so any
  * mono numeric cell aligns correctly without per-page declarations. */
 .dash-v2-page,
 .price-v2-page,
@@ -3847,9 +3844,9 @@ input[type='number'] {
   -moz-appearance: textfield;
 }
 
-/* ===== Smart material picker (calculator) =====
-   Per-phase checkbox list with search. Smart-defaults pick one item per
-   inferred sub-group; user can override. Picks persist with saved jobs. */
+/* Smart material picker (calculator): per-phase checkbox list with search.
+   Smart-defaults pick one item per inferred sub-group; user can override.
+   Picks persist with saved jobs. */
 .calc-v2-material-picker {
   margin: 18px 0 22px;
   display: flex;
@@ -3977,9 +3974,9 @@ input[type='number'] {
   font-style: italic;
 }
 
-/* ===== Inline supplier comparison on the calculator =====
-   #comparisonSection has class .calc-v2-compare. Mirror the visual chrome of
-   .order-v2-compare (Orders page) so the picker has card-like presence inline. */
+/* Inline supplier comparison on the calculator: #comparisonSection has class
+   .calc-v2-compare, mirroring the visual chrome of .order-v2-compare (Orders page)
+   so the picker has card-like presence inline. */
 .calc-v2-compare:not(:empty) {
   background: var(--v2-bg-surface);
   border: 1px solid var(--v2-border-hairline);

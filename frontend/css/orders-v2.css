@@ -1,4 +1,4 @@
-/* orders-v2 — page-scoped redesign. See docs/calc-redesign/pages-spec.md §3 */
+/* orders-v2: page-scoped redesign. See docs/calc-redesign/pages-spec.md §3 */
 
 /* ============================================================
    PAGE LAYOUT
@@ -442,7 +442,7 @@
   margin-bottom: 2px;
 }
 
-/* Section A — Header */
+/* Section A: Header */
 .order-v2-rail-ordernum {
   font-family: var(--v2-font-mono);
   font-weight: 500;
@@ -519,7 +519,7 @@
   border-color: var(--v2-accent);
 }
 
-/* Section B — Filter rows */
+/* Section B: Filter rows */
 .order-v2-filter-list {
   display: flex;
   flex-direction: column;
@@ -578,7 +578,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Section C — Group by */
+/* Section C: Group by */
 .order-v2-group-by {
   display: flex;
   flex-direction: column;
@@ -626,7 +626,7 @@
   flex: 1;
 }
 
-/* Section D — CTAs */
+/* Section D: CTAs */
 .order-v2-ctas {
   display: flex;
   flex-direction: column;
@@ -892,7 +892,7 @@
    See app.js orderV2BuildComparison() / renderOrderComparison().
    ============================================================ */
 
-/* Single-column paper wrap (the rail is gone — printable form is the only deliverable). */
+/* Single-column paper wrap (the rail is gone; printable form is the only deliverable). */
 .order-v2-paper-wrap {
   max-width: 880px;
   margin: 0 auto;
@@ -913,7 +913,7 @@
   grid-template-columns: 1fr;
 }
 
-/* Items table — TOTAL column added */
+/* Items table: TOTAL column added */
 .order-v2-items col.col-line {
   width: 96px;
 }
@@ -970,7 +970,7 @@
 }
 
 /* ============================================================
-   COMPARISON VIEW — pick supplier per phase
+   COMPARISON VIEW: pick supplier per phase
    ============================================================ */
 .order-v2-compare {
   max-width: 880px;

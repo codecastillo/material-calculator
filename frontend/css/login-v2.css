@@ -1,4 +1,4 @@
-/* login-v2 — page-scoped redesign. See docs/calc-redesign/pages-spec.md §7 */
+/* login-v2: page-scoped redesign. See docs/calc-redesign/pages-spec.md §7 */
 
 /* =========================================================================
    Root override: when #loginScreen has .login-v2 class, switch off the
@@ -273,7 +273,7 @@
   color: var(--v2-accent);
 }
 
-/* Form container — vertically centered */
+/* Form container, vertically centered */
 .login-v2-formwrap {
   width: 100%;
   max-width: 420px;
@@ -304,7 +304,7 @@
   margin: 0 0 28px;
 }
 
-/* Forms — each sub-form (login/register/forgot/reset) reuses these */
+/* Forms: each sub-form (login/register/forgot/reset) reuses these */
 .login-v2-form {
   display: flex;
   flex-direction: column;

@@ -4,7 +4,7 @@
    See docs/calc-redesign/pages-spec.md §2.
    Tokens reused from styles.css (var(--v2-*)).
    New classes prefixed with .price-v2-.
-   Chip classes (.v2-chip.*) are defined globally — do not redefine.
+   Chip classes (.v2-chip.*) are defined globally; do not redefine.
    ============================================================ */
 
 /* ---------- Page layout ---------- */
@@ -921,7 +921,7 @@
   padding-bottom: 18px;
 }
 
-/* Hover-revealed row actions inside the trend cell (spec §2.6 — no dedicated actions column). */
+/* Hover-revealed row actions inside the trend cell (spec §2.6, no dedicated actions column). */
 .price-v2-trend {
   position: relative;
 }
@@ -952,7 +952,7 @@
   transition: opacity 0.12s ease;
 }
 
-/* ===== Undo / Redo buttons ===== */
+/* Undo / Redo buttons */
 .price-v2-undo-group {
   display: flex;
   gap: 4px;
@@ -985,7 +985,7 @@
   cursor: not-allowed;
 }
 
-/* ===== Phase groups (grouped pricing table) ===== */
+/* Phase groups (grouped pricing table) */
 .price-v2-phase-group {
   margin-bottom: 24px;
   border: 1px solid var(--v2-border-hairline);

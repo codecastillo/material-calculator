@@ -1,4 +1,4 @@
-/* jobs-v2 — Saved Jobs page redesign. See docs/calc-redesign/pages-spec.md §5 */
+/* jobs-v2: Saved Jobs page redesign. See docs/calc-redesign/pages-spec.md §5 */
 
 /* ============================================================
    Page shell
@@ -290,7 +290,7 @@
   color: var(--v2-text-primary);
 }
 
-/* Col 1 — job code */
+/* Col 1: job code */
 .jobs-v2-jobcode {
   font-family: var(--v2-font-mono);
   font-size: 0.85rem;
@@ -302,7 +302,7 @@
   text-overflow: ellipsis;
 }
 
-/* Col 2 — name / client */
+/* Col 2: name / client */
 .jobs-v2-name {
   font-family: var(--v2-font-sans);
   font-size: 0.88rem;
@@ -323,7 +323,7 @@
   white-space: nowrap;
 }
 
-/* Col 3 — phases (chips) */
+/* Col 3: phases (chips) */
 .jobs-v2-phases {
   display: flex;
   flex-wrap: wrap;
@@ -341,7 +341,7 @@
   letter-spacing: 0.06em;
 }
 
-/* Col 4 — sqft / date */
+/* Col 4: sqft / date */
 .jobs-v2-meta {
   text-align: right;
   line-height: 1.2;
@@ -367,7 +367,7 @@
   margin-top: 2px;
 }
 
-/* Col 5 — status pill */
+/* Col 5: status pill */
 .jobs-v2-status {
   display: inline-flex;
   align-items: center;
@@ -419,7 +419,7 @@
   background: var(--v2-text-tertiary);
 }
 
-/* Col 6 — total */
+/* Col 6: total */
 .jobs-v2-total {
   text-align: right;
   font-family: var(--v2-font-mono);
@@ -434,7 +434,7 @@
   font-weight: 400;
 }
 
-/* Col 7 — hover-revealed action buttons + chevron */
+/* Col 7: hover-revealed action buttons + chevron */
 .jobs-v2-actions {
   position: relative;
   text-align: right;

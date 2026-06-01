@@ -1,4 +1,4 @@
-/* dashboard-v2 — page-scoped redesign. See docs/calc-redesign/pages-spec.md §1
+/* dashboard-v2: page-scoped redesign. See docs/calc-redesign/pages-spec.md §1
    Owns: #dashboardPage. All new classes prefixed with `dash-v2-`.
    Tokens (--v2-*) and chip palette (.v2-chip.*) are inherited from styles.css. */
 

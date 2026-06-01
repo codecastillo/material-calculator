@@ -1,9 +1,9 @@
-/* account-v2 — page-scoped redesign.
+/* account-v2: page-scoped redesign.
  * Tokens declared in styles.css (--v2-*). New classes prefixed account-v2-.
  * Pairs visually with admin-v2 (dense, utilitarian) and login-v2 (form-heavy).
  */
 
-/* ===== Page wrapper ===== */
+/* Page wrapper */
 #accountPage.account-v2-page {
   padding: 24px 40px 64px;
   max-width: 1440px;
@@ -20,7 +20,7 @@ body:has(#accountPage.account-v2-page.active) {
   background: var(--v2-bg-app);
 }
 
-/* ===== Header zone ===== */
+/* Header zone */
 .account-v2-header {
   display: flex;
   align-items: flex-start;
@@ -104,7 +104,7 @@ body:has(#accountPage.account-v2-page.active) {
   background: var(--v2-text-muted);
 }
 
-/* ===== Two-column body ===== */
+/* Two-column body */
 .account-v2-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
@@ -124,7 +124,7 @@ body:has(#accountPage.account-v2-page.active) {
   min-width: 0;
 }
 
-/* ===== Shared card chrome ===== */
+/* Shared card chrome */
 .account-v2-card {
   background: var(--v2-bg-surface);
   border: 1px solid var(--v2-border-hairline);
@@ -153,7 +153,7 @@ body:has(#accountPage.account-v2-page.active) {
   color: var(--v2-text-tertiary);
 }
 
-/* ===== Identity (avatar + name + email) ===== */
+/* Identity (avatar + name + email) */
 .account-v2-identity {
   display: flex;
   align-items: center;
@@ -218,7 +218,7 @@ body:has(#accountPage.account-v2-page.active) {
   color: var(--v2-text-muted);
 }
 
-/* ===== Form fields (Profile) ===== */
+/* Form fields (Profile) */
 .account-v2-form {
   display: flex;
   flex-direction: column;
@@ -292,7 +292,7 @@ textarea.account-v2-input {
   margin-top: -2px;
 }
 
-/* ===== Form action row ===== */
+/* Form action row */
 .account-v2-form-actions {
   display: flex;
   align-items: center;
@@ -379,7 +379,7 @@ textarea.account-v2-input {
   color: var(--v2-text-tertiary);
 }
 
-/* ===== License Status card ===== */
+/* License Status card */
 .account-v2-license {
   display: flex;
   flex-direction: column;
@@ -470,7 +470,7 @@ textarea.account-v2-input {
   font-style: italic;
 }
 
-/* ===== Activate card ===== */
+/* Activate card */
 .account-v2-activate-row {
   display: flex;
   gap: 8px;
@@ -510,7 +510,7 @@ textarea.account-v2-input {
   background: rgba(199, 80, 80, 0.08);
 }
 
-/* ===== Rail cards ===== */
+/* Rail cards */
 .account-v2-stat {
   display: flex;
   justify-content: space-between;
@@ -572,7 +572,7 @@ textarea.account-v2-input {
   border-top: 1px solid var(--v2-border-hairline);
 }
 
-/* ===== Mobile collapse ===== */
+/* Mobile collapse */
 @media (max-width: 1024px) {
   .account-v2-body {
     grid-template-columns: 1fr;
