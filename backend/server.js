@@ -151,23 +151,25 @@ app.get('*', (req, res, next) => {
 app.use(errorHandler);
 
 // ---------------------------------------------------------------------------
-// Start server
+// Start server only when run directly (`node server.js`). When required by the
+// test suite the app is used in-process via supertest, so we skip listen().
 // ---------------------------------------------------------------------------
-app.listen(PORT, () => {
-  console.log(`Material Calculator API running on http://localhost:${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`Supabase: ${process.env.SUPABASE_URL || '(not set)'}`);
-  console.log(`Frontend: ${frontendPath}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Material Calculator API running on http://localhost:${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`Supabase: ${process.env.SUPABASE_URL || '(not set)'}`);
+    console.log(`Frontend: ${frontendPath}`);
+  });
 
-// Graceful shutdown
-process.on('SIGINT', () => {
-  console.log('\nShutting down...');
-  process.exit(0);
-});
+  process.on('SIGINT', () => {
+    console.log('\nShutting down...');
+    process.exit(0);
+  });
 
-process.on('SIGTERM', () => {
-  process.exit(0);
-});
+  process.on('SIGTERM', () => {
+    process.exit(0);
+  });
+}
 
 module.exports = app;
