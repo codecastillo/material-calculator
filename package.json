@@ -8,7 +8,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --test backend/__tests__"
+    "test": "node --test 'backend/__tests__/*.test.js'"
   },
   "engines": {
     "node": "22.x"
