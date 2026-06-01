@@ -22,13 +22,13 @@ function getStripe() {
 const PRICE_IDS = {
   monthly: process.env.STRIPE_PRICE_MONTHLY,
   yearly: process.env.STRIPE_PRICE_YEARLY,
-  lifetime: process.env.STRIPE_PRICE_LIFETIME
+  lifetime: process.env.STRIPE_PRICE_LIFETIME,
 };
 
 const PLAN_MODES = {
   monthly: 'subscription',
   yearly: 'subscription',
-  lifetime: 'payment'
+  lifetime: 'payment',
 };
 
 // POST /api/stripe/checkout — create a Checkout Session for a plan
@@ -41,7 +41,7 @@ router.post('/checkout', express.json(), async (req, res, next) => {
     const priceId = PRICE_IDS[plan];
     if (!priceId) return res.status(400).json({ error: 'Unknown plan' });
 
-    const base = process.env.APP_BASE_URL || (req.protocol + '://' + req.get('host'));
+    const base = process.env.APP_BASE_URL || req.protocol + '://' + req.get('host');
     const session = await stripe.checkout.sessions.create({
       mode: PLAN_MODES[plan],
       line_items: [{ price: priceId, quantity: 1 }],
@@ -49,11 +49,13 @@ router.post('/checkout', express.json(), async (req, res, next) => {
       cancel_url: base + '/landing.html#pricing',
       allow_promotion_codes: true,
       billing_address_collection: 'auto',
-      metadata: { plan }
+      metadata: { plan },
     });
 
     res.json({ url: session.url, id: session.id });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // POST /api/stripe/webhook — handle checkout.session.completed
@@ -104,7 +106,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         duration_days: durationDays,
         max_uses: 1,
         times_used: 0,
-        created_by: null
+        created_by: null,
       });
 
       // Magic-link token, valid 7 days.
@@ -116,7 +118,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         license_key: key.key,
         stripe_session_id: stripeSessionId,
         expires_at: expiresAt,
-        used: false
+        used: false,
       });
 
       // Send the welcome email with the onboarding link.
@@ -150,7 +152,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
       </table>
     </td></tr>
   </table>
-</body></html>`
+</body></html>`,
         });
       } catch (mailErr) {
         console.error('[stripe] onboarding email failed:', mailErr.message);

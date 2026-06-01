@@ -22,7 +22,7 @@ router.get('/fetch/:supplierName', (req, res, next) => {
         available_adapters: Object.keys(adapters),
         // Adapter pattern: register new supplier adapters in services/supplierApi.js
         // Each adapter implements: fetchPricing(), searchProducts(), getProductDetail()
-        hint: 'Add a new adapter in services/supplierApi.js to support this supplier'
+        hint: 'Add a new adapter in services/supplierApi.js to support this supplier',
       });
     }
 
@@ -38,8 +38,8 @@ router.get('/fetch/:supplierName', (req, res, next) => {
         adapter: normalizedName,
         fetched_at: new Date().toISOString(),
         is_stub: true,
-        note: 'Replace stub adapters in services/supplierApi.js with real API integrations'
-      }
+        note: 'Replace stub adapters in services/supplierApi.js with real API integrations',
+      },
     });
   } catch (err) {
     next(err);
@@ -56,9 +56,9 @@ router.post('/import', (req, res, next) => {
     }
 
     // Verify supplier belongs to user
-    const supplier = db.prepare(
-      'SELECT * FROM suppliers WHERE id = ? AND user_id = ?'
-    ).get(supplier_id, req.user.id);
+    const supplier = db
+      .prepare('SELECT * FROM suppliers WHERE id = ? AND user_id = ?')
+      .get(supplier_id, req.user.id);
 
     if (!supplier) {
       return res.status(404).json({ error: 'Supplier not found' });
@@ -67,7 +67,10 @@ router.post('/import', (req, res, next) => {
     // Parse CSV data
     // Expected format: name,sku,unit,price_per_unit,category_name,coverage_per_unit,calc_type
     const lines = csv_data.trim().split('\n');
-    const header = lines[0].toLowerCase().split(',').map(h => h.trim());
+    const header = lines[0]
+      .toLowerCase()
+      .split(',')
+      .map((h) => h.trim());
 
     // Validate required columns
     const nameIdx = header.indexOf('name');
@@ -93,7 +96,7 @@ router.post('/import', (req, res, next) => {
     const importTransaction = db.transaction((dataLines) => {
       for (let i = 0; i < dataLines.length; i++) {
         const lineNum = i + 2; // +2 for 1-indexed and header row
-        const cols = dataLines[i].split(',').map(c => c.trim());
+        const cols = dataLines[i].split(',').map((c) => c.trim());
 
         const name = cols[nameIdx];
         if (!name) {
@@ -104,9 +107,9 @@ router.post('/import', (req, res, next) => {
         // Look up category if provided
         let category_id = null;
         if (categoryIdx !== -1 && cols[categoryIdx]) {
-          const cat = db.prepare(
-            'SELECT id FROM categories WHERE name = ? AND user_id = ?'
-          ).get(cols[categoryIdx], req.user.id);
+          const cat = db
+            .prepare('SELECT id FROM categories WHERE name = ? AND user_id = ?')
+            .get(cols[categoryIdx], req.user.id);
           if (cat) {
             category_id = cat.id;
           }
@@ -116,12 +119,12 @@ router.post('/import', (req, res, next) => {
           const result = insertMaterial.run(
             supplier_id,
             name,
-            skuIdx !== -1 ? (cols[skuIdx] || '') : '',
-            unitIdx !== -1 ? (cols[unitIdx] || 'each') : 'each',
-            priceIdx !== -1 ? (parseFloat(cols[priceIdx]) || 0) : 0,
+            skuIdx !== -1 ? cols[skuIdx] || '' : '',
+            unitIdx !== -1 ? cols[unitIdx] || 'each' : 'each',
+            priceIdx !== -1 ? parseFloat(cols[priceIdx]) || 0 : 0,
             category_id,
-            coverageIdx !== -1 ? (parseFloat(cols[coverageIdx]) || 0) : 0,
-            calcTypeIdx !== -1 ? (cols[calcTypeIdx] || 'sqft') : 'sqft'
+            coverageIdx !== -1 ? parseFloat(cols[coverageIdx]) || 0 : 0,
+            calcTypeIdx !== -1 ? cols[calcTypeIdx] || 'sqft' : 'sqft'
           );
           imported.push({ id: result.lastInsertRowid, name, line: lineNum });
         } catch (insertErr) {
@@ -137,7 +140,7 @@ router.post('/import', (req, res, next) => {
       imported_count: imported.length,
       error_count: errors.length,
       imported,
-      errors: errors.length > 0 ? errors : undefined
+      errors: errors.length > 0 ? errors : undefined,
     });
   } catch (err) {
     next(err);

@@ -15,9 +15,17 @@
   function parseArgs(raw) {
     if (raw == null || raw === '') return [];
     if (raw.startsWith('[')) {
-      try { return JSON.parse(raw); } catch (_) { /* fall through */ }
+      try {
+        return JSON.parse(raw);
+      } catch (_) {
+        /* fall through */
+      }
     }
-    try { return [JSON.parse(raw)]; } catch (_) { return [raw]; }
+    try {
+      return [JSON.parse(raw)];
+    } catch (_) {
+      return [raw];
+    }
   }
 
   function invoke(fnName, el, event) {

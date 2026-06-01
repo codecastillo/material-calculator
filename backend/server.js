@@ -36,26 +36,37 @@ const PORT = process.env.PORT || 3000;
 // ---------------------------------------------------------------------------
 
 // Security headers
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "https://maps.googleapis.com"],
-      scriptSrcAttr: ["'none'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "https://maps.gstatic.com", "https://maps.googleapis.com"],
-      connectSrc: ["'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com", "https://maps.googleapis.com", "https://maps.gstatic.com", "https://places.googleapis.com"],
-      manifestSrc: ["'self'"]
-    }
-  }
-}));
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", 'https://maps.googleapis.com'],
+        scriptSrcAttr: ["'none'"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+        imgSrc: ["'self'", 'data:', 'https://maps.gstatic.com', 'https://maps.googleapis.com'],
+        connectSrc: [
+          "'self'",
+          'https://fonts.googleapis.com',
+          'https://fonts.gstatic.com',
+          'https://maps.googleapis.com',
+          'https://maps.gstatic.com',
+          'https://places.googleapis.com',
+        ],
+        manifestSrc: ["'self'"],
+      },
+    },
+  })
+);
 
 // CORS
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5500',
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || 'http://localhost:5500',
+    credentials: true,
+  })
+);
 
 // Rate limiting
 const limiter = rateLimit({
@@ -63,7 +74,7 @@ const limiter = rateLimit({
   max: 100, // limit each IP to 100 requests per window
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many requests, please try again later' }
+  message: { error: 'Too many requests, please try again later' },
 });
 app.use('/api/', limiter);
 
@@ -74,7 +85,7 @@ const authLimiter = rateLimit({
   max: process.env.NODE_ENV === 'production' ? 20 : 200,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many auth attempts, please try again later' }
+  message: { error: 'Too many auth attempts, please try again later' },
 });
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
@@ -125,9 +136,9 @@ app.get('/api/health', (req, res) => {
 });
 
 app.get('/api/config', (req, res) => {
-    res.json({
-        googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY || ''
-    });
+  res.json({
+    googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY || '',
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -172,6 +183,3 @@ process.on('SIGTERM', () => {
 
 module.exports = app;
 // redeploy 1779148342
-
-
-

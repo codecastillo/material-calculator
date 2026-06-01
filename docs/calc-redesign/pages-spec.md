@@ -10,16 +10,16 @@ Each page targets the same `1440px` content max-width, the same `40px` horizonta
 
 Each row below tells a parallel builder which HTML region, CSS namespace, and `app.js` render function it owns. **Do not overlap.** Anything not listed in "Owns" is off-limits to that page's builder; coordinate via this map.
 
-| Page | HTML region (`id=`) | CSS namespace prefix | Primary render function in `frontend/js/app.js` | Notes |
-|---|---|---|---|---|
-| Dashboard | `#dashboardPage` (lines 141–168 of `index.html`) | `dash-v2-*` | `renderDashboard()` (line 952) | Builder rewrites the entire region inner HTML; also owns `dashStats`, `dashRecentJobs`, `dashSuppliers` containers. |
-| Pricing | `#pricingPage` (lines 171–200) | `price-v2-*` | `renderMaterialTable()` (line 252), `renderSupplierTabs()` (line 211) | Owns the sidebar (`#supplierTabs` replaced), toolbar, and `#scopeGroups` / `#recentMaterials` / `#statsBar` containers. |
-| Orders | `#orderPage` (lines 378–407) | `order-v2-*` | `renderOrderTable()` (line 912) | Owns `#orderEmpty`, `#orderContent`, `#orderTableBody`. May not touch calculator render. |
-| Bids | `#bidPage` (lines 410–416) | `bid-v2-*` | `generateBidSummary()` (line 919) — rebuilds `#bidSummary` inner HTML | Owns `#bidEmpty`, `#bidContent`, `#bidSummary`. |
-| Saved Jobs | `#savedJobsPage` (lines 419–425) | `jobs-v2-*` | `renderSavedJobs()` (line 937) | Owns `#savedJobsList`, the new search/filter chips, and the footer stats row. |
-| Admin | `#adminPage` (lines 467–504) | `admin-v2-*` | `renderAdminPanel()` (line 1043) | Owns `#adminStats`, `#adminKeysList`, `#adminUsersList`, the generate-keys form. |
-| Sign-in / Activate | `#loginScreen` (lines 17–60) plus existing `loginForm` / forgot / reset blocks | `login-v2-*` | (no render fn — static markup; handlers wire submit) | Builder rebuilds the screen's two-column layout; activate-with-license-key input is **new** and posts to existing `activateLicense` handler. |
-| Mobile (cross-page) | New `<nav id="mobileTabBar">` appended inside `#appContainer` after `<main>` | `mob-v2-*` | New helper `renderMobileTabBar()` inserted near `showPage` in `app.js` | Owns the bottom tab bar component only. All other pages must add `padding-bottom: 72px` at `<768px`. |
+| Page                | HTML region (`id=`)                                                            | CSS namespace prefix | Primary render function in `frontend/js/app.js`                        | Notes                                                                                                                                        |
+| ------------------- | ------------------------------------------------------------------------------ | -------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dashboard           | `#dashboardPage` (lines 141–168 of `index.html`)                               | `dash-v2-*`          | `renderDashboard()` (line 952)                                         | Builder rewrites the entire region inner HTML; also owns `dashStats`, `dashRecentJobs`, `dashSuppliers` containers.                          |
+| Pricing             | `#pricingPage` (lines 171–200)                                                 | `price-v2-*`         | `renderMaterialTable()` (line 252), `renderSupplierTabs()` (line 211)  | Owns the sidebar (`#supplierTabs` replaced), toolbar, and `#scopeGroups` / `#recentMaterials` / `#statsBar` containers.                      |
+| Orders              | `#orderPage` (lines 378–407)                                                   | `order-v2-*`         | `renderOrderTable()` (line 912)                                        | Owns `#orderEmpty`, `#orderContent`, `#orderTableBody`. May not touch calculator render.                                                     |
+| Bids                | `#bidPage` (lines 410–416)                                                     | `bid-v2-*`           | `generateBidSummary()` (line 919) — rebuilds `#bidSummary` inner HTML  | Owns `#bidEmpty`, `#bidContent`, `#bidSummary`.                                                                                              |
+| Saved Jobs          | `#savedJobsPage` (lines 419–425)                                               | `jobs-v2-*`          | `renderSavedJobs()` (line 937)                                         | Owns `#savedJobsList`, the new search/filter chips, and the footer stats row.                                                                |
+| Admin               | `#adminPage` (lines 467–504)                                                   | `admin-v2-*`         | `renderAdminPanel()` (line 1043)                                       | Owns `#adminStats`, `#adminKeysList`, `#adminUsersList`, the generate-keys form.                                                             |
+| Sign-in / Activate  | `#loginScreen` (lines 17–60) plus existing `loginForm` / forgot / reset blocks | `login-v2-*`         | (no render fn — static markup; handlers wire submit)                   | Builder rebuilds the screen's two-column layout; activate-with-license-key input is **new** and posts to existing `activateLicense` handler. |
+| Mobile (cross-page) | New `<nav id="mobileTabBar">` appended inside `#appContainer` after `<main>`   | `mob-v2-*`           | New helper `renderMobileTabBar()` inserted near `showPage` in `app.js` | Owns the bottom tab bar component only. All other pages must add `padding-bottom: 72px` at `<768px`.                                         |
 
 ### Shared / forbidden territory
 
@@ -78,12 +78,12 @@ A single rounded card identical in structure to the Calculator's metrics strip (
 
 Each cell uses the same two-row structure (small-caps label top, big number + sub-trend below). Cell content **verbatim**:
 
-| Cell | Label (top, small-caps mono) | Value (mono 500 ~1.6rem tabular) | Unit suffix (mono 0.65rem) | Sub-trend (sans 0.78rem, `var(--v2-text-secondary)`) |
-|---|---|---|---|---|
-| 1 | `IN PRODUCTION` | `3` | `jobs` | `$167.2k total contract value` |
-| 2 | `AWAITING REPLY` | `2` | `bids` | `Oldest sent 6 days ago` |
-| 3 | `MATERIALS MTD` | `24.1` | `k` | `↓ Down 8% vs Apr` — arrow `↓` in `var(--v2-text-secondary)` |
-| 4 | `AVG MARGIN` | `31.4` | `%` | `↑ Target 28%` — arrow `↑` in `var(--v2-accent)` to signal positive |
+| Cell | Label (top, small-caps mono) | Value (mono 500 ~1.6rem tabular) | Unit suffix (mono 0.65rem) | Sub-trend (sans 0.78rem, `var(--v2-text-secondary)`)                |
+| ---- | ---------------------------- | -------------------------------- | -------------------------- | ------------------------------------------------------------------- |
+| 1    | `IN PRODUCTION`              | `3`                              | `jobs`                     | `$167.2k total contract value`                                      |
+| 2    | `AWAITING REPLY`             | `2`                              | `bids`                     | `Oldest sent 6 days ago`                                            |
+| 3    | `MATERIALS MTD`              | `24.1`                           | `k`                        | `↓ Down 8% vs Apr` — arrow `↓` in `var(--v2-text-secondary)`        |
+| 4    | `AVG MARGIN`                 | `31.4`                           | `%`                        | `↑ Target 28%` — arrow `↑` in `var(--v2-accent)` to signal positive |
 
 Cell padding `16px 20px`. Sub-trend line top margin 8px. Cell content vertically aligned to top, not centered (unlike Calculator metrics which center).
 
@@ -101,31 +101,32 @@ Table card: `var(--v2-bg-surface)`, 1px border `var(--v2-border-hairline)`, radi
 
 **Column spec** (5 columns, fixed widths sum ≤ container):
 
-| # | Header (small-caps mono `var(--v2-text-tertiary)`) | Width | Align | Body font |
-|---|---|---|---|---|
-| 1 | `JOB ·#` | 80px | left | mono 400, 0.85rem, `var(--v2-text-primary)` (e.g. `J-2419`) |
-| 2 | `NAME / CLIENT` | flex / fill | left | Two lines: name sans 600 0.88rem `var(--v2-text-primary)` + sub-line client+addr sans 400 0.78rem `var(--v2-text-tertiary)` |
-| 3 | `PHASE` | 150px | left | One or two phase chips from `spec.md §1.1` palette (use `.v2-chip.color-coat`, `.v2-chip.gray-coat`, `.v2-chip.lath`, `.v2-chip.painting`) |
-| 4 | `SQ·FT  DUE` | 130px | right | sqft mono 500 0.95rem `var(--v2-text-primary)` then 8px gap then due-date mono 400 0.78rem `var(--v2-text-tertiary)` on the same line (date format `Jun 04`) |
-| 5 | `TOTAL` | 90px | right | mono 500 0.95rem `var(--v2-text-primary)` (e.g. `$28.4k`) |
+| #   | Header (small-caps mono `var(--v2-text-tertiary)`) | Width       | Align | Body font                                                                                                                                                    |
+| --- | -------------------------------------------------- | ----------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | `JOB ·#`                                           | 80px        | left  | mono 400, 0.85rem, `var(--v2-text-primary)` (e.g. `J-2419`)                                                                                                  |
+| 2   | `NAME / CLIENT`                                    | flex / fill | left  | Two lines: name sans 600 0.88rem `var(--v2-text-primary)` + sub-line client+addr sans 400 0.78rem `var(--v2-text-tertiary)`                                  |
+| 3   | `PHASE`                                            | 150px       | left  | One or two phase chips from `spec.md §1.1` palette (use `.v2-chip.color-coat`, `.v2-chip.gray-coat`, `.v2-chip.lath`, `.v2-chip.painting`)                   |
+| 4   | `SQ·FT  DUE`                                       | 130px       | right | sqft mono 500 0.95rem `var(--v2-text-primary)` then 8px gap then due-date mono 400 0.78rem `var(--v2-text-tertiary)` on the same line (date format `Jun 04`) |
+| 5   | `TOTAL`                                            | 90px        | right | mono 500 0.95rem `var(--v2-text-primary)` (e.g. `$28.4k`)                                                                                                    |
 
 Column header row: padding `10px 20px`, bottom 1px hairline divider. Data row padding `16px 20px`, bottom 1px hairline (except last row, flush with card bottom). Row hover: `var(--v2-bg-surface-hover)`. Each row also gets a trailing `›` chevron icon (just before the right edge, `var(--v2-text-tertiary)`) indicating it's clickable to open the calculator with that job loaded.
 
 **Verbatim row content (from PDF page 1):**
 
-| Job | Name | Sub-line | Phase chip(s) | Sq·ft / Due | Total |
-|---|---|---|---|---|---|
-| J-2419 | Hernandez Residence | M. Hernandez · 4218 Briar Creek Dr | ● COLOR COAT | 3,840 / Jun 04 | $28.4k |
-| J-2417 | Westridge Townhomes | BRG Construction · Unit 12–24, Westridge | ● GRAY COAT | 12,480 / Jun 11 | $88.2k |
-| J-2415 | Oak Park Auto | D. Klein · 1601 W Industrial | ● LATH | 6,240 / Jun 14 | $41.6k |
-| J-2413 | Glenmore Family Dental | Glenmore LLC · 88 Glenmore Ave Ste 2 | ● PAINTING | 2,150 / May 28 | $14.8k |
-| J-2410 | Marina Cottages 3 & 4 | B. Tellez · Lot 14B Marina Pt | ● COLOR COAT | 5,360 / Jun 19 | $37.0k |
+| Job    | Name                   | Sub-line                                 | Phase chip(s) | Sq·ft / Due     | Total  |
+| ------ | ---------------------- | ---------------------------------------- | ------------- | --------------- | ------ |
+| J-2419 | Hernandez Residence    | M. Hernandez · 4218 Briar Creek Dr       | ● COLOR COAT  | 3,840 / Jun 04  | $28.4k |
+| J-2417 | Westridge Townhomes    | BRG Construction · Unit 12–24, Westridge | ● GRAY COAT   | 12,480 / Jun 11 | $88.2k |
+| J-2415 | Oak Park Auto          | D. Klein · 1601 W Industrial             | ● LATH        | 6,240 / Jun 14  | $41.6k |
+| J-2413 | Glenmore Family Dental | Glenmore LLC · 88 Glenmore Ave Ste 2     | ● PAINTING    | 2,150 / May 28  | $14.8k |
+| J-2410 | Marina Cottages 3 & 4  | B. Tellez · Lot 14B Marina Pt            | ● COLOR COAT  | 5,360 / Jun 19  | $37.0k |
 
 ### 1.6 Right rail — Suppliers + Activity
 
 The right rail is a single column with two stacked sections, each a card.
 
 **Suppliers card** (`.dash-v2-suppliers`):
+
 - Eyebrow `SUPPLIERS` — small-caps mono, `var(--v2-text-tertiary)`, bottom margin 16px.
 - A vertical list of 4 supplier rows; each row separated by a 1px hairline divider. Row padding `16px 0`.
 - Per-row layout:
@@ -135,28 +136,29 @@ The right rail is a single column with two stacked sections, each a card.
 
 **Verbatim supplier rows:**
 
-| Supplier | Sync | Phase chips | Item count | YTD spend |
-|---|---|---|---|---|
-| Pacific Supply | 2 days ago | ● GRAY COAT  ● COLOR COAT  ● ACCESSORIES | 142 items | $184.2k YTD |
-| ABC Supply | Yesterday | ● LATH  ● DRYWALL  ● ACCESSORIES | 318 items | $92.5k YTD |
-| LKL Associates | 5 days ago | ● LATH  ● COLOR COAT  ● DRYWALL | 88 items | $56.7k YTD |
-| Sherwin Williams | Today | ● PAINTING | 96 items | $35.0k YTD |
+| Supplier         | Sync       | Phase chips                            | Item count | YTD spend   |
+| ---------------- | ---------- | -------------------------------------- | ---------- | ----------- |
+| Pacific Supply   | 2 days ago | ● GRAY COAT ● COLOR COAT ● ACCESSORIES | 142 items  | $184.2k YTD |
+| ABC Supply       | Yesterday  | ● LATH ● DRYWALL ● ACCESSORIES         | 318 items  | $92.5k YTD  |
+| LKL Associates   | 5 days ago | ● LATH ● COLOR COAT ● DRYWALL          | 88 items   | $56.7k YTD  |
+| Sherwin Williams | Today      | ● PAINTING                             | 96 items   | $35.0k YTD  |
 
 Card outer: `var(--v2-bg-surface)`, 1px border `var(--v2-border-hairline)`, radius `var(--v2-r-card)`, padding `20px 24px`. 24px bottom margin before Activity card.
 
 **Activity card** (`.dash-v2-activity`):
+
 - Eyebrow `ACTIVITY` — small-caps mono, bottom margin 16px.
 - Vertical list of 5 events. Each event is a row (flex, gap 12px): left timestamp (mono 400 0.78rem `var(--v2-text-tertiary)`, fixed-width 56px column-aligned), then event text (sans 400 0.85rem `var(--v2-text-primary)` for the verb + entity, with descriptor in `var(--v2-text-secondary)` after an em-dash). Row vertical padding 10px.
 
 **Verbatim events:**
 
-| Time | Event |
-|---|---|
-| 11:42 | **Bid sent** — Marina Cottages 3 & 4 |
-| 09:15 | **Price update** — Stuc-O-Flex · 12 items |
-| Mon | **Job won** — Glenmore Family Dental — $14,820 |
-| Mon | **Catalog import** — Western Builders · 318 SKUs |
-| Sun | **New customer** — B. Tellez · Marina Pt |
+| Time  | Event                                            |
+| ----- | ------------------------------------------------ |
+| 11:42 | **Bid sent** — Marina Cottages 3 & 4             |
+| 09:15 | **Price update** — Stuc-O-Flex · 12 items        |
+| Mon   | **Job won** — Glenmore Family Dental — $14,820   |
+| Mon   | **Catalog import** — Western Builders · 318 SKUs |
+| Sun   | **New customer** — B. Tellez · Marina Pt         |
 
 Bolded verbs/labels: `Bid sent`, `Job won`, `Catalog import`, `New customer` render in **sans 600**. `Price update` is bold too. The dollar amount `$14,820` is mono 500 `var(--v2-text-primary)`.
 
@@ -167,6 +169,7 @@ Use the existing chip palette directly: `.v2-chip.color-coat`, `.v2-chip.gray-co
 ### 1.8 Mobile collapse rules
 
 At `<1100px`, right rail wraps below table. At `<768px`:
+
 - Eyebrow + title remain. Subtitle wraps. Right-cluster CTAs collapse to a single `+ New calculation` full-width pill below the subtitle; `+ New job` becomes a small text link beneath.
 - Metric strip switches from 4-up to 2×2 grid; vertical AND horizontal 1px hairlines.
 - Active estimates table: hide `PHASE` and `JOB·#` columns; merge `JOB·#` into the name sub-line as `J-2419 · M. Hernandez`. Move phase chip into name cell as line 3.
@@ -227,16 +230,16 @@ Sticky-positioned (`position: sticky; top: 80px;`). Two sections stacked vertica
 - Active supplier row has background `var(--v2-bg-surface-2)`, left border 2px solid `var(--v2-accent)`, name color `var(--v2-text-primary)`. Inactive rows have transparent background.
 - Padding per row: `12px 14px`. Row gap 2px. Border-radius `var(--v2-r-input)`.
 
-**Verbatim supplier list (active row marked **):**
+**Verbatim supplier list (active row marked **):\*\*
 
-| Supplier | Items | YTD spend |
-|---|---|---|
-| **Stuc-O-Flex** | 142 items | $184.2k |
-| Western Builders | 318 items | $92.5k |
-| Coronado Stone | 88 items | $56.7k |
-| Dunn-Edwards | 96 items | $34.9k |
-| Foster Lumber | 41 items | $22.1k |
-| AAA Concrete | 33 items | $18.4k |
+| Supplier         | Items     | YTD spend |
+| ---------------- | --------- | --------- |
+| **Stuc-O-Flex**  | 142 items | $184.2k   |
+| Western Builders | 318 items | $92.5k    |
+| Coronado Stone   | 88 items  | $56.7k    |
+| Dunn-Edwards     | 96 items  | $34.9k    |
+| Foster Lumber    | 41 items  | $22.1k    |
+| AAA Concrete     | 33 items  | $18.4k    |
 
 Below the list: `+ Add supplier` text link, sans 500 0.85rem, `var(--v2-text-secondary)` → `var(--v2-text-primary)` hover. Top margin 8px. Bottom margin 24px.
 
@@ -249,26 +252,28 @@ Below the list: `+ Add supplier` text link, sans 500 0.85rem, `var(--v2-text-sec
 
 **Verbatim filter rows (with counts from PDF):**
 
-| Filter | Count |
-|---|---|
-| All categories ✓ | 142 |
-| Mortar & Mud | 38 |
-| Coatings | 44 |
-| Aggregate | 22 |
-| Lath & Wire | 18 |
-| Paper & Wrap | 9 |
-| Fastener | 11 |
+| Filter           | Count |
+| ---------------- | ----- |
+| All categories ✓ | 142   |
+| Mortar & Mud     | 38    |
+| Coatings         | 44    |
+| Aggregate        | 22    |
+| Lath & Wire      | 18    |
+| Paper & Wrap     | 9     |
+| Fastener         | 11    |
 
 ### 2.4 Header zone (main column)
 
 Same structure as Calculator header (`spec.md §3`), left + right cluster.
 
 **Left:**
+
 1. **Eyebrow** `03 · PRICING · STUC-O-FLEX` — small-caps mono, `var(--v2-text-tertiary)`. The supplier slug at the end is dynamic.
 2. **Title** `Material catalog` — `Fraunces 500`, ~2.0rem.
 3. **Subtitle** `142 SKUs · Last sync 10:42 today · Price history tracked` — sans 400, 0.88rem, `var(--v2-text-secondary)`.
 
 **Right (16px gaps):**
+
 1. `Import CSV` text link — sans 500 0.85rem, `var(--v2-text-secondary)`.
 2. `Export` text link — same style.
 3. `+ New item` primary CTA pill — 36px height, `var(--v2-accent)` background, text `#1a0e08`, sans 600 0.88rem.
@@ -282,6 +287,7 @@ A single horizontal row above the table, no card wrapper, flex space-between:
 **Left:** Search input (`.price-v2-search`), width 320px, height 32px, background `var(--v2-bg-surface-2)`, 1px border `var(--v2-border-hairline)`, radius `var(--v2-r-button)`. Leading 🔍 icon (`var(--v2-text-tertiary)`). Placeholder `Search SKU, name, unit…` in `var(--v2-text-tertiary)`.
 
 **Right (gap 16px):**
+
 1. `SORT` label (small-caps mono `var(--v2-text-tertiary)`) + dropdown (`.price-v2-sort-select`) — height 32px, mono 400 0.85rem, background `var(--v2-bg-surface-2)`, 1px border `var(--v2-border-hairline)`, radius `var(--v2-r-button)`, options: `name ↓`, `name ↑`, `price ↓`, `price ↑`, `30D ↓`, `30D ↑`. Trailing caret.
 2. `VIEW` label + a two-button segmented toggle: `dense` (active) / `comfortable`. Active state: background `var(--v2-bg-surface-2)`, text `var(--v2-text-primary)`. Inactive: transparent, `var(--v2-text-tertiary)`.
 
@@ -293,32 +299,32 @@ Same card outer treatment as Active estimates table: `var(--v2-bg-surface)`, 1px
 
 **Column spec:**
 
-| # | Header (small-caps mono) | Width | Align | Body font |
-|---|---|---|---|---|
-| 1 | (drag handle) | 32px | center | `☰` glyph in `var(--v2-text-tertiary)`, cursor: grab |
-| 2 | `SKU` | 100px | left | mono 400 0.85rem `var(--v2-text-primary)` |
-| 3 | `NAME` | flex / fill | left | sans 600 0.88rem `var(--v2-text-primary)` |
-| 4 | `UNIT · COVERAGE` | 150px | left | Two lines: unit mono 400 0.85rem `var(--v2-text-primary)` (e.g. `bag · 94 lb`) + coverage mono 400 0.78rem `var(--v2-text-tertiary)` (e.g. `12 sq·ft/bag`) |
-| 5 | `CATEGORY` | 140px | left | One phase chip (use chip palette by mapping category to chip class) |
-| 6 | `PRICE` | 90px | right | mono 500 0.95rem `var(--v2-text-primary)` (e.g. `$18.95`) |
-| 7 | `30D` | 80px | right | Trend pill: arrow + percent. Up: `↑ +2.1%` in `var(--v2-status-dot-green)`. Down: `↓ -3.2%` in `var(--v2-status-dot-amber)`. Flat: em-dash `—` in `var(--v2-text-tertiary)`. Mono 400 0.78rem. |
+| #   | Header (small-caps mono) | Width       | Align  | Body font                                                                                                                                                                                      |
+| --- | ------------------------ | ----------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | (drag handle)            | 32px        | center | `☰` glyph in `var(--v2-text-tertiary)`, cursor: grab                                                                                                                                          |
+| 2   | `SKU`                    | 100px       | left   | mono 400 0.85rem `var(--v2-text-primary)`                                                                                                                                                      |
+| 3   | `NAME`                   | flex / fill | left   | sans 600 0.88rem `var(--v2-text-primary)`                                                                                                                                                      |
+| 4   | `UNIT · COVERAGE`        | 150px       | left   | Two lines: unit mono 400 0.85rem `var(--v2-text-primary)` (e.g. `bag · 94 lb`) + coverage mono 400 0.78rem `var(--v2-text-tertiary)` (e.g. `12 sq·ft/bag`)                                     |
+| 5   | `CATEGORY`               | 140px       | left   | One phase chip (use chip palette by mapping category to chip class)                                                                                                                            |
+| 6   | `PRICE`                  | 90px        | right  | mono 500 0.95rem `var(--v2-text-primary)` (e.g. `$18.95`)                                                                                                                                      |
+| 7   | `30D`                    | 80px        | right  | Trend pill: arrow + percent. Up: `↑ +2.1%` in `var(--v2-status-dot-green)`. Down: `↓ -3.2%` in `var(--v2-status-dot-amber)`. Flat: em-dash `—` in `var(--v2-text-tertiary)`. Mono 400 0.78rem. |
 
 Column-header row padding `10px 20px`, bottom 1px hairline. Data row padding `14px 20px`. Row hover: `var(--v2-bg-surface-hover)`.
 
 **Verbatim sample rows (from PDF page 5):**
 
-| SKU | Name | Unit · Coverage | Category | Price | 30D |
-|---|---|---|---|---|---|
-| CEM-IIA | Portland Cement Type II | bag · 94 lb / 12 sq·ft/bag | ● GRAY COAT | $18.95 | ↑ +2.1% |
-| CEM-IIB | Portland Cement Type II/V | bag · 94 lb / 12 sq·ft/bag | ● GRAY COAT | $19.40 | ↑ +2.1% |
-| OC-STD | One-Coat Stucco · Standard | bag · 80 lb / 24 sq·ft/bag | ● COLOR COAT | $21.60 | — |
-| OC-ALM | One-Coat Stucco · Almond | bag · 80 lb / 24 sq·ft/bag | ● COLOR COAT | $22.80 | ↑ +1.4% |
-| OC-SND | One-Coat Stucco · Sandstone | bag · 80 lb / 24 sq·ft/bag | ● COLOR COAT | $22.80 | ↑ +1.4% |
-| SND-PL | Plaster Sand · Graded | ton / 90 sq·ft/ton | ● AGGREGATE | $64.50 | ↓ -3.2% |
-| SND-MS | Masonry Sand · Fine | ton / 90 sq·ft/ton | ● AGGREGATE | $58.20 | ↓ -3.2% |
-| LIM-HY | Hydrated Lime · Type S | bag · 50 lb / 90 sq·ft/bag | ● GRAY COAT | $16.40 | ↑ +0.8% |
-| FBR-PP | Polypropylene Fiber Mesh | bag · 1 lb / per cu yd | ● GRAY COAT | $11.20 | — |
-| BND-AC | Acrylic Bonding Agent | gallon / 300 sq·ft/gal | ● COLOR COAT | $38.50 | ↑ +4.0% |
+| SKU     | Name                        | Unit · Coverage            | Category     | Price  | 30D     |
+| ------- | --------------------------- | -------------------------- | ------------ | ------ | ------- |
+| CEM-IIA | Portland Cement Type II     | bag · 94 lb / 12 sq·ft/bag | ● GRAY COAT  | $18.95 | ↑ +2.1% |
+| CEM-IIB | Portland Cement Type II/V   | bag · 94 lb / 12 sq·ft/bag | ● GRAY COAT  | $19.40 | ↑ +2.1% |
+| OC-STD  | One-Coat Stucco · Standard  | bag · 80 lb / 24 sq·ft/bag | ● COLOR COAT | $21.60 | —       |
+| OC-ALM  | One-Coat Stucco · Almond    | bag · 80 lb / 24 sq·ft/bag | ● COLOR COAT | $22.80 | ↑ +1.4% |
+| OC-SND  | One-Coat Stucco · Sandstone | bag · 80 lb / 24 sq·ft/bag | ● COLOR COAT | $22.80 | ↑ +1.4% |
+| SND-PL  | Plaster Sand · Graded       | ton / 90 sq·ft/ton         | ● AGGREGATE  | $64.50 | ↓ -3.2% |
+| SND-MS  | Masonry Sand · Fine         | ton / 90 sq·ft/ton         | ● AGGREGATE  | $58.20 | ↓ -3.2% |
+| LIM-HY  | Hydrated Lime · Type S      | bag · 50 lb / 90 sq·ft/bag | ● GRAY COAT  | $16.40 | ↑ +0.8% |
+| FBR-PP  | Polypropylene Fiber Mesh    | bag · 1 lb / per cu yd     | ● GRAY COAT  | $11.20 | —       |
+| BND-AC  | Acrylic Bonding Agent       | gallon / 300 sq·ft/gal     | ● COLOR COAT | $38.50 | ↑ +4.0% |
 
 (Add 2 more rows to reach 12 visible.)
 
@@ -410,33 +416,33 @@ Each phase section is a stacked block separated from the next by 28px vertical m
 
 **Items table** under each group:
 
-| Col | Header | Width | Align | Body |
-|---|---|---|---|---|
-| 1 | `SKU` | 110px | left | mono 400 0.85rem `var(--v2-text-primary)` (e.g. `200004953`) |
-| 2 | `ITEM` | flex | left | sans 400 0.88rem `var(--v2-text-primary)` |
-| 3 | `QTY  UNIT` | 110px | right | qty in mono 500 0.95rem then 6px gap then unit in sans 400 0.78rem `var(--v2-text-tertiary)` (e.g. `14 roll`) |
-| 4 | `EACH` | 90px | right | mono 400 0.85rem `var(--v2-text-secondary)` (e.g. `$44.00`) |
+| Col | Header      | Width | Align | Body                                                                                                          |
+| --- | ----------- | ----- | ----- | ------------------------------------------------------------------------------------------------------------- |
+| 1   | `SKU`       | 110px | left  | mono 400 0.85rem `var(--v2-text-primary)` (e.g. `200004953`)                                                  |
+| 2   | `ITEM`      | flex  | left  | sans 400 0.88rem `var(--v2-text-primary)`                                                                     |
+| 3   | `QTY  UNIT` | 110px | right | qty in mono 500 0.95rem then 6px gap then unit in sans 400 0.78rem `var(--v2-text-tertiary)` (e.g. `14 roll`) |
+| 4   | `EACH`      | 90px  | right | mono 400 0.85rem `var(--v2-text-secondary)` (e.g. `$44.00`)                                                   |
 
 Column header row uses small-caps mono `var(--v2-text-tertiary)`, padding `8px 0`, bottom 1px hairline. Data row padding `10px 0`, no bottom border (a phase group reads as a single block).
 
 **Verbatim line items (Lath group, Pacific Supply PO-2419-A — total $1,394.24):**
 
-| SKU | Item | Qty Unit | Each |
-|---|---|---|---|
-| 200004953 | Stucco Netting 20ga Self-Furred 36×150 | 14 roll | $44.00 |
-| 200007102 | Stucco Wire 17ga Self-Furred 36×150 | 6 roll | $74.00 |
-| 200007110 | Metal Lath 1.75 lb Galv · 2 sqyd/pc | 32 piece | $5.00 |
-| 200007293 | Bostitch 1" Staples · 10M | 4 box | $30.72 |
-| 200005003 | CornerAid Straight 10' | 24 piece | $2.14 |
+| SKU       | Item                                   | Qty Unit | Each   |
+| --------- | -------------------------------------- | -------- | ------ |
+| 200004953 | Stucco Netting 20ga Self-Furred 36×150 | 14 roll  | $44.00 |
+| 200007102 | Stucco Wire 17ga Self-Furred 36×150    | 6 roll   | $74.00 |
+| 200007110 | Metal Lath 1.75 lb Galv · 2 sqyd/pc    | 32 piece | $5.00  |
+| 200007293 | Bostitch 1" Staples · 10M              | 4 box    | $30.72 |
+| 200005003 | CornerAid Straight 10'                 | 24 piece | $2.14  |
 
 **Verbatim line items (Gray Coat group, Pacific Supply PO-2419-B — total $9,677.10):**
 
-| SKU | Item | Qty Unit | Each |
-|---|---|---|---|
-| 200012105 | Portland Cement Type II · 94 lb | 320 bag | $18.95 |
-| 200012220 | Plaster Sand · Graded | 43 ton | $64.50 |
-| 200012414 | Hydrated Lime · Type S · 50 lb | 43 bag | $16.40 |
-| 200012516 | PP Fiber Mesh · 1 lb | 12 bag | $11.20 |
+| SKU       | Item                            | Qty Unit | Each   |
+| --------- | ------------------------------- | -------- | ------ |
+| 200012105 | Portland Cement Type II · 94 lb | 320 bag  | $18.95 |
+| 200012220 | Plaster Sand · Graded           | 43 ton   | $64.50 |
+| 200012414 | Hydrated Lime · Type S · 50 lb  | 43 bag   | $16.40 |
+| 200012516 | PP Fiber Mesh · 1 lb            | 12 bag   | $11.20 |
 
 (Color Coat / Accessories groups follow the same structure with their items.)
 
@@ -445,6 +451,7 @@ Column header row uses small-caps mono `var(--v2-text-tertiary)`, padding `8px 0
 Single column, three stacked sections.
 
 **Section A — Order header:**
+
 - Eyebrow `04 · ORDER` — small-caps mono `var(--v2-text-tertiary)`.
 - Order number `O-2419` — mono 500 1.4rem `var(--v2-text-primary)`. Margin-bottom 8px.
 - Status pill `● Open` — pill, `var(--v2-bg-surface-2)`, 1px border `var(--v2-border-hairline)`, padding `4px 10px 4px 8px`, sans 500 0.75rem; the dot is `var(--v2-status-dot-green)`.
@@ -452,31 +459,34 @@ Single column, three stacked sections.
 24px bottom margin.
 
 **Section B — Filter rows:**
+
 - Eyebrow `FILTER ROWS` — small-caps mono.
 - 4 rows, each with a custom checkbox (same style as Pricing filter checkbox), label (sans 400 0.88rem `var(--v2-text-primary)`), and count (mono 400 0.85rem `var(--v2-text-tertiary)` pushed right):
 
-| Filter | Count |
-|---|---|
-| Lath ✓ | 5 |
-| Gray Coat ✓ | 4 |
-| Accessories ✓ | 3 |
-| Color Coat ☐ | 0 |
+| Filter        | Count |
+| ------------- | ----- |
+| Lath ✓        | 5     |
+| Gray Coat ✓   | 4     |
+| Accessories ✓ | 3     |
+| Color Coat ☐  | 0     |
 
 Row padding `8px 0`. 24px bottom margin.
 
 **Section C — Group by:**
+
 - Eyebrow `GROUP BY` — small-caps mono.
 - Three radio-like rows (single-select), same styling as checkboxes but indicating mutual exclusion (filled dot when active):
 
-| Group | State |
-|---|---|
-| Supplier | ● (active) |
-| Phase | ○ |
-| Delivery date | ○ |
+| Group         | State      |
+| ------------- | ---------- |
+| Supplier      | ● (active) |
+| Phase         | ○          |
+| Delivery date | ○          |
 
 32px bottom margin.
 
 **Section D — CTAs (sticky to bottom of viewport on tall pages):**
+
 1. `Print order →` — primary CTA full-width pill, height 44px, `var(--v2-accent)`, text `#1a0e08`, sans 600 0.95rem, trailing `→`.
 2. `Email to supplier` — secondary full-width pill, height 44px, `var(--v2-bg-surface-2)`, 1px border `var(--v2-border-hairline)`, text `var(--v2-text-primary)`, sans 500 0.95rem. 8px top margin.
 3. `Export CSV` — tertiary text link, full-width centered, sans 500 0.85rem `var(--v2-text-secondary)`. 8px top margin.
@@ -556,13 +566,13 @@ A 4-column table; each row is one phase with its scope text. Outer no card — s
 
 **Column header row** (padding `10px 0`, bottom 1px hairline, font small-caps mono `var(--v2-text-tertiary)`):
 
-| Col | Header | Width | Align |
-|---|---|---|---|
-| 1 | `PHASE` | 130px | left |
-| 2 | `SCOPE OF WORK` | flex | left |
-| 3 | `SQ·FT` | 80px | right |
-| 4 | `RATE` | 80px | right |
-| 5 | `AMOUNT` | 110px | right |
+| Col | Header          | Width | Align |
+| --- | --------------- | ----- | ----- |
+| 1   | `PHASE`         | 130px | left  |
+| 2   | `SCOPE OF WORK` | flex  | left  |
+| 3   | `SQ·FT`         | 80px  | right |
+| 4   | `RATE`          | 80px  | right |
+| 5   | `AMOUNT`        | 110px | right |
 
 **Data rows** (padding `18px 0`, vertical alignment top, bottom 1px hairline between rows):
 
@@ -574,12 +584,12 @@ A 4-column table; each row is one phase with its scope text. Outer no card — s
 
 **Verbatim phase rows:**
 
-| Phase chip | Scope of work | Sq·ft | Rate | Amount |
-|---|---|---|---|---|
-| ● LATH | Strip and dispose of existing lath; install 60-min Grade D paper, 2.5lb galv K-lath fastened 6" o.c. with 7/8" galv staples; corner bead at all outside corners and openings. | 3,840 | $4.80 | $18,432 |
-| ● BROWN COAT | 3/8" scratch & brown coat using Type II portland with graded plaster sand and PP fiber. Wood-float finish, ready for color coat at 14 days. | 3,840 | $5.20 | $19,968 |
-| ● COLOR COAT | One-coat stucco in Almond Cream, hand-applied, sand finish. Acrylic bonding primer prior to application; touch-ups included. | 3,840 | $4.10 | $15,744 |
-| ● PREP & CLEANUP | Masking, scaffold, daily cleanup, final wash-down and dumpster. All debris hauled off site. | — | — | $4,200 |
+| Phase chip       | Scope of work                                                                                                                                                                 | Sq·ft | Rate  | Amount  |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | ----- | ------- |
+| ● LATH           | Strip and dispose of existing lath; install 60-min Grade D paper, 2.5lb galv K-lath fastened 6" o.c. with 7/8" galv staples; corner bead at all outside corners and openings. | 3,840 | $4.80 | $18,432 |
+| ● BROWN COAT     | 3/8" scratch & brown coat using Type II portland with graded plaster sand and PP fiber. Wood-float finish, ready for color coat at 14 days.                                   | 3,840 | $5.20 | $19,968 |
+| ● COLOR COAT     | One-coat stucco in Almond Cream, hand-applied, sand finish. Acrylic bonding primer prior to application; touch-ups included.                                                  | 3,840 | $4.10 | $15,744 |
+| ● PREP & CLEANUP | Masking, scaffold, daily cleanup, final wash-down and dumpster. All debris hauled off site.                                                                                   | —     | —     | $4,200  |
 
 Note: `BROWN COAT` reuses `.v2-chip.gray-coat` palette (same pale-pink hue per `spec.md §1.1`). `PREP & CLEANUP` reuses `.v2-chip.accessories` (peach).
 
@@ -602,6 +612,7 @@ Each row is `display: flex; justify-content: flex-end; gap: 32px;` with the labe
 Each row vertical padding 10px, 1px hairline below.
 
 **Total row:**
+
 - Left: `Total` sans 600 1.0rem.
 - Right: `$64,988.94` (or the actual final number) — `Fraunces 500` ~1.5rem `var(--v2-accent)`, tabular numerals. The total reuses the customer-price accent color treatment from `spec.md §6.2`.
 - Top padding 14px, no bottom border, top 1px border `var(--v2-border-strong)`.
@@ -611,30 +622,34 @@ Each row vertical padding 10px, 1px hairline below.
 Single column, five stacked sections.
 
 **Section A — Bid header:**
+
 - Eyebrow `04 · BID` — small-caps mono.
 - Bid number `B-2419` — mono 500 1.4rem.
 - Status pills row (flex gap 6px): `● Draft` and `● Stucco`. Both chips use the standard pill style (`spec.md §6` for Draft style — the dot is `var(--v2-status-dot-amber)` for Draft); `● Stucco` uses `.v2-chip.color-coat` for the green hue. 24px bottom margin.
 
 **Section B — Margin check:**
+
 - Eyebrow `MARGIN CHECK` — small-caps mono.
 - Big number row: `31.4` (`Fraunces 500` ~2rem `var(--v2-accent)`) + `%` (mono 500 1rem `var(--v2-text-secondary)`, baseline-aligned).
 - Sub-line `vs 28% target` — sans 400 0.78rem `var(--v2-text-secondary)`. 24px bottom margin.
 
 **Section C — Toggle in proposal:**
+
 - Eyebrow `TOGGLE IN PROPOSAL` — small-caps mono.
 - 5 checkbox rows (same checkbox style as Pricing/Orders):
 
-| Checkbox | State |
-|---|---|
-| Show line breakdown | ✓ |
-| Itemize sales tax | ✓ |
-| Show material list | ☐ |
-| CC processing fee | ✓ |
-| Per-sqft pricing | ☐ |
+| Checkbox            | State |
+| ------------------- | ----- |
+| Show line breakdown | ✓     |
+| Itemize sales tax   | ✓     |
+| Show material list  | ☐     |
+| CC processing fee   | ✓     |
+| Per-sqft pricing    | ☐     |
 
 Row padding `8px 0`. 24px bottom margin.
 
 **Section D — Send via:**
+
 - Eyebrow `SEND VIA` — small-caps mono.
 - 3 stacked action rows:
   1. `Email PDF ⤴` — primary full-width pill, height 40px, `var(--v2-accent)`, text `#1a0e08`, sans 600 0.92rem, trailing send icon `⤴`.
@@ -642,6 +657,7 @@ Row padding `8px 0`. 24px bottom margin.
   3. `Copy public link` — tertiary text link, full-width centered, sans 500 0.85rem `var(--v2-text-secondary)`. 24px bottom margin.
 
 **Section E — Saved timestamp:**
+
 - Sans 400 0.78rem `var(--v2-text-tertiary)`: `Saved 11:42 · Linked to job J-2419`. Job slug in mono.
 
 ### 4.7 Mobile collapse rules
@@ -685,11 +701,13 @@ Single column; no sidebar. At `<768px`, see mobile.
 ### 5.3 Header zone
 
 **Left (stacked):**
+
 1. Eyebrow `06 · SAVED JOBS` — small-caps mono `var(--v2-text-tertiary)`.
 2. Title `Library` — `Fraunces 500` ~2.0rem.
 3. Subtitle `32 jobs · 6 templates · search, filter, duplicate` — sans 400 0.88rem `var(--v2-text-secondary)`. The `·` separators in `var(--v2-text-tertiary)`.
 
 **Right (16px gap):**
+
 1. `Templates` text link — sans 500 0.85rem `var(--v2-text-secondary)` → `var(--v2-text-primary)` hover.
 2. `+ New job` primary CTA pill — 36px height, `var(--v2-accent)`, text `#1a0e08`, sans 600 0.88rem.
 
@@ -709,39 +727,39 @@ Same card treatment as Active estimates: `var(--v2-bg-surface)`, 1px border `var
 
 **Column spec:**
 
-| # | Header (small-caps mono `var(--v2-text-tertiary)`) | Width | Align | Body |
-|---|---|---|---|---|
-| 1 | `JOB ·#` | 80px | left | mono 400 0.85rem `var(--v2-text-primary)` (e.g. `J-2419`, `TPL-01` for templates) |
-| 2 | `NAME / CLIENT` | flex | left | Two lines: name sans 600 0.88rem + client sans 400 0.78rem `var(--v2-text-tertiary)` |
-| 3 | `PHASES` | 230px | left | One or more phase chips (wrapping allowed, gap 4px) |
-| 4 | `SQ·FT  DATE` | 140px | right | sqft mono 500 + date mono 400 0.78rem (`2026-05-12` ISO-ish). For templates the sqft is em-dash `—`. |
-| 5 | `STATUS` | 100px | left | Status pill (colored by state — see palette below) |
-| 6 | `TOTAL` | 90px | right | mono 500 0.95rem `var(--v2-text-primary)` (e.g. `$28.4k`). For templates the total is em-dash `—`. |
+| #   | Header (small-caps mono `var(--v2-text-tertiary)`) | Width | Align | Body                                                                                                 |
+| --- | -------------------------------------------------- | ----- | ----- | ---------------------------------------------------------------------------------------------------- |
+| 1   | `JOB ·#`                                           | 80px  | left  | mono 400 0.85rem `var(--v2-text-primary)` (e.g. `J-2419`, `TPL-01` for templates)                    |
+| 2   | `NAME / CLIENT`                                    | flex  | left  | Two lines: name sans 600 0.88rem + client sans 400 0.78rem `var(--v2-text-tertiary)`                 |
+| 3   | `PHASES`                                           | 230px | left  | One or more phase chips (wrapping allowed, gap 4px)                                                  |
+| 4   | `SQ·FT  DATE`                                      | 140px | right | sqft mono 500 + date mono 400 0.78rem (`2026-05-12` ISO-ish). For templates the sqft is em-dash `—`. |
+| 5   | `STATUS`                                           | 100px | left  | Status pill (colored by state — see palette below)                                                   |
+| 6   | `TOTAL`                                            | 90px  | right | mono 500 0.95rem `var(--v2-text-primary)` (e.g. `$28.4k`). For templates the total is em-dash `—`.   |
 
 Column header row padding `10px 20px`, bottom 1px hairline. Data row padding `16px 20px`, bottom 1px hairline (except last row).
 
 **Status pill palette:**
 
-| Status | Dot color | Pill background | Pill text |
-|---|---|---|---|
-| Draft | `var(--v2-status-dot-amber)` | `var(--v2-badge-surface-neutral)` | `var(--v2-text-primary)` |
-| Active | `var(--v2-status-dot-green)` | `var(--v2-badge-surface-neutral)` | `var(--v2-text-primary)` |
-| Won | `var(--v2-status-dot-green)` | `var(--v2-badge-surface-neutral)` | `var(--v2-text-primary)` |
-| Sent | `#a0c4e4` (pale slate blue dot) | `var(--v2-badge-surface-neutral)` | `var(--v2-text-primary)` |
-| Lost | `#8a4a3d` (muted brick) | `var(--v2-badge-surface-neutral)` | `var(--v2-text-secondary)` |
+| Status | Dot color                       | Pill background                   | Pill text                  |
+| ------ | ------------------------------- | --------------------------------- | -------------------------- |
+| Draft  | `var(--v2-status-dot-amber)`    | `var(--v2-badge-surface-neutral)` | `var(--v2-text-primary)`   |
+| Active | `var(--v2-status-dot-green)`    | `var(--v2-badge-surface-neutral)` | `var(--v2-text-primary)`   |
+| Won    | `var(--v2-status-dot-green)`    | `var(--v2-badge-surface-neutral)` | `var(--v2-text-primary)`   |
+| Sent   | `#a0c4e4` (pale slate blue dot) | `var(--v2-badge-surface-neutral)` | `var(--v2-text-primary)`   |
+| Lost   | `#8a4a3d` (muted brick)         | `var(--v2-badge-surface-neutral)` | `var(--v2-text-secondary)` |
 
 **Verbatim rows (from PDF page 8):**
 
-| Job | Name / client | Phases | Sq·ft / Date | Status | Total |
-|---|---|---|---|---|---|
-| J-2419 | Hernandez Residence / M. Hernandez | ● LATH  ● GRAY COAT  ● COLOR COAT | 3,840 / 2026-05-12 | ● Draft | $28.4k |
-| J-2417 | Westridge Townhomes / BRG Construction | ● GRAY COAT  ● COLOR COAT  ● ACCESSORIES | 12,480 / 2026-05-09 | ● Active | $88.2k |
-| J-2415 | Oak Park Auto / D. Klein | ● LATH  ● GRAY COAT  ● ACCESSORIES | 6,240 / 2026-05-07 | ● Active | $41.6k |
-| J-2413 | Glenmore Family Dental / Glenmore LLC | ● PAINTING | 2,150 / 2026-04-28 | ● Won | $14.8k |
-| J-2410 | Marina Cottages 3 & 4 / B. Tellez | ● COLOR COAT  ● ACCESSORIES | 5,360 / 2026-04-22 | ● Sent | $37.0k |
-| J-2406 | Westwood Café Patio / A. Park | ● STONE  ● GRAY COAT | 980 / 2026-04-14 | ● Lost | $12.5k |
-| TPL-01 | Single-story stucco / Template | ● LATH  ● GRAY COAT  ● COLOR COAT | — / 2026-03-02 | ● Draft | — |
-| TPL-02 | Repaint exterior / Template | ● PAINTING | — / 2026-02-18 | ● Draft | — |
+| Job    | Name / client                          | Phases                                 | Sq·ft / Date        | Status   | Total  |
+| ------ | -------------------------------------- | -------------------------------------- | ------------------- | -------- | ------ |
+| J-2419 | Hernandez Residence / M. Hernandez     | ● LATH ● GRAY COAT ● COLOR COAT        | 3,840 / 2026-05-12  | ● Draft  | $28.4k |
+| J-2417 | Westridge Townhomes / BRG Construction | ● GRAY COAT ● COLOR COAT ● ACCESSORIES | 12,480 / 2026-05-09 | ● Active | $88.2k |
+| J-2415 | Oak Park Auto / D. Klein               | ● LATH ● GRAY COAT ● ACCESSORIES       | 6,240 / 2026-05-07  | ● Active | $41.6k |
+| J-2413 | Glenmore Family Dental / Glenmore LLC  | ● PAINTING                             | 2,150 / 2026-04-28  | ● Won    | $14.8k |
+| J-2410 | Marina Cottages 3 & 4 / B. Tellez      | ● COLOR COAT ● ACCESSORIES             | 5,360 / 2026-04-22  | ● Sent   | $37.0k |
+| J-2406 | Westwood Café Patio / A. Park          | ● STONE ● GRAY COAT                    | 980 / 2026-04-14    | ● Lost   | $12.5k |
+| TPL-01 | Single-story stucco / Template         | ● LATH ● GRAY COAT ● COLOR COAT        | — / 2026-03-02      | ● Draft  | —      |
+| TPL-02 | Repaint exterior / Template            | ● PAINTING                             | — / 2026-02-18      | ● Draft  | —      |
 
 Note: `STONE` chip uses `.v2-chip.aggregate` palette (warm taupe) since stone-veneer doesn't have its own dedicated chip in `spec.md §1.1`. (Builder may map "Stone" to `.v2-chip.aggregate` or create a dedicated `.v2-chip.stone` if desired — see flexibilities below.)
 
@@ -794,11 +812,13 @@ Single column at any width; the two tables become a 2-column grid only on `>=110
 ### 6.3 Header zone
 
 **Left (stacked):**
+
 1. Eyebrow `07 · ADMIN · OPERATOR CONSOLE` — small-caps mono.
 2. Title `License & user management` — `Fraunces 500` ~2.0rem.
 3. Subtitle `EstiCount is your SaaS — manage trial keys, lifetime licenses, and active accounts.` — sans 400 0.88rem `var(--v2-text-secondary)`.
 
 **Right (16px gap):**
+
 1. `View as user` text link — sans 500 0.85rem `var(--v2-text-secondary)` → `var(--v2-text-primary)` hover. (Wires to existing `toggleAdminView` handler.)
 2. `Generate keys →` primary CTA pill — 36px height, `var(--v2-accent)`, text `#1a0e08`, sans 600 0.88rem, trailing `→`. (Scrolls to and focuses the generate-keys form.)
 
@@ -809,19 +829,20 @@ Single column at any width; the two tables become a 2-column grid only on `>=110
 Identical card pattern to Dashboard/Calculator metrics strips but with 5 cells and 1px vertical hairlines between them.
 
 Each cell layout:
+
 - Row 1: small-caps mono label `var(--v2-text-tertiary)`.
 - Row 2: `Fraunces 500` ~2rem `var(--v2-text-primary)` for the main number; for fractional cells (`Active users 4/5`) the `/5` denominator renders in mono 500 1.0rem `var(--v2-text-secondary)` baseline-aligned.
 - Row 3: sub-line sans 400 0.78rem `var(--v2-text-secondary)`.
 
 **Verbatim cells:**
 
-| Cell | Label | Big number | Denom / unit | Sub-line |
-|---|---|---|---|---|
-| 1 | `ACTIVE USERS` | `4` | ` / 5` | `1 trial` |
-| 2 | `LIFETIME` | `2` | — | `no expiry` |
-| 3 | `MONTHLY` | `1` | — | `renews 06-08` |
-| 4 | `KEYS UNUSED` | `2` | ` / 6` | `0 trial expired` |
-| 5 | `MRR` | `$348` | — | `↑ +12% MoM` — arrow `↑` in `var(--v2-accent)` |
+| Cell | Label          | Big number | Denom / unit | Sub-line                                       |
+| ---- | -------------- | ---------- | ------------ | ---------------------------------------------- |
+| 1    | `ACTIVE USERS` | `4`        | ` / 5`       | `1 trial`                                      |
+| 2    | `LIFETIME`     | `2`        | —            | `no expiry`                                    |
+| 3    | `MONTHLY`      | `1`        | —            | `renews 06-08`                                 |
+| 4    | `KEYS UNUSED`  | `2`        | ` / 6`       | `0 trial expired`                              |
+| 5    | `MRR`          | `$348`     | —            | `↑ +12% MoM` — arrow `↑` in `var(--v2-accent)` |
 
 Cell padding `16px 20px`. 28px bottom margin.
 
@@ -830,17 +851,18 @@ Cell padding `16px 20px`. 28px bottom margin.
 Single card: `var(--v2-bg-surface)`, 1px border `var(--v2-border-hairline)`, radius `var(--v2-r-card)`, padding `24px`.
 
 Card header row:
+
 - Eyebrow `GENERATE LICENSE KEYS` — small-caps mono. (No subtitle.)
 
 Body row (`display: grid; grid-template-columns: 200px 120px 120px 1fr auto; gap: 16px; align-items: end;`):
 
-| Field | Width | Type | Verbatim default value |
-|---|---|---|---|
-| `TYPE` | 200px | Dropdown | `Trial · 7 days` (other options: `Monthly · 30 days`, `Yearly · 365 days`, `Lifetime`) |
-| `MAX USES` | 120px | Number input | `1` |
-| `QUANTITY` | 120px | Number input | `5` |
-| `PREFIX` | 1fr | Read-only display | `EC-TRI-XXXXXX…` — dynamic based on Type. Mono 400 0.85rem `var(--v2-text-tertiary)`. |
-| (action) | auto | Button | `Generate` primary, 36px height, `var(--v2-accent)` background |
+| Field      | Width | Type              | Verbatim default value                                                                 |
+| ---------- | ----- | ----------------- | -------------------------------------------------------------------------------------- |
+| `TYPE`     | 200px | Dropdown          | `Trial · 7 days` (other options: `Monthly · 30 days`, `Yearly · 365 days`, `Lifetime`) |
+| `MAX USES` | 120px | Number input      | `1`                                                                                    |
+| `QUANTITY` | 120px | Number input      | `5`                                                                                    |
+| `PREFIX`   | 1fr   | Read-only display | `EC-TRI-XXXXXX…` — dynamic based on Type. Mono 400 0.85rem `var(--v2-text-tertiary)`.  |
+| (action)   | auto  | Button            | `Generate` primary, 36px height, `var(--v2-accent)` background                         |
 
 Each field: small-caps mono label `var(--v2-text-tertiary)` on top, input below. Input style: height 36px, `var(--v2-bg-input)`, 1px border `var(--v2-border-hairline)`, radius `var(--v2-r-input)`, mono 500 0.95rem `var(--v2-text-primary)` for number inputs, sans 500 0.95rem for the dropdown.
 
@@ -858,58 +880,60 @@ Two side-by-side cards (`display: grid; grid-template-columns: 1fr 1fr; gap: 24p
 Card outer: same treatment as other tables.
 
 Card header:
+
 - Eyebrow `LICENSE KEYS · 6` — small-caps mono. Count is dynamic.
 - Right of eyebrow: `Click to copy` — sans 400 0.78rem `var(--v2-text-tertiary)`.
 
 **Column spec:**
 
-| Col | Header | Width | Align | Body |
-|---|---|---|---|---|
-| 1 | `KEY` | flex | left | mono 400 0.82rem `var(--v2-text-primary)`, letter-spacing 0.02em (e.g. `EC-LIF-7D2E91F408A6B3CC`) |
-| 2 | `TYPE` | 80px | left | Type label colored by type — lifetime: `var(--v2-status-dot-green)`, monthly: `var(--v2-accent)`, trial: `var(--v2-text-secondary)` — sans 500 0.78rem |
-| 3 | `DUR` | 50px | left | mono 400 0.82rem `var(--v2-text-secondary)` (e.g. `∞`, `30d`, `7d`) |
-| 4 | `USES` | 50px | left | mono 400 0.82rem `var(--v2-text-secondary)` (e.g. `1/1`, `0/1`) |
-| 5 | `BY` | 100px | left | sans 400 0.85rem `var(--v2-text-secondary)` (e.g. `Daniel C.`, `Unused`) |
+| Col | Header | Width | Align | Body                                                                                                                                                   |
+| --- | ------ | ----- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | `KEY`  | flex  | left  | mono 400 0.82rem `var(--v2-text-primary)`, letter-spacing 0.02em (e.g. `EC-LIF-7D2E91F408A6B3CC`)                                                      |
+| 2   | `TYPE` | 80px  | left  | Type label colored by type — lifetime: `var(--v2-status-dot-green)`, monthly: `var(--v2-accent)`, trial: `var(--v2-text-secondary)` — sans 500 0.78rem |
+| 3   | `DUR`  | 50px  | left  | mono 400 0.82rem `var(--v2-text-secondary)` (e.g. `∞`, `30d`, `7d`)                                                                                    |
+| 4   | `USES` | 50px  | left  | mono 400 0.82rem `var(--v2-text-secondary)` (e.g. `1/1`, `0/1`)                                                                                        |
+| 5   | `BY`   | 100px | left  | sans 400 0.85rem `var(--v2-text-secondary)` (e.g. `Daniel C.`, `Unused`)                                                                               |
 
 Column header row padding `10px 16px`, bottom 1px hairline. Data row padding `12px 16px`, bottom 1px hairline. Row hover: `var(--v2-bg-surface-hover)`, cursor: copy. On click, copy the full key string to clipboard and flash a `✓ Copied` toast.
 
 **Verbatim rows (from PDF page 9):**
 
-| Key | Type | Dur | Uses | By |
-|---|---|---|---|---|
-| EC-LIF-7D2E91F408A6B3CC | lifetime | ∞ | 1/1 | Daniel C. |
-| EC-LIF-1A0E55C7BB3F18D2 | lifetime | ∞ | 1/1 | Marco V. |
-| EC-MON-A4F2D90C71BE335E | monthly | 30d | 1/1 | Lucia R. |
-| EC-TRI-A0C7DC6F47B9E1AE | trial | 7d | 1/1 | Sam B. |
-| EC-TRI-B6D49E1F0C28A37D | trial | 7d | 0/1 | Unused |
-| EC-TRI-3F1A88E7D24B0F95 | trial | 7d | 0/1 | Unused |
+| Key                     | Type     | Dur | Uses | By        |
+| ----------------------- | -------- | --- | ---- | --------- |
+| EC-LIF-7D2E91F408A6B3CC | lifetime | ∞   | 1/1  | Daniel C. |
+| EC-LIF-1A0E55C7BB3F18D2 | lifetime | ∞   | 1/1  | Marco V.  |
+| EC-MON-A4F2D90C71BE335E | monthly  | 30d | 1/1  | Lucia R.  |
+| EC-TRI-A0C7DC6F47B9E1AE | trial    | 7d  | 1/1  | Sam B.    |
+| EC-TRI-B6D49E1F0C28A37D | trial    | 7d  | 0/1  | Unused    |
+| EC-TRI-3F1A88E7D24B0F95 | trial    | 7d  | 0/1  | Unused    |
 
 #### 6.6.2 Users table (`.admin-v2-users`)
 
 Card outer: same treatment.
 
 Card header:
+
 - Eyebrow `USERS · 5` — small-caps mono. Count is dynamic.
 
 **Column spec:**
 
-| Col | Header | Width | Align | Body |
-|---|---|---|---|---|
-| 1 | (avatar + name + email) | flex | left | 28px circular avatar (`var(--v2-bg-surface-2)` background, 1px border `var(--v2-border-hairline)`, initials in sans 600 0.7rem `var(--v2-text-primary)`) + two-line name (sans 600 0.88rem) + email (sans 400 0.78rem `var(--v2-text-tertiary)`) |
-| 2 | `ROLE / LICENSE` | 160px | left | Two lines: role sans 500 0.82rem (`admin` → `var(--v2-accent)`, `estimator` / `foreman` → `var(--v2-text-secondary)`, `user` → `var(--v2-text-tertiary)`) + license sans 400 0.78rem `var(--v2-text-tertiary)` (`lifetime`, `monthly`, `trial`, `expired` — `expired` in `var(--v2-status-dot-amber)`) |
-| 3 | `STATUS` | 32px | center | Single colored dot — `var(--v2-status-dot-green)` for active, `var(--v2-text-muted)` for inactive |
+| Col | Header                  | Width | Align  | Body                                                                                                                                                                                                                                                                                                   |
+| --- | ----------------------- | ----- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | (avatar + name + email) | flex  | left   | 28px circular avatar (`var(--v2-bg-surface-2)` background, 1px border `var(--v2-border-hairline)`, initials in sans 600 0.7rem `var(--v2-text-primary)`) + two-line name (sans 600 0.88rem) + email (sans 400 0.78rem `var(--v2-text-tertiary)`)                                                       |
+| 2   | `ROLE / LICENSE`        | 160px | left   | Two lines: role sans 500 0.82rem (`admin` → `var(--v2-accent)`, `estimator` / `foreman` → `var(--v2-text-secondary)`, `user` → `var(--v2-text-tertiary)`) + license sans 400 0.78rem `var(--v2-text-tertiary)` (`lifetime`, `monthly`, `trial`, `expired` — `expired` in `var(--v2-status-dot-amber)`) |
+| 3   | `STATUS`                | 32px  | center | Single colored dot — `var(--v2-status-dot-green)` for active, `var(--v2-text-muted)` for inactive                                                                                                                                                                                                      |
 
 Column header row uses small-caps mono `var(--v2-text-tertiary)`, padding `10px 16px`. Data rows padding `12px 16px`, bottom 1px hairline.
 
 **Verbatim rows:**
 
-| Avatar | Name | Email | Role | License | Status |
-|---|---|---|---|---|---|
-| DC | Daniel Castillo | dancastlebiz@gmail.com | admin | lifetime | ● green |
-| MV | Marco Vega | mvega@mendozastucco.com | estimator | lifetime | ● green |
-| LR | Lucia Reyes | lreyes@mendozastucco.com | foreman | monthly | ● green |
-| SB | Sam Bell | sambell@gmail.com | user | trial | ● green |
-| JD | J. Doe | jdoe@example.com | user | expired | ● muted |
+| Avatar | Name            | Email                    | Role      | License  | Status  |
+| ------ | --------------- | ------------------------ | --------- | -------- | ------- |
+| DC     | Daniel Castillo | dancastlebiz@gmail.com   | admin     | lifetime | ● green |
+| MV     | Marco Vega      | mvega@mendozastucco.com  | estimator | lifetime | ● green |
+| LR     | Lucia Reyes     | lreyes@mendozastucco.com | foreman   | monthly  | ● green |
+| SB     | Sam Bell        | sambell@gmail.com        | user      | trial    | ● green |
+| JD     | J. Doe          | jdoe@example.com         | user      | expired  | ● muted |
 
 ### 6.7 Mobile collapse rules
 
@@ -957,6 +981,7 @@ At `<900px`, left column hides entirely; right column expands to 100% with `max-
 **Top-left corner:** Brand mark + wordmark (the same `.v2-brand` + `.v2-brand-mark` + `.v2-brand-word` + `.v2-brand-pill` cluster from the topnav — `spec.md §2`).
 
 **Middle (vertically centered in remaining space):**
+
 1. Eyebrow `MATERIAL ESTIMATING · V4` — small-caps mono `var(--v2-text-tertiary)`. 12px bottom margin.
 2. Editorial heading — three lines, `Fraunces 500` size ~3rem, line-height 1.1, `var(--v2-text-primary)`:
    - Line 1: `Bid faster.`
@@ -972,11 +997,11 @@ At `<900px`, left column hides entirely; right column expands to 100% with `max-
 
 **Verbatim stats:**
 
-| Number | Eyebrow | Sub-line |
-|---|---|---|
-| `38m` | AVG BID TIME | down from 3h |
-| `2.4×` | JOBS / MONTH | per estimator |
-| `$612k` | YTD BID | across 38 jobs |
+| Number  | Eyebrow      | Sub-line       |
+| ------- | ------------ | -------------- |
+| `38m`   | AVG BID TIME | down from 3h   |
+| `2.4×`  | JOBS / MONTH | per estimator  |
+| `$612k` | YTD BID      | across 38 jobs |
 
 **Bottom-left (absolute-positioned 24px from bottom):** Footer text in sans 400 0.78rem `var(--v2-text-tertiary)`:
 `© 2026 EstiCount · Mendoza Industries`. Right side of footer (right-aligned within left column): `Lic C-35 · 1042918` in mono 400 0.78rem `var(--v2-text-tertiary)`.
@@ -1023,6 +1048,7 @@ A vertical stack with 16px row gaps.
    `Trial keys give 7 days · monthly keys renew · lifetime keys never expire.`
 
 **Bottom-right (absolute-positioned 24px from bottom of right column):** Two-cell row, left + right:
+
 - Left: `Need help?` + `support@esticount.app` (the email in `var(--v2-accent)`, sans 500). Together sans 400 0.85rem.
 - Right: `v4.2.0` in mono 400 0.78rem `var(--v2-text-tertiary)`.
 
@@ -1072,6 +1098,7 @@ A fixed-position bar at the bottom of the viewport, only rendered at `<768px`:
 ```
 
 Each tab is a `<button>` (`.mob-v2-tab`) with two stacked rows:
+
 - Icon (24×24, line-style) in `var(--v2-text-tertiary)` (inactive) or `var(--v2-text-primary)` (active). The icons are abstract glyphs:
   - **Home** — `◐` (half-disc)
   - **Calc** — `∑` (summation)
@@ -1100,6 +1127,7 @@ Specific page rules are detailed in each page's "Mobile collapse rules" subsecti
 At mobile width, the Calculator phase cards collapse but the phase selector becomes a horizontal scrollable strip at the top:
 
 `<div class="mob-v2-phase-strip">`
+
 - Lath (inactive — text only, sans 500 0.88rem)
 - Gray Coat (active — pill `var(--v2-bg-surface-2)` background, 1px border `var(--v2-border-hairline)`, radius `var(--v2-r-pill)`, padding `6px 14px`)
 - Color Coat (inactive)

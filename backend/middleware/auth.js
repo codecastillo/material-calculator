@@ -6,14 +6,21 @@ function authenticate(req, res, next) {
   if (!authHeader) return res.status(401).json({ error: 'No authorization header provided' });
 
   const parts = authHeader.split(' ');
-  if (parts.length !== 2 || parts[0] !== 'Bearer') return res.status(401).json({ error: 'Invalid authorization format. Use: Bearer <token>' });
+  if (parts.length !== 2 || parts[0] !== 'Bearer')
+    return res.status(401).json({ error: 'Invalid authorization format. Use: Bearer <token>' });
 
   try {
     const decoded = jwt.verify(parts[1], JWT_SECRET);
-    req.user = { id: decoded.id, email: decoded.email, name: decoded.name, role: decoded.role || 'user' };
+    req.user = {
+      id: decoded.id,
+      email: decoded.email,
+      name: decoded.name,
+      role: decoded.role || 'user',
+    };
     next();
   } catch (err) {
-    if (err.name === 'TokenExpiredError') return res.status(401).json({ error: 'Token has expired' });
+    if (err.name === 'TokenExpiredError')
+      return res.status(401).json({ error: 'Token has expired' });
     return res.status(401).json({ error: 'Invalid token' });
   }
 }

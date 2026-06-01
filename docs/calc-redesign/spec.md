@@ -12,38 +12,38 @@ The Calculator inherits a global design language established across pages 1–3 
 
 The app uses a **deep near-black** background with very subtle warm tint, slightly elevated card surfaces, a small set of warm-cream and pastel chips for phase categories, a saturated **coral-orange** accent for primary CTAs and active-link indicators, and a green dot for status. Hairlines are very low-contrast.
 
-| Token | Hex (approx.) | Purpose |
-|---|---|---|
-| `--bg-app` | `#0d1014` | Page background. Slightly warm-tinted black. |
-| `--bg-surface` | `#13171d` | Main card / panel background (calculator content area, summary sidebar). |
-| `--bg-surface-2` | `#181d24` | Slightly elevated surface (metrics strip cells, phase header bar, table row hover). |
-| `--bg-input` | `#1c2128` | Inline editable mini-pill input background (e.g., the `3,840 sq·ft` field on phase headers, the supplier dropdown). |
-| `--border-hairline` | `#1f242c` | Card outline, table row dividers, metric-cell separators. ~1px. |
-| `--border-strong` | `#262c35` | Card outline at the boundary of the summary sidebar; rarely used. |
-| `--text-primary` | `#e6e8ec` | Body text, primary table content, titles. |
-| `--text-secondary` | `#9aa0a9` | Subtitles, sublabels (`per sqft $9.56`, `10 items, 3 phases`), table cell unit suffixes. |
-| `--text-tertiary` | `#6b7280` | Eyebrow small-caps labels (`02 · CALCULATOR | JOB J-2419`), column headers in tables (`SKU`, `ITEM`, `COVERAGE`...). |
-| `--text-muted` | `#4a5260` | Disabled / very faded micro-text (progress bar `0%`, `50%` end labels). |
-| `--accent` | `#e9774a` | Primary CTA pill ("Generate bid →"), active topnav underline, customer-price display number, profit display number, progress-bar fill, "Open calculator" link in dashboards. |
-| `--accent-hover` | `#ef835a` | Hover state for accent. |
-| `--accent-soft` | `#3a2417` | Translucent/soft tint of accent for the orange progress bar segment behind the fill. |
-| `--status-dot-green` | `#5dcf8a` | The `●` dot inside Draft / Active / Open badges. |
-| `--status-dot-amber` | `#e9774a` | The `●` dot inside "Draft" status badge (reuses accent hue). |
-| `--badge-surface-neutral` | `#1f242c` | Background of neutral status pills like `● Draft`. |
+| Token                     | Hex (approx.) | Purpose                                                                                                                                                                      |
+| ------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `--bg-app`                | `#0d1014`     | Page background. Slightly warm-tinted black.                                                                                                                                 |
+| `--bg-surface`            | `#13171d`     | Main card / panel background (calculator content area, summary sidebar).                                                                                                     |
+| `--bg-surface-2`          | `#181d24`     | Slightly elevated surface (metrics strip cells, phase header bar, table row hover).                                                                                          |
+| `--bg-input`              | `#1c2128`     | Inline editable mini-pill input background (e.g., the `3,840 sq·ft` field on phase headers, the supplier dropdown).                                                          |
+| `--border-hairline`       | `#1f242c`     | Card outline, table row dividers, metric-cell separators. ~1px.                                                                                                              |
+| `--border-strong`         | `#262c35`     | Card outline at the boundary of the summary sidebar; rarely used.                                                                                                            |
+| `--text-primary`          | `#e6e8ec`     | Body text, primary table content, titles.                                                                                                                                    |
+| `--text-secondary`        | `#9aa0a9`     | Subtitles, sublabels (`per sqft $9.56`, `10 items, 3 phases`), table cell unit suffixes.                                                                                     |
+| `--text-tertiary`         | `#6b7280`     | Eyebrow small-caps labels (`02 · CALCULATOR                                                                                                                                  | JOB J-2419`), column headers in tables (`SKU`, `ITEM`, `COVERAGE`...). |
+| `--text-muted`            | `#4a5260`     | Disabled / very faded micro-text (progress bar `0%`, `50%` end labels).                                                                                                      |
+| `--accent`                | `#e9774a`     | Primary CTA pill ("Generate bid →"), active topnav underline, customer-price display number, profit display number, progress-bar fill, "Open calculator" link in dashboards. |
+| `--accent-hover`          | `#ef835a`     | Hover state for accent.                                                                                                                                                      |
+| `--accent-soft`           | `#3a2417`     | Translucent/soft tint of accent for the orange progress bar segment behind the fill.                                                                                         |
+| `--status-dot-green`      | `#5dcf8a`     | The `●` dot inside Draft / Active / Open badges.                                                                                                                             |
+| `--status-dot-amber`      | `#e9774a`     | The `●` dot inside "Draft" status badge (reuses accent hue).                                                                                                                 |
+| `--badge-surface-neutral` | `#1f242c`     | Background of neutral status pills like `● Draft`.                                                                                                                           |
 
 #### Phase chip palette (CRITICAL — exact)
 
 Each phase has a **soft pastel background** and a darker text + dot in the same hue. Backgrounds are slightly desaturated, text/dot is more saturated.
 
-| Phase | Background | Text + Dot | Notes |
-|---|---|---|---|
-| **Lath** | `#efe2c2` (pale cream / butter) | `#7a5b1f` text, dot `#a07621` | Used as `● LATH PHASE` and `● LATH` in dashboards. |
-| **Gray Coat** | `#f1d4dc` (pale pink / lilac-rose) | `#8a3f56` text, dot `#b04a66` | Sometimes labeled "Gray Coat" or "Brown Coat" — same palette. |
-| **Color Coat** | `#cde8c8` (mint green) | `#3e6b3a` text, dot `#4f8a48` | |
-| **Accessories** | `#f3cfb1` (peach) | `#8a4b22` text, dot `#a85d2b` | |
-| **Painting** | `#bcd4a7` (mossy / olive green) | `#3f5a2c` text, dot `#557538` | Slightly darker / more saturated than Color Coat. |
-| **Drywall** | `#cfd9e6` (pale slate-blue) | `#3e5269` text, dot `#536a86` | Seen on dashboard, include in palette. |
-| **Aggregate** | `#d8d2c2` (warm taupe) | `#5a5236` text, dot `#7a6e48` | Seen on pricing catalog page. |
+| Phase           | Background                         | Text + Dot                    | Notes                                                         |
+| --------------- | ---------------------------------- | ----------------------------- | ------------------------------------------------------------- |
+| **Lath**        | `#efe2c2` (pale cream / butter)    | `#7a5b1f` text, dot `#a07621` | Used as `● LATH PHASE` and `● LATH` in dashboards.            |
+| **Gray Coat**   | `#f1d4dc` (pale pink / lilac-rose) | `#8a3f56` text, dot `#b04a66` | Sometimes labeled "Gray Coat" or "Brown Coat" — same palette. |
+| **Color Coat**  | `#cde8c8` (mint green)             | `#3e6b3a` text, dot `#4f8a48` |                                                               |
+| **Accessories** | `#f3cfb1` (peach)                  | `#8a4b22` text, dot `#a85d2b` |                                                               |
+| **Painting**    | `#bcd4a7` (mossy / olive green)    | `#3f5a2c` text, dot `#557538` | Slightly darker / more saturated than Color Coat.             |
+| **Drywall**     | `#cfd9e6` (pale slate-blue)        | `#3e5269` text, dot `#536a86` | Seen on dashboard, include in palette.                        |
+| **Aggregate**   | `#d8d2c2` (warm taupe)             | `#5a5236` text, dot `#7a6e48` | Seen on pricing catalog page.                                 |
 
 Each chip is a small pill: `padding: 3px 9px 3px 8px`, `border-radius: 999px`, `font-size: 0.66rem`, `letter-spacing: 0.06em`, `text-transform: uppercase`, `font-weight: 600`. The `●` dot is `0.5em` wide, prefixed with a thin space.
 
@@ -58,61 +58,62 @@ Three families are in use:
 Suggested CSS variables:
 
 ```css
---font-serif: "Fraunces", Georgia, "Times New Roman", serif;
---font-sans:  "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
---font-mono:  "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+--font-serif: 'Fraunces', Georgia, 'Times New Roman', serif;
+--font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+--font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 ```
 
 Global `body`: `font-family: var(--font-sans); font-size: 14px; line-height: 1.45; color: var(--text-primary); background: var(--bg-app);`.
 
 ### 1.3 Type scale (every distinct size on page 4)
 
-| Token | Size | Family / Weight | Tracking / Misc. | Usage |
-|---|---|---|---|---|
-| **Display XL** | `3.0rem` (48px) | serif 500 | `letter-spacing: -0.01em`, `line-height: 1.0` | `$32,679` customer-price headline in summary sidebar. |
-| **Display L** | `2.0rem` (32px) | serif 500 | `letter-spacing: -0.01em`, `line-height: 1.05` | `$5,893` profit number; `Hernandez Residence` page title (~2rem, serif 500). |
-| **Display M** | `1.4rem` (~22px) | serif 500 | `letter-spacing: -0.005em` | `$9,677` and `$3,347` phase totals on the right of each phase header bar; the dashboard's `$28,450` is at this scale on smaller cards. |
-| **Number tabular L** | `1.6rem` (~26px) | mono 500 | tabular numerals | The big numbers in the metrics strip: `3,840`, `420`, `3,420`. |
-| **Body L** | `0.95rem` (~15px) | sans 500 | — | Card section labels (`Materials`, `Labor`, `Overhead`...). |
-| **Body** | `0.88rem` (14px) | sans 400 | — | Default body text, table item descriptions. |
-| **Body strong** | `0.88rem` | sans 600 | — | Item names in table (`Grade D paper · 60-min`). |
-| **Body small** | `0.78rem` (~12.5px) | sans 400 | — | Sublabels (`per sqft`, `10 items, 3 phases`, `64 hrs @ $128.75`). |
-| **Mono numeric** | `0.85rem` (~13.5px) | mono 400 | tabular numerals | Table $ values, supplier names, SKUs. |
-| **Mono numeric strong** | `0.85rem` | mono 500 | tabular numerals | Row totals (rightmost column, `$2749.90`). |
-| **Mono pill value** | `0.78rem` | mono 500 | — | Inline mini-pill input value (`3,840`, `186`, `3/8`). |
-| **Small-caps label** | `0.7rem` (~11px) | mono 400 | `letter-spacing: 0.10em`, `text-transform: uppercase` | Eyebrows: `02 · CALCULATOR | JOB J-2419`, column headers `SKU ITEM COVERAGE QTY EACH TOTAL`, metric-cell labels (`SUPPLIER`, `TOTAL WALL`, `OPENINGS`, `NET AREA`), section headers (`SUMMARY`, `CUSTOMER PRICE`, `PROFIT`), mini-pill labels (`WALL AREA`, `CORNER BEAD`, `THICKNESS`). |
-| **Tiny mono** | `0.65rem` (~10.5px) | mono 400 | `letter-spacing: 0.08em`, uppercase | Far-right page indicator on topnav (`04 · CALCULATOR`), `⌘K`. |
+| Token                   | Size                | Family / Weight | Tracking / Misc.                                      | Usage                                                                                                                                  |
+| ----------------------- | ------------------- | --------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Display XL**          | `3.0rem` (48px)     | serif 500       | `letter-spacing: -0.01em`, `line-height: 1.0`         | `$32,679` customer-price headline in summary sidebar.                                                                                  |
+| **Display L**           | `2.0rem` (32px)     | serif 500       | `letter-spacing: -0.01em`, `line-height: 1.05`        | `$5,893` profit number; `Hernandez Residence` page title (~2rem, serif 500).                                                           |
+| **Display M**           | `1.4rem` (~22px)    | serif 500       | `letter-spacing: -0.005em`                            | `$9,677` and `$3,347` phase totals on the right of each phase header bar; the dashboard's `$28,450` is at this scale on smaller cards. |
+| **Number tabular L**    | `1.6rem` (~26px)    | mono 500        | tabular numerals                                      | The big numbers in the metrics strip: `3,840`, `420`, `3,420`.                                                                         |
+| **Body L**              | `0.95rem` (~15px)   | sans 500        | —                                                     | Card section labels (`Materials`, `Labor`, `Overhead`...).                                                                             |
+| **Body**                | `0.88rem` (14px)    | sans 400        | —                                                     | Default body text, table item descriptions.                                                                                            |
+| **Body strong**         | `0.88rem`           | sans 600        | —                                                     | Item names in table (`Grade D paper · 60-min`).                                                                                        |
+| **Body small**          | `0.78rem` (~12.5px) | sans 400        | —                                                     | Sublabels (`per sqft`, `10 items, 3 phases`, `64 hrs @ $128.75`).                                                                      |
+| **Mono numeric**        | `0.85rem` (~13.5px) | mono 400        | tabular numerals                                      | Table $ values, supplier names, SKUs.                                                                                                  |
+| **Mono numeric strong** | `0.85rem`           | mono 500        | tabular numerals                                      | Row totals (rightmost column, `$2749.90`).                                                                                             |
+| **Mono pill value**     | `0.78rem`           | mono 500        | —                                                     | Inline mini-pill input value (`3,840`, `186`, `3/8`).                                                                                  |
+| **Small-caps label**    | `0.7rem` (~11px)    | mono 400        | `letter-spacing: 0.10em`, `text-transform: uppercase` | Eyebrows: `02 · CALCULATOR                                                                                                             | JOB J-2419`, column headers `SKU ITEM COVERAGE QTY EACH TOTAL`, metric-cell labels (`SUPPLIER`, `TOTAL WALL`, `OPENINGS`, `NET AREA`), section headers (`SUMMARY`, `CUSTOMER PRICE`, `PROFIT`), mini-pill labels (`WALL AREA`, `CORNER BEAD`, `THICKNESS`). |
+| **Tiny mono**           | `0.65rem` (~10.5px) | mono 400        | `letter-spacing: 0.08em`, uppercase                   | Far-right page indicator on topnav (`04 · CALCULATOR`), `⌘K`.                                                                          |
 
 ### 1.4 Spacing rhythm
 
 Base unit: **4px**, with most rhythm landing on multiples of 4 and 8.
 
-| Token | Value | Usage |
-|---|---|---|
-| `--space-1` | 4px | Icon-to-label gap, dot-to-text in chips. |
-| `--space-2` | 8px | Tight gaps between adjacent meta items, mini-pill internal padding. |
-| `--space-3` | 12px | Default row-internal padding, gap between metric-cell label and value. |
-| `--space-4` | 16px | Default card padding x-axis on tight cards, gap between phase header items. |
-| `--space-5` | 20px | Table-row vertical padding, summary cost-row vertical gap. |
-| `--space-6` | 24px | Main card inner padding, gap between page header and metrics strip. |
-| `--space-8` | 32px | Gap between major content sections (header → metrics → phases). |
-| `--space-10` | 40px | Topnav side padding, page outer horizontal margin. |
+| Token        | Value | Usage                                                                       |
+| ------------ | ----- | --------------------------------------------------------------------------- |
+| `--space-1`  | 4px   | Icon-to-label gap, dot-to-text in chips.                                    |
+| `--space-2`  | 8px   | Tight gaps between adjacent meta items, mini-pill internal padding.         |
+| `--space-3`  | 12px  | Default row-internal padding, gap between metric-cell label and value.      |
+| `--space-4`  | 16px  | Default card padding x-axis on tight cards, gap between phase header items. |
+| `--space-5`  | 20px  | Table-row vertical padding, summary cost-row vertical gap.                  |
+| `--space-6`  | 24px  | Main card inner padding, gap between page header and metrics strip.         |
+| `--space-8`  | 32px  | Gap between major content sections (header → metrics → phases).             |
+| `--space-10` | 40px  | Topnav side padding, page outer horizontal margin.                          |
 
 Topnav height: **56px**. Page wrapper top padding: 24px. Two-column layout gap (main content ↔ summary sidebar): **28–32px**.
 
 ### 1.5 Radii
 
-| Token | Value | Usage |
-|---|---|---|
-| `--radius-card` | 10px | Phase section card outer, summary sidebar card. |
-| `--radius-inner` | 8px | Metrics strip outer wrapper, table outer corners. |
-| `--radius-button` | 8px | Primary CTA pill `Generate bid →`, secondary buttons `Duplicate`, `Print order sheet`. The accent CTA may render closer to 6–8px — keep 8px. |
-| `--radius-input` | 6px | Mini-pill inline inputs (`3,840 sq·ft`), supplier dropdown. |
-| `--radius-pill` | 999px | Phase chips, status badges (`● Draft`), the `PRO` brand pill. |
+| Token             | Value | Usage                                                                                                                                        |
+| ----------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--radius-card`   | 10px  | Phase section card outer, summary sidebar card.                                                                                              |
+| `--radius-inner`  | 8px   | Metrics strip outer wrapper, table outer corners.                                                                                            |
+| `--radius-button` | 8px   | Primary CTA pill `Generate bid →`, secondary buttons `Duplicate`, `Print order sheet`. The accent CTA may render closer to 6–8px — keep 8px. |
+| `--radius-input`  | 6px   | Mini-pill inline inputs (`3,840 sq·ft`), supplier dropdown.                                                                                  |
+| `--radius-pill`   | 999px | Phase chips, status badges (`● Draft`), the `PRO` brand pill.                                                                                |
 
 ### 1.6 Hairlines / borders
 
 `1px solid var(--border-hairline)` is used for:
+
 - Outline of each phase card.
 - Outline of the metrics strip.
 - The horizontal divider between metric cells (vertical 1px line, full height, color `--border-hairline`).
@@ -273,20 +274,21 @@ Below the header bar, **no spacer**, directly the table. Table sits on `--bg-sur
 
 Columns and widths (proportions for desktop content width ~640–680px):
 
-| Col | Label | Width | Align | Font |
-|---|---|---|---|---|
-| 1 | `SKU` | 90px fixed | left | mono 400, 0.85rem, `--text-primary` |
-| 2 | `ITEM` | flex / fill | left | sans 600, 0.88rem for item name; sans 400, 0.78rem, `--text-tertiary` for the unit sub-line ("roll", "sheet", "box", "pc", "bag", "ton") |
-| 3 | `COVERAGE` | 130px | left | mono 400, 0.82rem, `--text-secondary` (e.g., `432 sqft/roll`, `18 sqft/sheet`, `5,000/box`) |
-| 4 | `QTY` | 70px | right | mono 500, 0.95rem, `--text-primary` (e.g., `9`, `214`, `4`) |
-| 5 | `EACH` | 90px | right | mono 400, 0.85rem, `--text-secondary` (e.g., `$38.50`) |
-| 6 | `TOTAL` | 110px | right | mono 500, 0.95rem, `--text-primary` (e.g., `$2749.90`) |
+| Col | Label      | Width       | Align | Font                                                                                                                                     |
+| --- | ---------- | ----------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `SKU`      | 90px fixed  | left  | mono 400, 0.85rem, `--text-primary`                                                                                                      |
+| 2   | `ITEM`     | flex / fill | left  | sans 600, 0.88rem for item name; sans 400, 0.78rem, `--text-tertiary` for the unit sub-line ("roll", "sheet", "box", "pc", "bag", "ton") |
+| 3   | `COVERAGE` | 130px       | left  | mono 400, 0.82rem, `--text-secondary` (e.g., `432 sqft/roll`, `18 sqft/sheet`, `5,000/box`)                                              |
+| 4   | `QTY`      | 70px        | right | mono 500, 0.95rem, `--text-primary` (e.g., `9`, `214`, `4`)                                                                              |
+| 5   | `EACH`     | 90px        | right | mono 400, 0.85rem, `--text-secondary` (e.g., `$38.50`)                                                                                   |
+| 6   | `TOTAL`    | 110px       | right | mono 500, 0.95rem, `--text-primary` (e.g., `$2749.90`)                                                                                   |
 
 **Column headers row**: padding `10px 20px`, font is the small-caps label token (0.7rem, mono 400, uppercase, letter-spacing 0.10em, `--text-tertiary`). Bottom border 1px `--border-hairline`. Background stays `--bg-surface`.
 
 **Data rows**: padding `14px 20px`, vertical alignment center. Each row has a bottom border `1px solid var(--border-hairline)` except the final row in the card (no border, sits flush with card bottom).
 
 **ITEM column** is two lines:
+
 - Line 1: item name e.g. `Grade D paper · 60-min` (sans 600, 0.88rem, `--text-primary`)
 - Line 2: unit slug e.g. `roll` (sans 400, 0.78rem, `--text-tertiary`, top margin 2px)
 
@@ -298,21 +300,21 @@ For build agent reference, here is exactly what page 4 shows in the two visible 
 
 **Phase 01 — `● LATH PHASE` · 4 items · WALL AREA `3,840 sq·ft` · CORNER BEAD `186 lin·ft` — total `$3,347`**
 
-| SKU | Item | (unit) | Coverage | Qty | Each | Total |
-|---|---|---|---|---|---|---|
-| PE-D60 | Grade D paper · 60-min | roll | 432 sqft/roll | 9 | $38.50 | $346.50 |
-| KL-25 | K-Lath 2.5 lb · galv | sheet | 18 sqft/sheet | 214 | $12.85 | $2749.90 |
-| STP-78 | Staples · 7/8" galv | box | 5,000/box | 4 | $24.20 | $96.80 |
-| CB-08 | Corner bead · 8 ft galv | pc | 8 lf/pc | 24 | $6.40 | $153.60 |
+| SKU    | Item                    | (unit) | Coverage      | Qty | Each   | Total    |
+| ------ | ----------------------- | ------ | ------------- | --- | ------ | -------- |
+| PE-D60 | Grade D paper · 60-min  | roll   | 432 sqft/roll | 9   | $38.50 | $346.50  |
+| KL-25  | K-Lath 2.5 lb · galv    | sheet  | 18 sqft/sheet | 214 | $12.85 | $2749.90 |
+| STP-78 | Staples · 7/8" galv     | box    | 5,000/box     | 4   | $24.20 | $96.80   |
+| CB-08  | Corner bead · 8 ft galv | pc     | 8 lf/pc       | 24  | $6.40  | $153.60  |
 
 **Phase 02 — `● GRAY COAT` · 4 items · WALL AREA `3,840 sq·ft` · THICKNESS `3/8 in` — total `$9,677`**
 
-| SKU | Item | (unit) | Coverage | Qty | Each | Total |
-|---|---|---|---|---|---|---|
-| CEM-IIA | Portland Type II · 94 lb | bag | 12 sqft/bag | 320 | $18.95 | $6064.00 |
-| SND-PL | Plaster sand · graded | ton | 90 sqft/ton | 43 | $64.50 | $2773.50 |
-| FBR-PP | PP fiber mesh | bag | per cu yd | 12 | $11.20 | $134.40 |
-| LIM-HY | Hydrated lime · Type S | bag | 90 sqft/bag | 43 | $16.40 | $705.20 |
+| SKU     | Item                     | (unit) | Coverage    | Qty | Each   | Total    |
+| ------- | ------------------------ | ------ | ----------- | --- | ------ | -------- |
+| CEM-IIA | Portland Type II · 94 lb | bag    | 12 sqft/bag | 320 | $18.95 | $6064.00 |
+| SND-PL  | Plaster sand · graded    | ton    | 90 sqft/ton | 43  | $64.50 | $2773.50 |
+| FBR-PP  | PP fiber mesh            | bag    | per cu yd   | 12  | $11.20 | $134.40  |
+| LIM-HY  | Hydrated lime · Type S   | bag    | 90 sqft/bag | 43  | $16.40 | $705.20  |
 
 The PDF continues below the fold; the existing app's per-phase data will likely supply additional phases (`Color Coat`, `Accessories`, `Painting`). Apply the same structure to each.
 
@@ -327,9 +329,11 @@ Fixed-width-ish column, **~36%** of the content area on desktop (approx. 380–4
 Content order (top to bottom):
 
 ### 6.1 `SUMMARY` eyebrow
+
 Small-caps label token, color `--text-tertiary`. Top of the card. Bottom margin 24px.
 
 ### 6.2 Customer-price block
+
 - `CUSTOMER PRICE` — small-caps label token, `--text-tertiary`. Bottom margin 12px.
 - Display number `$32,679` — **Display XL** (serif 500, 3rem, color `--accent` — yes, the customer-price number renders in the **coral-orange accent**, NOT plain text). This is the single biggest piece of type on the page. Letter-spacing -0.01em.
 - Sub-line, one row with `display: flex; justify-content: space-between;`:
@@ -338,9 +342,11 @@ Small-caps label token, color `--text-tertiary`. Top of the card. Bottom margin 
 - Bottom margin 28px.
 
 ### 6.3 Cost stack
+
 A vertical list of four rows, each `display: flex; justify-content: space-between; align-items: baseline;`. Row vertical padding 12px. 1px hairline divider between rows (`--border-hairline`).
 
 For each row:
+
 - **Left column** (2 lines):
   - Line 1: label (sans 500, 0.95rem, `--text-primary`). E.g. `Materials`, `Labor`, `Overhead`, `Markup`.
   - Line 2: sublabel (sans 400, 0.78rem, `--text-secondary`). E.g. `10 items, 3 phases`, `64 hrs @ $128.75`, `8.0% of materials`, `22.0% on cost`.
@@ -349,6 +355,7 @@ For each row:
   - Values from page 4: `$17,172.4`, `$8,240`, `$1,373.79`, `$5,892.96`.
 
 After Markup row, a slightly stronger row for **Total cost**:
+
 - `Total cost` label (sans 600, 0.95rem) on left, no sublabel.
 - Amount `$26,786` on right (mono 600, 1rem).
 - 16px vertical padding, no divider beneath.
@@ -356,6 +363,7 @@ After Markup row, a slightly stronger row for **Total cost**:
 Bottom margin 28px.
 
 ### 6.4 Profit block
+
 - `PROFIT` — small-caps label token, `--text-tertiary`. Bottom margin 12px.
 - Row, `display: flex; justify-content: space-between; align-items: baseline;`:
   - Left: `$5,893` — **Display L** (serif 500, 2rem, color `--accent`). Tabular figures.
@@ -363,6 +371,7 @@ Bottom margin 28px.
 - Bottom margin 12px.
 
 ### 6.5 Progress bar
+
 A horizontal bar showing margin position 0% → 50%, with a target marker at 28% and the current value at 18%.
 
 - Track: height 8px, background `--bg-input`, radius 4px, full width of card content.
@@ -387,29 +396,65 @@ Bottom margin 28px.
 Reproduced here for emphasis. Each chip's text + dot is the saturated tone; the background is the soft tone.
 
 ```css
-.chip.lath        { background: #efe2c2; color: #7a5b1f; }
-.chip.lath::before        { background: #a07621; }   /* the ● dot */
+.chip.lath {
+  background: #efe2c2;
+  color: #7a5b1f;
+}
+.chip.lath::before {
+  background: #a07621;
+} /* the ● dot */
 
-.chip.gray-coat   { background: #f1d4dc; color: #8a3f56; }
-.chip.gray-coat::before   { background: #b04a66; }
+.chip.gray-coat {
+  background: #f1d4dc;
+  color: #8a3f56;
+}
+.chip.gray-coat::before {
+  background: #b04a66;
+}
 
-.chip.color-coat  { background: #cde8c8; color: #3e6b3a; }
-.chip.color-coat::before  { background: #4f8a48; }
+.chip.color-coat {
+  background: #cde8c8;
+  color: #3e6b3a;
+}
+.chip.color-coat::before {
+  background: #4f8a48;
+}
 
-.chip.accessories { background: #f3cfb1; color: #8a4b22; }
-.chip.accessories::before { background: #a85d2b; }
+.chip.accessories {
+  background: #f3cfb1;
+  color: #8a4b22;
+}
+.chip.accessories::before {
+  background: #a85d2b;
+}
 
-.chip.painting    { background: #bcd4a7; color: #3f5a2c; }
-.chip.painting::before    { background: #557538; }
+.chip.painting {
+  background: #bcd4a7;
+  color: #3f5a2c;
+}
+.chip.painting::before {
+  background: #557538;
+}
 
-.chip.drywall     { background: #cfd9e6; color: #3e5269; }
-.chip.drywall::before     { background: #536a86; }
+.chip.drywall {
+  background: #cfd9e6;
+  color: #3e5269;
+}
+.chip.drywall::before {
+  background: #536a86;
+}
 
-.chip.aggregate   { background: #d8d2c2; color: #5a5236; }
-.chip.aggregate::before   { background: #7a6e48; }
+.chip.aggregate {
+  background: #d8d2c2;
+  color: #5a5236;
+}
+.chip.aggregate::before {
+  background: #7a6e48;
+}
 ```
 
 Chip base:
+
 ```css
 .chip {
   display: inline-flex;
@@ -426,7 +471,7 @@ Chip base:
   white-space: nowrap;
 }
 .chip::before {
-  content: "";
+  content: '';
   width: 0.5em;
   height: 0.5em;
   border-radius: 999px;
@@ -484,7 +529,7 @@ At narrow widths (`< 768px`):
 **Has flexibility (±):**
 
 - Exact font choice — use Fraunces / Inter / JetBrains Mono if available; otherwise the closest free alternatives that preserve the serif-vs-sans-vs-mono distinction.
-- Exact hex values may drift ±2-4 RGB units; match the *relationship* between tokens (accent saturation, surface elevation steps, hairline contrast).
+- Exact hex values may drift ±2-4 RGB units; match the _relationship_ between tokens (accent saturation, surface elevation steps, hairline contrast).
 - Micro-spacing within ±4px on padding values.
 - Hover state intensities (not depicted in PDF).
 - Chevron iconography for collapsible phase headers (PDF does not show; add subtly).
