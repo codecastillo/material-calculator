@@ -21,6 +21,11 @@ module.exports = [
       sourceType: 'commonjs',
       globals: { ...globals.node },
     },
+    rules: {
+      // ignoreRestSiblings lets `const { id, ...rest } = row` omit fields without
+      // tripping the rule; argsIgnorePattern allows intentionally-unused `_`-prefixed args.
+      'no-unused-vars': ['error', { ignoreRestSiblings: true, argsIgnorePattern: '^_' }],
+    },
   },
   {
     // Frontend ships as classic scripts loaded via <script> tags, sharing state
@@ -35,6 +40,10 @@ module.exports = [
     },
     rules: {
       'no-undef': 'off',
+      // Many top-level functions are invoked only from HTML data-on-* attributes
+      // via the delegated handler, which eslint cannot trace, so unused reports
+      // here are advisory rather than errors.
+      'no-unused-vars': 'warn',
     },
   },
   {
@@ -43,11 +52,6 @@ module.exports = [
       ecmaVersion: 2023,
       sourceType: 'script',
       globals: { ...globals.serviceworker },
-    },
-  },
-  {
-    rules: {
-      'no-unused-vars': 'warn',
     },
   },
   prettier,
