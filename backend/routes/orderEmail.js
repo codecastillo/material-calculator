@@ -103,7 +103,7 @@ function buildOrderHtml({
       <tr>
         <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:12px;color:#374151">${esc(i.sku || '')}</td>
         <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#111827">${esc(i.name || '')}</td>
-        <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;text-align:right;font-size:14px;color:#111827">${i.qty} ${esc(i.unit || '')}</td>
+        <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;text-align:right;font-size:14px;color:#111827">${esc(i.qtyDisplay || `${i.qty} ${i.unit || ''}`)}</td>
         <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;text-align:right;font-size:14px;color:#111827">${fmt(i.pricePerUnit)}</td>
         <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;text-align:right;font-size:14px;color:#111827;font-weight:600">${fmt(i.lineTotal)}</td>
       </tr>`

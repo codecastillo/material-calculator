@@ -498,6 +498,34 @@ const PHASE_RECIPES = {
   ],
 };
 
+// Purchasable pack sizes by SKU, so an order reads in real buying units.
+// `size` is base units per pack, `unit` is the pack label. `packOnly` marks
+// items sold only by the case (no loose units), which round up to whole packs;
+// everything else shows whole packs plus loose remainder (1 box + 1 tube).
+// Keyed by SKU so it works for both the default catalog and saved materials.
+const PACK_SIZES = {
+  'AC-CLK-10': { size: 6, unit: 'box' }, // caulk: 6 tubes per box
+};
+
+function pluralizePackUnit(unit) {
+  if (/(s|x|ch|sh)$/i.test(unit)) return unit + 'es';
+  return unit + 's';
+}
+
+// Express a base-unit quantity in purchasable packs, e.g. "1 box + 1 tube",
+// "2 boxes", or "7 tube" when the SKU has no pack defined.
+function formatPackQty(qty, baseUnit, pack) {
+  const unit = baseUnit ? ' ' + baseUnit : '';
+  if (!pack || !pack.size || qty <= 0) return v2FmtInt(qty) + unit;
+  const packs = Math.floor(qty / pack.size);
+  const loose = qty % pack.size;
+  if (packs === 0) return v2FmtInt(loose) + unit;
+  const packLabel = packs === 1 ? pack.unit : pluralizePackUnit(pack.unit);
+  let label = v2FmtInt(packs) + ' ' + packLabel;
+  if (loose > 0) label += ' + ' + v2FmtInt(loose) + unit;
+  return label;
+}
+
 // State
 let suppliers = [],
   categories = [],
@@ -2727,6 +2755,12 @@ function calcForSupplier(supplier, waste, selectedPhases, opts = {}) {
     if (ovr && ovr.per && ovr.ratio > 0) {
       qty = Math.ceil((selfQtyBySku[ovr.per] || 0) * ovr.ratio);
     }
+    const pack = PACK_SIZES[m.sku];
+    if (pack && pack.packOnly && qty > 0) {
+      // Sold only by the case: round up to whole packs.
+      qty = Math.ceil(qty / pack.size) * pack.size;
+    }
+    const qtyDisplay = formatPackQty(qty, m.unit, pack);
     const lineTotal = qty * m.pricePerUnit;
     if (phases[m.category]) {
       phases[m.category].total += lineTotal;
@@ -2745,6 +2779,7 @@ function calcForSupplier(supplier, waste, selectedPhases, opts = {}) {
       isPaint: m.isPaint,
       isDrywallSheet: m.isDrywallSheet,
       qty,
+      qtyDisplay,
       lineTotal,
     };
   });
@@ -3615,9 +3650,7 @@ function renderOrderForm(r, selections) {
         escHtml(item.name || '') +
         '</td>' +
         '<td class="order-v2-qty-cell"><span class="order-v2-qty-static">' +
-        v2FmtInt(item.qty) +
-        '</span><span class="order-v2-qty-unit">' +
-        escHtml(item.unit || '') +
+        escHtml(item.qtyDisplay || v2FmtInt(item.qty) + ' ' + (item.unit || '')) +
         '</span></td>' +
         '<td class="order-v2-each">' +
         fmt(item.pricePerUnit) +
