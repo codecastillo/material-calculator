@@ -66,6 +66,38 @@ window.loadBusinessExpenses = loadBusinessExpenses;
 window.saveBusinessExpenses = saveBusinessExpenses;
 window.businessExpensePerJob = businessExpensePerJob;
 
+// Shared cost model. Turns material cost plus supplier fees, labor, and amortized
+// overhead into a Total Job Cost (break-even), then applies the markup to get the
+// lowest the contractor can bid and still hit their target margin. The real bid is
+// made in their bidding software. The credit-card fee is the supplier's card
+// surcharge on the material order, so it is a cost, not a markup on the bid. Field
+// names (sellingPrice, subtotalBeforeProfit, businessExpensesTotal) are kept for the
+// order form and saved jobs that already read them.
+function applyCostModel(r, opts) {
+  const taxPct = Number(opts.taxPct) || 0;
+  const deliveryFee = Number(opts.deliveryFee) || 0;
+  const ccFeePct = Number(opts.ccFeePct) || 0;
+  const laborRate = Number(opts.laborRate) || 0;
+  const totalSqft = Number(opts.totalSqft) || 0;
+  const profitPct = Number(opts.profitPct) || 0;
+
+  r.taxAmount = r.materialTotal * (taxPct / 100);
+  r.materialPlusTax = r.materialTotal + r.taxAmount;
+  r.deliveryTotal = deliveryFee;
+  r.ccFeeBase = r.materialPlusTax + r.deliveryTotal;
+  r.ccFeeAmount = r.ccFeeBase * (ccFeePct / 100);
+  r.materialsAllIn = r.ccFeeBase + r.ccFeeAmount;
+  r.laborTotal = laborRate * totalSqft;
+  r.overheadTotal = businessExpensePerJob();
+  r.businessExpensesTotal = r.overheadTotal;
+  r.totalJobCost = r.materialsAllIn + r.laborTotal + r.overheadTotal;
+  r.subtotalBeforeProfit = r.totalJobCost;
+  r.profitAmount = r.totalJobCost * (profitPct / 100);
+  r.lowestBid = r.totalJobCost + r.profitAmount;
+  r.sellingPrice = r.lowestBid;
+  r.grossMargin = r.lowestBid > 0 ? (r.profitAmount / r.lowestBid) * 100 : 0;
+}
+
 // Scope grouping: which broad scope each phase belongs to
 const SCOPE_GROUPS = {
   Stucco: ['Lath', 'Gray Coat', 'Color Coat'],
@@ -440,6 +472,92 @@ const SUPPLIER_MATERIALS = {
 // >1 = markup (ABC charges 3% more), <1 = discount (Sherwin Williams runs 2% cheaper).
 const SUPPLIER_PRICE_MODS = { 'Pacific Supply': 1, 'ABC Supply': 1.03, 'Sherwin Williams': 0.98 };
 
+// Per-phase recipe: the curated set of materials (by SKU) a real job in that
+// phase actually uses. When a phase is selected, only its recipe materials are
+// auto-calculated; other catalog items in the same category stay editable and
+// can still be added manually, but are left out of the default count.
+//
+// Quantities use each product's own coverage/length by default. To pin a real
+// crew consumption rate to a line, add an override: `area` (sqft per unit) for
+// area materials, `linear` (ft per unit) for linear materials. A line can also
+// be tied to another material's count with `per` (the base SKU) and `ratio`
+// (units of this per 1 of the base), e.g. 3 rolls of paper per roll of wire.
+// Lines whose SKU a supplier does not carry are skipped. Phases not listed here
+// fall back to category-based inclusion, so Accessories and Painting are
+// unchanged until a recipe is added. Commented lines are job-dependent items.
+const PHASE_RECIPES = {
+  Lath: [
+    { sku: 'WL-2536150' }, // wire lath 2.5 lb, area
+    { sku: 'PB-2P60-150', per: 'WL-2536150', ratio: 3 }, // 3 paper rolls per roll of wire
+    { sku: 'ST-716-10K' }, // staples, area
+    { sku: 'SFN-15-25' }, // self-furring nails, area
+    { sku: 'WS-26-10' }, // weep screed, linear (perimeter)
+    { sku: 'CA-26-10' }, // corner aid, linear
+    { sku: 'CB-26-10' }, // casing bead, linear
+  ],
+  'Gray Coat': [
+    { sku: 'PC-TS-94' }, // portland cement, area
+    { sku: 'PS-TON' }, // plaster sand, area
+    { sku: 'HL-TS-50' }, // hydrated lime, area
+    { sku: 'FM-1LB' }, // fiber mesh, area
+    // { sku: 'BA-WC-5G' }, // bonding agent: dense or re-stucco substrates
+  ],
+  'Color Coat': [
+    { sku: 'LH-XK-65' }, // finish coat, area
+    { sku: 'LH-PIG-1' }, // color pigment, area
+    // { sku: 'FS-30-80' }, // finish sand: job dependent
+    // { sku: 'AA-QR-1G' }, // acrylic additive: job dependent
+  ],
+  Stone: [
+    { sku: 'SV-FLAT-BOX' }, // flat stone veneer, area
+    { sku: 'SV-CORN-BOX' }, // stone corners, linear
+    { sku: 'SM-MRT-80' }, // stone mortar, area
+    { sku: 'SM-GRT-50' }, // stone grout, area
+    { sku: 'ML-ST-25' }, // metal lath for stone, area
+    { sku: 'SC-ST-94' }, // scratch coat cement, area
+  ],
+  Drywall: [
+    { sku: 'DW-12-48' }, // 1/2 in sheet (drywall-areas UI narrows which sheets)
+    { sku: 'DW-58-48' }, // 5/8 in sheet
+    { sku: 'DS-12-48' }, // tile backer sheet
+    { sku: 'RD-AP-45G' }, // all-purpose joint compound, area
+    { sku: 'PJT-500' }, // paper joint tape, area
+    { sku: 'CB-MT-8' }, // metal corner bead, linear
+    { sku: 'SD-150-25' }, // sanding discs, area
+    // { sku: 'TNT-LT-45G' }, // lite topping: enable if you skim-coat
+    // { sku: 'MJT-300' }, // mesh tape: alternative to paper tape
+    // { sku: 'SD-120-25' }, // 120-grit discs: alternative grit
+  ],
+};
+
+// Purchasable pack sizes by SKU, so an order reads in real buying units.
+// `size` is base units per pack, `unit` is the pack label. `packOnly` marks
+// items sold only by the case (no loose units), which round up to whole packs;
+// everything else shows whole packs plus loose remainder (1 box + 1 tube).
+// Keyed by SKU so it works for both the default catalog and saved materials.
+const PACK_SIZES = {
+  'AC-CLK-10': { size: 6, unit: 'box' }, // caulk: 6 tubes per box
+};
+
+function pluralizePackUnit(unit) {
+  if (/(s|x|ch|sh)$/i.test(unit)) return unit + 'es';
+  return unit + 's';
+}
+
+// Express a base-unit quantity in purchasable packs, e.g. "1 box + 1 tube",
+// "2 boxes", or "7 tube" when the SKU has no pack defined.
+function formatPackQty(qty, baseUnit, pack) {
+  const unit = baseUnit ? ' ' + baseUnit : '';
+  if (!pack || !pack.size || qty <= 0) return v2FmtInt(qty) + unit;
+  const packs = Math.floor(qty / pack.size);
+  const loose = qty % pack.size;
+  if (packs === 0) return v2FmtInt(loose) + unit;
+  const packLabel = packs === 1 ? pack.unit : pluralizePackUnit(pack.unit);
+  let label = v2FmtInt(packs) + ' ' + packLabel;
+  if (loose > 0) label += ' + ' + v2FmtInt(loose) + unit;
+  return label;
+}
+
 // State
 let suppliers = [],
   categories = [],
@@ -786,12 +904,37 @@ function notify(msg, type) {
   setTimeout(() => el.classList.add('show'), 10);
   setTimeout(() => el.classList.remove('show'), 3000);
 }
+// Track the element that had focus before a modal opened so we can restore it.
+let _modalFocusOrigin = null;
+
 function openModal(id) {
-  document.getElementById(id).classList.add('open');
+  const overlay = document.getElementById(id);
+  if (!overlay) return;
+  _modalFocusOrigin = document.activeElement;
+  overlay.classList.add('open');
+  // Move focus into the first focusable element so screen readers announce the dialog.
+  const firstFocusable = overlay.querySelector(
+    'input:not([disabled]), button:not([disabled]), [href], select, textarea, [tabindex]:not([tabindex="-1"])'
+  );
+  if (firstFocusable) firstFocusable.focus();
 }
 function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
+  const overlay = document.getElementById(id);
+  if (!overlay) return;
+  overlay.classList.remove('open');
+  // Return focus to the element that triggered the modal (if it is still in the DOM).
+  if (_modalFocusOrigin && document.contains(_modalFocusOrigin)) {
+    _modalFocusOrigin.focus();
+    _modalFocusOrigin = null;
+  }
 }
+
+// Dismiss any open non-gated modal on Escape.
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape') return;
+  const open = document.querySelector('.modal-overlay.open:not([data-no-close])');
+  if (open) closeModal(open.id);
+});
 function toggleUserMenu() {
   document.getElementById('userBadge').classList.toggle('open');
 }
@@ -2586,7 +2729,27 @@ function calcForSupplier(supplier, waste, selectedPhases, opts = {}) {
   const stuccoPhases = ['Lath', 'Gray Coat', 'Color Coat'];
 
   let mats = materialsBySupplier[supplier] || [];
-  if (selectedPhases?.length > 0) mats = mats.filter((m) => selectedPhases.includes(m.category));
+  // Recipe-aware filter: when phases are selected, include only each phase's
+  // recipe SKUs. Phases with no recipe entry fall back to category inclusion so
+  // nothing breaks. recipeOverrideBySku is consumed in the qty math below.
+  let recipeOverrideBySku = null;
+  if (selectedPhases?.length > 0) {
+    const allowedSkus = new Set();
+    const phasesWithoutRecipe = [];
+    recipeOverrideBySku = {};
+    selectedPhases.forEach((phase) => {
+      const recipe = PHASE_RECIPES[phase];
+      if (!recipe) {
+        phasesWithoutRecipe.push(phase);
+        return;
+      }
+      recipe.forEach((line) => {
+        allowedSkus.add(line.sku);
+        recipeOverrideBySku[line.sku] = line;
+      });
+    });
+    mats = mats.filter((m) => allowedSkus.has(m.sku) || phasesWithoutRecipe.includes(m.category));
+  }
   if (hasDrywallAreas)
     mats = mats.filter((m) => !m.isDrywallSheet || sheetSqftMap[m.sku] !== undefined);
   // Smart material picker: honor per-phase user picks. Drywall sheets are
@@ -2614,10 +2777,9 @@ function calcForSupplier(supplier, waste, selectedPhases, opts = {}) {
     }
   }
 
-  const phases = {};
-  categories.forEach((c) => (phases[c] = { total: 0, count: 0 }));
-  let materialTotal = 0;
-  const items = mats.map((m) => {
+  // First pass: each material's own quantity from its dimensions and rate.
+  const selfQtyBySku = {};
+  const computed = mats.map((m) => {
     let base;
     if (m.isDrywallSheet && hasDrywallAreas) {
       base = sheetSqftMap[m.sku] || 0;
@@ -2630,8 +2792,32 @@ function calcForSupplier(supplier, waste, selectedPhases, opts = {}) {
       const dims = phaseDims[dimKey] || { sqft: 0, linearFt: 0 };
       base = m.calcType === 'linear' ? (dims.linearFt || 0) * w : (dims.sqft || 0) * w;
     }
-    let qty = base > 0 ? Math.ceil(base / m.coveragePerUnit) : 0;
-    if (m.isPaint && paintCoats > 1) qty = qty * paintCoats;
+    // Use the recipe line's rate override when set, else the product's coverage.
+    const ovr = recipeOverrideBySku && recipeOverrideBySku[m.sku];
+    const ovrRate = ovr ? (m.calcType === 'linear' ? ovr.linear : ovr.area) : undefined;
+    const rate = ovrRate > 0 ? ovrRate : m.coveragePerUnit;
+    let selfQty = base > 0 ? Math.ceil(base / rate) : 0;
+    if (m.isPaint && paintCoats > 1) selfQty = selfQty * paintCoats;
+    selfQtyBySku[m.sku] = selfQty;
+    return { m, ovr, selfQty };
+  });
+
+  // Second pass: a ratio line derives its quantity from a base material's count
+  // (for example 3 rolls of 2-ply paper per 1 roll of wire lath).
+  const phases = {};
+  categories.forEach((c) => (phases[c] = { total: 0, count: 0 }));
+  let materialTotal = 0;
+  const items = computed.map(({ m, ovr, selfQty }) => {
+    let qty = selfQty;
+    if (ovr && ovr.per && ovr.ratio > 0) {
+      qty = Math.ceil((selfQtyBySku[ovr.per] || 0) * ovr.ratio);
+    }
+    const pack = PACK_SIZES[m.sku];
+    if (pack && pack.packOnly && qty > 0) {
+      // Sold only by the case: round up to whole packs.
+      qty = Math.ceil(qty / pack.size) * pack.size;
+    }
+    const qtyDisplay = formatPackQty(qty, m.unit, pack);
     const lineTotal = qty * m.pricePerUnit;
     if (phases[m.category]) {
       phases[m.category].total += lineTotal;
@@ -2650,6 +2836,7 @@ function calcForSupplier(supplier, waste, selectedPhases, opts = {}) {
       isPaint: m.isPaint,
       isDrywallSheet: m.isDrywallSheet,
       qty,
+      qtyDisplay,
       lineTotal,
     };
   });
@@ -2793,19 +2980,7 @@ function calculateJob() {
     };
   }
 
-  r.taxAmount = r.materialTotal * (taxPct / 100);
-  r.materialPlusTax = r.materialTotal + r.taxAmount;
-  r.laborTotal = laborRate * totalSqft;
-  r.deliveryTotal = deliveryFee;
-  // Business expenses (recurring subscriptions, insurance, etc.) folded into the cost basis.
-  r.businessExpensesTotal = businessExpensePerJob();
-  r.subtotalBeforeProfit =
-    r.materialPlusTax + r.laborTotal + r.deliveryTotal + r.businessExpensesTotal;
-  r.profitAmount = r.subtotalBeforeProfit * (profitPct / 100);
-  r.sellingBeforeCC = r.subtotalBeforeProfit + r.profitAmount;
-  r.ccFeeAmount = r.sellingBeforeCC * (ccFeePct / 100);
-  r.sellingPrice = r.sellingBeforeCC + r.ccFeeAmount;
-  r.grossMargin = r.sellingPrice > 0 ? (r.profitAmount / r.sellingPrice) * 100 : 0;
+  applyCostModel(r, { taxPct, deliveryFee, ccFeePct, laborRate, totalSqft, profitPct });
   // Snapshot the user's material picks so saveJob serializes them.
   r.selectedMaterials = JSON.parse(JSON.stringify(selectedMaterials || {}));
   currentCalc = r;
@@ -3051,50 +3226,60 @@ function renderCalcResults(r) {
   if (sumEmpty) sumEmpty.classList.add('hidden');
   if (sumContent) sumContent.classList.remove('hidden');
 
-  const customerPrice = r.sellingPrice || 0;
-  const perSqft = totalSqft > 0 ? customerPrice / totalSqft : 0;
+  const lowestBid = r.sellingPrice || 0;
+  const perSqft = totalSqft > 0 ? lowestBid / totalSqft : 0;
   const cpEl = document.getElementById('calcV2CustomerPrice');
-  if (cpEl) cpEl.textContent = v2FmtMoney(customerPrice);
+  if (cpEl) cpEl.textContent = v2FmtMoney(lowestBid);
   const psEl = document.getElementById('calcV2PerSqft');
   if (psEl) psEl.textContent = v2FmtMoney2(perSqft);
 
-  // Cost stack per spec §6.3 / §10: Materials, Labor, Overhead, Markup, Total cost.
-  // Tax / Delivery / CC Fee remain in the data model and surface on the order outputs but not in this sidebar.
+  // Cost sheet: each real cost builds to Total Job Cost (break-even). The markup
+  // sits in the profit block, and the hero above is cost + markup = the lowest
+  // profitable bid. The card fee is the supplier's card surcharge, a cost.
   const totalItems = (r.items || []).reduce((s, i) => s + (i.qty > 0 ? 1 : 0), 0);
   const totalPhases = activePhases.length;
-  // Overhead: combine ancillary line items (tax + delivery + cc fee) under one "Overhead" row so the spec's
-  // canonical spine is preserved while no data is lost. If none of those exist, fall back to 8% of materials.
-  const overheadFromExtras =
-    (r.taxAmount || 0) +
-    (r.deliveryTotal || 0) +
-    (r.ccFeeAmount || 0) +
-    (r.businessExpensesTotal || 0);
-  const overheadPct = 0.08;
-  const overheadAmount =
-    overheadFromExtras > 0 ? overheadFromExtras : (r.materialTotal || 0) * overheadPct;
-  const subParts = [];
-  if ((r.taxAmount || 0) > 0) subParts.push('tax');
-  if ((r.deliveryTotal || 0) > 0) subParts.push('delivery');
-  if ((r.ccFeeAmount || 0) > 0) subParts.push('CC fee');
-  if ((r.businessExpensesTotal || 0) > 0) subParts.push('business expenses');
-  const overheadSub = subParts.length
-    ? subParts.join(' + ')
-    : `${(overheadPct * 100).toFixed(1)}% of materials`;
-  const totalCost =
-    (r.materialTotal || 0) + (r.laborTotal || 0) + overheadAmount + (r.profitAmount || 0);
+  const overheadJpm = loadBusinessExpenses().avgJobsPerMonth || 4;
   const rows = [];
   rows.push({
     label: 'Materials',
     sub: `${totalItems} item${totalItems === 1 ? '' : 's'}, ${totalPhases} phase${totalPhases === 1 ? '' : 's'}`,
     amt: v2FmtMoney2(r.materialTotal),
   });
-  rows.push({
-    label: 'Labor',
-    sub: `${v2FmtInt(totalSqft)} sqft @ ${v2FmtMoney2(r.laborRate || 0)}/sqft`,
-    amt: v2FmtMoney2(r.laborTotal || 0),
-  });
-  rows.push({ label: 'Overhead', sub: overheadSub, amt: v2FmtMoney2(overheadAmount) });
-  rows.push({ label: 'Markup', sub: `${r.profitPct}% on cost`, amt: v2FmtMoney2(r.profitAmount) });
+  if ((r.taxAmount || 0) > 0) {
+    rows.push({
+      label: 'Supplier tax',
+      sub: `${r.taxPct}% on materials`,
+      amt: v2FmtMoney2(r.taxAmount),
+    });
+  }
+  if ((r.deliveryTotal || 0) > 0) {
+    rows.push({
+      label: 'Delivery',
+      sub: 'supplier delivery fee',
+      amt: v2FmtMoney2(r.deliveryTotal),
+    });
+  }
+  if ((r.ccFeeAmount || 0) > 0) {
+    rows.push({
+      label: 'Card fee',
+      sub: `${r.ccFeePct}% supplier card surcharge`,
+      amt: v2FmtMoney2(r.ccFeeAmount),
+    });
+  }
+  if ((r.laborTotal || 0) > 0) {
+    rows.push({
+      label: 'Labor',
+      sub: `${v2FmtInt(totalSqft)} sqft @ ${v2FmtMoney2(r.laborRate || 0)}/sqft`,
+      amt: v2FmtMoney2(r.laborTotal),
+    });
+  }
+  if ((r.overheadTotal || 0) > 0) {
+    rows.push({
+      label: 'Overhead',
+      sub: `fixed costs over ${overheadJpm} jobs/mo`,
+      amt: v2FmtMoney2(r.overheadTotal),
+    });
+  }
 
   let stackHtml = rows
     .map(
@@ -3109,8 +3294,8 @@ function renderCalcResults(r) {
     )
     .join('');
   stackHtml += `<div class="calc-v2-cost-row calc-v2-cost-total">
-        <div class="calc-v2-cost-label">Total cost</div>
-        <div class="calc-v2-cost-amount">${v2FmtMoney(totalCost)}</div>
+        <div class="calc-v2-cost-label">Total Job Cost</div>
+        <div class="calc-v2-cost-amount">${v2FmtMoney(r.totalJobCost || 0)}</div>
     </div>`;
   document.getElementById('calcV2CostStack').innerHTML = stackHtml;
 
@@ -3520,9 +3705,7 @@ function renderOrderForm(r, selections) {
         escHtml(item.name || '') +
         '</td>' +
         '<td class="order-v2-qty-cell"><span class="order-v2-qty-static">' +
-        v2FmtInt(item.qty) +
-        '</span><span class="order-v2-qty-unit">' +
-        escHtml(item.unit || '') +
+        escHtml(item.qtyDisplay || v2FmtInt(item.qty) + ' ' + (item.unit || '')) +
         '</span></td>' +
         '<td class="order-v2-each">' +
         fmt(item.pricePerUnit) +
@@ -3586,6 +3769,12 @@ function renderOrderForm(r, selections) {
 function prepareOrderFromCalc() {
   if (!currentCalc) {
     notify('Calculate first', 'error');
+    return;
+  }
+  // Admins bypass the license gate. Everyone else must have a valid license to
+  // generate an order (the calculation itself is always free).
+  if (!isLicensed()) {
+    checkLicenseGate();
     return;
   }
   const r = currentCalc;
@@ -3929,6 +4118,13 @@ async function doSaveJob() {
         selling_price: job.sellingPrice,
       });
     } catch (err) {
+      // A 402/403 with code LICENSE_REQUIRED means the backend rejected the save
+      // because the user's license lapsed server-side. Surface the upgrade modal.
+      if (err.code === 'LICENSE_REQUIRED' || err.status === 402 || err.status === 403) {
+        closeModal('saveJobModal');
+        checkLicenseGate();
+        return;
+      }
       console.warn('API save failed:', err.message);
     }
   }
@@ -4411,18 +4607,18 @@ async function renderDashboard() {
   const metricsHtml = `
         <div class="dash-v2-metrics" role="group" aria-label="Catalog overview">
             <div class="dash-v2-metric">
-                <div class="dash-v2-metric-label">Saved jobs</div>
+                <div class="dash-v2-metric-label">Saved calculations</div>
                 <div class="dash-v2-metric-row">
                     <span class="dash-v2-metric-num">${nonTemplates.length}</span>
-                    <span class="dash-v2-metric-unit">jobs</span>
+                    <span class="dash-v2-metric-unit">saved</span>
                 </div>
-                <div class="dash-v2-metric-trend">${templates.length} template${templates.length === 1 ? '' : 's'}</div>
+                <div class="dash-v2-metric-trend">${templates.length} reusable template${templates.length === 1 ? '' : 's'}</div>
             </div>
             <div class="dash-v2-metric">
-                <div class="dash-v2-metric-label">Materials catalog</div>
+                <div class="dash-v2-metric-label">Catalog items</div>
                 <div class="dash-v2-metric-row">
                     <span class="dash-v2-metric-num">${materialCount}</span>
-                    <span class="dash-v2-metric-unit">items</span>
+                    <span class="dash-v2-metric-unit">materials</span>
                 </div>
                 <div class="dash-v2-metric-trend">across ${supplierCount} supplier${supplierCount === 1 ? '' : 's'}</div>
             </div>
@@ -4432,7 +4628,7 @@ async function renderDashboard() {
                     <span class="dash-v2-metric-num">${supplierCount}</span>
                     <span class="dash-v2-metric-unit">linked</span>
                 </div>
-                <div class="dash-v2-metric-trend">covering ${phasesCovered} phase${phasesCovered === 1 ? '' : 's'}</div>
+                <div class="dash-v2-metric-trend">${phasesCovered} phase${phasesCovered === 1 ? '' : 's'} covered</div>
             </div>
             <div class="dash-v2-metric${staleMod}">
                 <div class="dash-v2-metric-label">Stale prices</div>
@@ -4440,7 +4636,7 @@ async function renderDashboard() {
                     <span class="dash-v2-metric-num">${staleCount}</span>
                     <span class="dash-v2-metric-unit">items</span>
                 </div>
-                <div class="dash-v2-metric-trend">${staleCount > 0 ? 'older than 30 days' : 'all prices fresh'}</div>
+                <div class="dash-v2-metric-trend">${staleCount > 0 ? 'update in catalog' : 'all prices current'}</div>
             </div>
         </div>`;
 
@@ -4456,11 +4652,11 @@ async function renderDashboard() {
             </colgroup>
             <thead>
                 <tr>
-                    <th class="dash-v2-th-job">Job&nbsp;#</th>
-                    <th>Name / Client</th>
+                    <th class="dash-v2-th-job">Calc&nbsp;#</th>
+                    <th>Name / Project</th>
                     <th class="dash-v2-th-phase">Phases</th>
                     <th class="text-right">Sq&middot;ft&nbsp;&nbsp;Date</th>
-                    <th class="text-right">Total</th>
+                    <th class="text-right">Mat. cost</th>
                     <th></th>
                 </tr>
             </thead>
@@ -4497,7 +4693,7 @@ async function renderDashboard() {
                   .join('')}
             </tbody>
         </table>`
-    : `<div class="dash-v2-empty">No orders yet. Start with <strong>New calculation</strong>.</div>`;
+    : `<div class="dash-v2-empty">No calculations saved yet. Hit <strong>New calculation</strong> to start one.</div>`;
 
   const suppliersHtml = supRows.length
     ? `<div class="dash-v2-supplier-list">${supRows
@@ -4531,7 +4727,7 @@ async function renderDashboard() {
                 </div>
                 <h1 class="dash-v2-title">Welcome back, ${escHtml(userName)}</h1>
                 <p class="dash-v2-subtitle">
-                    <span>${nonTemplates.length} saved job${nonTemplates.length === 1 ? '' : 's'}</span>
+                    <span>${nonTemplates.length} saved calculation${nonTemplates.length === 1 ? '' : 's'}</span>
                     <span class="dash-v2-sub-sep">&middot;</span>
                     <span>${materialCount} material${materialCount === 1 ? '' : 's'} across ${supplierCount} supplier${supplierCount === 1 ? '' : 's'}</span>
                 </p>
@@ -4550,7 +4746,7 @@ async function renderDashboard() {
 
                 <div class="dash-v2-section-head">
                     <div class="dash-v2-section-head-left">
-                        <span class="dash-v2-section-eyebrow">Recent jobs</span>
+                        <span class="dash-v2-section-eyebrow">Calculations</span>
                         <h2 class="dash-v2-section-title">Recent calculations</h2>
                     </div>
                     <div class="dash-v2-section-head-right">
@@ -5969,16 +6165,14 @@ function overrideCalcQty(id, val) {
   });
   currentCalc.materialTotal = materialTotal;
   const r = currentCalc;
-  r.taxAmount = r.materialTotal * (r.taxPct / 100);
-  r.materialPlusTax = r.materialTotal + r.taxAmount;
-  r.laborTotal = r.laborRate * (r.totalSqft || r.sqft || 0);
-  r.deliveryTotal = r.deliveryFee || 0;
-  r.subtotalBeforeProfit = r.materialPlusTax + r.laborTotal + r.deliveryTotal;
-  r.profitAmount = r.subtotalBeforeProfit * (r.profitPct / 100);
-  r.sellingBeforeCC = r.subtotalBeforeProfit + r.profitAmount;
-  r.ccFeeAmount = r.sellingBeforeCC * (r.ccFeePct / 100);
-  r.sellingPrice = r.sellingBeforeCC + r.ccFeeAmount;
-  r.grossMargin = r.sellingPrice > 0 ? (r.profitAmount / r.sellingPrice) * 100 : 0;
+  applyCostModel(r, {
+    taxPct: r.taxPct,
+    deliveryFee: r.deliveryFee,
+    ccFeePct: r.ccFeePct,
+    laborRate: r.laborRate,
+    totalSqft: r.totalSqft || r.sqft || 0,
+    profitPct: r.profitPct,
+  });
   // Re-render full results so summary + phase totals stay in sync with the override
   renderCalcResults(r);
 }

@@ -295,6 +295,10 @@ router.post('/redeem', async (req, res, next) => {
       license_type: keyRow.type,
       license_expires: licenseExpires,
       onboarding_completed: true,
+      // Carry Stripe billing identifiers from the token so subscription lifecycle
+      // events (cancel, update) can look up this user by stripe_customer_id.
+      stripe_customer_id: tk.stripe_customer_id || null,
+      stripe_subscription_id: tk.stripe_subscription_id || null,
       ...companyPatch,
     };
 

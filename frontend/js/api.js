@@ -27,7 +27,14 @@ const api = {
         throw new Error('Session expired. Please log in again.');
       }
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Request failed');
+      if (!res.ok) {
+        // Carry the HTTP status and any error code (e.g. LICENSE_REQUIRED) so
+        // callers can react, like showing the upgrade prompt on a 402.
+        const err = new Error(data.error || 'Request failed');
+        err.status = res.status;
+        err.code = data.code;
+        throw err;
+      }
       return data;
     } catch (err) {
       if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
@@ -113,50 +120,6 @@ const api = {
   },
   async updateJob(id, data) {
     return api._fetch('/jobs/' + id, { method: 'PUT', body: JSON.stringify(data) });
-  },
-
-  // Clients
-  async getClients() {
-    return api._fetch('/clients');
-  },
-  async createClient(data) {
-    return api._fetch('/clients', { method: 'POST', body: JSON.stringify(data) });
-  },
-  async updateClient(id, data) {
-    return api._fetch('/clients/' + id, { method: 'PUT', body: JSON.stringify(data) });
-  },
-  async deleteClient(id) {
-    return api._fetch('/clients/' + id, { method: 'DELETE' });
-  },
-
-  // Invoices
-  async getInvoices() {
-    return api._fetch('/invoices');
-  },
-  async createInvoice(data) {
-    return api._fetch('/invoices', { method: 'POST', body: JSON.stringify(data) });
-  },
-  async updateInvoice(id, data) {
-    return api._fetch('/invoices/' + id, { method: 'PUT', body: JSON.stringify(data) });
-  },
-  async deleteInvoice(id) {
-    return api._fetch('/invoices/' + id, { method: 'DELETE' });
-  },
-
-  // Price history
-  async getPriceHistory(materialId) {
-    return api._fetch('/price-history/material/' + materialId);
-  },
-
-  // Activity
-  async getActivity() {
-    return api._fetch('/activity');
-  },
-  async logActivity(action, details, entityType, entityId) {
-    return api._fetch('/activity', {
-      method: 'POST',
-      body: JSON.stringify({ action, details, entity_type: entityType, entity_id: entityId }),
-    });
   },
 
   // Referrals

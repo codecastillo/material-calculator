@@ -3,6 +3,8 @@ const jwt = require('jsonwebtoken');
 const { Resend } = require('resend');
 const supabase = require('../config/database');
 const { JWT_SECRET } = require('../config/auth');
+const { authenticate } = require('../middleware/auth');
+const { requireActiveLicense } = require('../middleware/requireActiveLicense');
 const router = express.Router();
 
 // RFC-ish email validation: single @, sane local and domain parts, real TLD.
@@ -103,7 +105,7 @@ function buildOrderHtml({
       <tr>
         <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:12px;color:#374151">${esc(i.sku || '')}</td>
         <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#111827">${esc(i.name || '')}</td>
-        <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;text-align:right;font-size:14px;color:#111827">${i.qty} ${esc(i.unit || '')}</td>
+        <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;text-align:right;font-size:14px;color:#111827">${esc(i.qtyDisplay || `${i.qty} ${i.unit || ''}`)}</td>
         <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;text-align:right;font-size:14px;color:#111827">${fmt(i.pricePerUnit)}</td>
         <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;text-align:right;font-size:14px;color:#111827;font-weight:600">${fmt(i.lineTotal)}</td>
       </tr>`
@@ -215,7 +217,7 @@ router.post('/preview', async (req, res, next) => {
   }
 });
 
-router.post('/send', async (req, res, next) => {
+router.post('/send', authenticate, requireActiveLicense, async (req, res, next) => {
   try {
     const {
       to,

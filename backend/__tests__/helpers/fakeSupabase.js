@@ -70,17 +70,29 @@ function makeBuilder(getResponse) {
 // createFakeSupabase returns a fake client and a setter for configuring per-table
 // responses. Builders are recorded so tests can assert whether insert/update/delete
 // was called and with what payload.
+//
+// Two response layers are supported:
+//   setDefault(table, data) -- survives reset(); used by loadApp to set a
+//     licensed user so the paywall passes unless a test explicitly overrides it.
+//   setResponse(table, data) -- per-test override; cleared by reset().
 function createFakeSupabase() {
   // tableResponses: { [tableName]: { data, error } }
   // Default to { data: null, error: null } for any unconfigured table.
   const responses = {};
+
+  // tableDefaults: { [tableName]: { data, error } }
+  // Survives reset(). loadApp sets users here so the paywall middleware passes
+  // without every test having to configure the users table explicitly.
+  const defaults = {};
 
   // Last builder created per table, for inspection in tests
   const lastBuilders = {};
 
   const client = {
     from(table) {
-      const builder = makeBuilder(() => responses[table] || { data: null, error: null });
+      const builder = makeBuilder(
+        () => responses[table] || defaults[table] || { data: null, error: null }
+      );
       lastBuilders[table] = builder;
       return builder;
     },
@@ -89,12 +101,19 @@ function createFakeSupabase() {
   return {
     client,
 
-    // Set what the fake returns for a given table
+    // Set what the fake returns for a given table (cleared by reset)
     setResponse(table, data, error = null) {
       responses[table] = { data, error };
     },
 
-    // Clear all configured responses (back to { data: null, error: null })
+    // Set a fallback response that persists across reset() calls.
+    // Useful for configuring the licensed-user row so every test that calls
+    // reset() doesn't have to re-configure the users table.
+    setDefault(table, data, error = null) {
+      defaults[table] = { data, error };
+    },
+
+    // Clear all per-test responses (back to defaults or { data: null, error: null })
     reset() {
       for (const k of Object.keys(responses)) delete responses[k];
       for (const k of Object.keys(lastBuilders)) delete lastBuilders[k];

@@ -1,9 +1,12 @@
+'use strict';
+
 const express = require('express');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const supabase = require('../config/database');
 const { Resend } = require('resend');
 const { createLicenseKey, PLAN_DURATION_DAYS } = require('../lib/keys');
+const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -59,6 +62,38 @@ router.post('/checkout', express.json(), async (req, res, next) => {
   }
 });
 
+// POST /api/stripe/billing-portal: create a Stripe Customer Portal session for
+// the authenticated user so they can manage their subscription, update payment
+// methods, or cancel. Requires the user to have a stripe_customer_id on file.
+router.post('/billing-portal', authenticate, async (req, res, next) => {
+  try {
+    const stripe = getStripe();
+    if (!stripe) return res.status(503).json({ error: 'Stripe is not configured' });
+
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('stripe_customer_id')
+      .eq('id', req.user.id)
+      .single();
+
+    if (error) return next(error);
+
+    if (!user || !user.stripe_customer_id) {
+      return res.status(400).json({ error: 'No Stripe customer on file for this account' });
+    }
+
+    const base = process.env.APP_BASE_URL || req.protocol + '://' + req.get('host');
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer: user.stripe_customer_id,
+      return_url: base + '/index.html',
+    });
+
+    res.json({ url: portalSession.url });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Stripe can retry from many different IPs, so the window and max are generous.
 // The goal is blocking floods, not throttling legitimate retries.
 const WEBHOOK_RATE_WINDOW_MS = 60 * 1000; // 1 minute
@@ -71,7 +106,53 @@ const webhookRateLimit = rateLimit({
   legacyHeaders: false,
 });
 
-// POST /api/stripe/webhook: handle checkout.session.completed
+// Map Stripe subscription statuses that mean "no active access" to a cleared
+// license state. active / trialing stay licensed; canceled / past_due / unpaid
+// do not. We update subscription_status on every event so the column always
+// reflects the current Stripe state.
+const INACTIVE_STATUSES = new Set(['canceled', 'past_due', 'unpaid', 'incomplete_expired']);
+
+// Update a user's license when their subscription changes or is canceled.
+// Looks up by stripe_customer_id. If the user is not found, logs and returns
+// so we don't surface a 500 to Stripe (which would cause retries).
+async function handleSubscriptionChange(subscription) {
+  const customerId = subscription.customer;
+  const subscriptionId = subscription.id;
+  const status = subscription.status;
+
+  const { data: user, error: lookupError } = await supabase
+    .from('users')
+    .select('id, license_type')
+    .eq('stripe_customer_id', customerId)
+    .single();
+
+  if (lookupError || !user) {
+    console.warn(
+      '[stripe] no user found for customer',
+      customerId,
+      lookupError && lookupError.message
+    );
+    return;
+  }
+
+  const patch = { stripe_subscription_id: subscriptionId, subscription_status: status };
+
+  if (INACTIVE_STATUSES.has(status)) {
+    // Revoke access: clear license_expires so the paywall blocks future requests.
+    // We do not touch license_type so admins can see what plan lapsed.
+    patch.license_expires = new Date(0).toISOString();
+  }
+
+  const { error: updateError } = await supabase.from('users').update(patch).eq('id', user.id);
+
+  if (updateError) {
+    console.error('[stripe] failed to update user on subscription change:', updateError.message);
+  } else {
+    console.log('[stripe] subscription', status, 'applied to user', user.id);
+  }
+}
+
+// POST /api/stripe/webhook: handle checkout and subscription lifecycle events.
 // Requires STRIPE_WEBHOOK_SECRET; refuses all requests without it so forged
 // events cannot bypass signature verification in dev or misconfigured envs.
 router.post(
@@ -119,6 +200,11 @@ router.post(
           return res.json({ received: true, ignored: 'no-email' });
         }
 
+        // Capture Stripe billing identifiers so we can handle future subscription
+        // events (cancel, update) and open billing portal sessions for this customer.
+        const stripeCustomerId = session.customer || null;
+        const stripeSubscriptionId = session.subscription || null;
+
         // Create the license key matching the purchased plan.
         const durationDays = PLAN_DURATION_DAYS[plan];
         const key = await createLicenseKey({
@@ -137,6 +223,8 @@ router.post(
           email,
           license_key: key.key,
           stripe_session_id: stripeSessionId,
+          stripe_customer_id: stripeCustomerId,
+          stripe_subscription_id: stripeSubscriptionId,
           expires_at: expiresAt,
           used: false,
         });
@@ -190,6 +278,43 @@ router.post(
       } catch (err) {
         console.error('[stripe] webhook handler error:', err);
         // Don't 500 (that makes Stripe retry). We've logged it; ack the event.
+      }
+    } else if (
+      event.type === 'customer.subscription.updated' ||
+      event.type === 'customer.subscription.deleted'
+    ) {
+      try {
+        await handleSubscriptionChange(event.data.object);
+      } catch (err) {
+        console.error('[stripe] subscription change handler error:', err);
+        // Ack regardless to prevent Stripe from retrying indefinitely.
+      }
+    } else if (event.type === 'invoice.payment_failed') {
+      try {
+        const invoice = event.data.object;
+        const customerId = invoice.customer;
+        const subscriptionId = invoice.subscription;
+        console.warn(
+          '[stripe] invoice.payment_failed for customer',
+          customerId,
+          'subscription',
+          subscriptionId
+        );
+        // Mark subscription_status so operators can query for at-risk accounts.
+        // The actual license revocation happens via customer.subscription.updated
+        // when Stripe moves the subscription to past_due, so we only update the
+        // status column here, not license_expires.
+        if (customerId) {
+          const { error } = await supabase
+            .from('users')
+            .update({ subscription_status: 'past_due' })
+            .eq('stripe_customer_id', customerId);
+          if (error) {
+            console.error('[stripe] failed to mark past_due on payment failure:', error.message);
+          }
+        }
+      } catch (err) {
+        console.error('[stripe] invoice.payment_failed handler error:', err);
       }
     }
 

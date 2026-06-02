@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../config/database');
 const { authenticate } = require('../middleware/auth');
+const { requireActiveLicense } = require('../middleware/requireActiveLicense');
 
 router.use(authenticate);
 
@@ -97,7 +98,7 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-router.post('/', async (req, res, next) => {
+router.post('/', requireActiveLicense, async (req, res, next) => {
   try {
     const { name, project_name, project_address, supplier_id, client_id, status, selected_phases } =
       req.body;
@@ -138,7 +139,7 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-router.put('/:id', async (req, res, next) => {
+router.put('/:id', requireActiveLicense, async (req, res, next) => {
   try {
     const { name, project_name, project_address, supplier_id, client_id, status, selected_phases } =
       req.body;

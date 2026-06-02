@@ -1,8 +1,6 @@
 const express = require('express');
 const supabase = require('../config/database');
 const { authenticate } = require('../middleware/auth');
-const { adapters } = require('../services/supplierApi');
-
 const router = express.Router();
 
 // Reject CSV payloads that would make per-row processing unreasonable.
@@ -13,44 +11,6 @@ const CSV_MAX_ROWS = 5000;
 
 // All routes require authentication
 router.use(authenticate);
-
-// GET /api/pricing/fetch/:supplierName: stub for supplier API integration
-router.get('/fetch/:supplierName', (req, res, next) => {
-  try {
-    const { supplierName } = req.params;
-    const normalizedName = supplierName.toLowerCase().replace(/\s+/g, '-');
-
-    const adapter = adapters[normalizedName];
-
-    if (!adapter) {
-      return res.status(404).json({
-        error: `No pricing adapter found for "${supplierName}"`,
-        available_adapters: Object.keys(adapters),
-        // Adapter pattern: register new supplier adapters in services/supplierApi.js
-        // Each adapter implements: fetchPricing(), searchProducts(), getProductDetail()
-        hint: 'Add a new adapter in services/supplierApi.js to support this supplier',
-      });
-    }
-
-    // Call the adapter's fetchPricing method
-    const pricingData = adapter.fetchPricing();
-
-    res.json({
-      supplier: supplierName,
-      // In production, this would return real pricing from the supplier's API
-      // For now, returns stub data showing the expected response format
-      data: pricingData,
-      _meta: {
-        adapter: normalizedName,
-        fetched_at: new Date().toISOString(),
-        is_stub: true,
-        note: 'Replace stub adapters in services/supplierApi.js with real API integrations',
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
-});
 
 // POST /api/pricing/import: import CSV pricing data for a supplier
 router.post('/import', async (req, res, next) => {

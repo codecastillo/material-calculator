@@ -14,9 +14,19 @@ const path = require('path');
 const { loadApp } = require('./helpers/loadApp');
 
 let app;
+// Auth header required now that POST /api/order-email/send has authenticate
+// applied. The default users response set by loadApp gives this token a valid
+// lifetime license so the paywall passes.
+let authHeader;
 
 before(() => {
   ({ app } = loadApp());
+  const token = jwt.sign(
+    { id: 'user-uuid-validation', email: 'valid@example.com', name: 'Validator', role: 'user' },
+    'test-secret-value',
+    { expiresIn: '1h' }
+  );
+  authHeader = `Bearer ${token}`;
 });
 
 // ---------------------------------------------------------------------------
@@ -45,6 +55,7 @@ describe('POST /api/order-email/send - recipient validation', () => {
   test('missing to field -> 400', async () => {
     const res = await request(app)
       .post('/api/order-email/send')
+      .set('Authorization', authHeader)
       .send({ groups: validGroups, materialTotal: 120 });
 
     assert.equal(res.status, 400);
@@ -54,6 +65,7 @@ describe('POST /api/order-email/send - recipient validation', () => {
   test('empty string to -> 400', async () => {
     const res = await request(app)
       .post('/api/order-email/send')
+      .set('Authorization', authHeader)
       .send({ to: '', groups: validGroups, materialTotal: 120 });
 
     assert.equal(res.status, 400);
@@ -63,6 +75,7 @@ describe('POST /api/order-email/send - recipient validation', () => {
   test('malformed email (no @) -> 400', async () => {
     const res = await request(app)
       .post('/api/order-email/send')
+      .set('Authorization', authHeader)
       .send({ to: 'notanemail', groups: validGroups, materialTotal: 120 });
 
     assert.equal(res.status, 400);
@@ -72,6 +85,7 @@ describe('POST /api/order-email/send - recipient validation', () => {
   test('malformed email (no TLD) -> 400', async () => {
     const res = await request(app)
       .post('/api/order-email/send')
+      .set('Authorization', authHeader)
       .send({ to: 'user@nodomain', groups: validGroups, materialTotal: 120 });
 
     assert.equal(res.status, 400);
@@ -83,6 +97,7 @@ describe('POST /api/order-email/send - recipient validation', () => {
     const overlong = `${longLocal}@example.com`; // 244 + 12 = 256 chars
     const res = await request(app)
       .post('/api/order-email/send')
+      .set('Authorization', authHeader)
       .send({ to: overlong, groups: validGroups, materialTotal: 120 });
 
     assert.equal(res.status, 400);
@@ -94,6 +109,7 @@ describe('POST /api/order-email/send - recipient validation', () => {
     // This confirms the route processes a valid address and moves to the next validation.
     const res = await request(app)
       .post('/api/order-email/send')
+      .set('Authorization', authHeader)
       .send({ to: 'supplier@acmesupply.com', groups: [] });
 
     assert.equal(res.status, 400);

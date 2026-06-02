@@ -17,6 +17,17 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS company_email TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS contractor_license TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT FALSE;
 
+-- Stripe billing columns (added in v5 subscription lifecycle)
+-- stripe_customer_id links the user to their Stripe Customer object so we can
+-- look them up on subscription events (canceled, past_due, etc.) and open a
+-- billing portal session.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
+-- Values mirror Stripe subscription statuses: active, past_due, canceled, etc.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status TEXT;
+-- Subscription webhooks look the user up by Stripe customer id on every event.
+CREATE INDEX IF NOT EXISTS idx_users_stripe_customer ON users (stripe_customer_id);
+
 CREATE TABLE IF NOT EXISTS suppliers (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
@@ -85,6 +96,12 @@ CREATE TABLE IF NOT EXISTS onboarding_tokens (
     used BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Stripe columns on onboarding_tokens: carried over to the user row on redeem
+-- so subscription lifecycle events (cancel, update) can find the user by
+-- stripe_customer_id.
+ALTER TABLE onboarding_tokens ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+ALTER TABLE onboarding_tokens ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_onboarding_tokens_token ON onboarding_tokens(token);
 CREATE INDEX IF NOT EXISTS idx_onboarding_tokens_session ON onboarding_tokens(stripe_session_id);
