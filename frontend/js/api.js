@@ -122,50 +122,6 @@ const api = {
     return api._fetch('/jobs/' + id, { method: 'PUT', body: JSON.stringify(data) });
   },
 
-  // Clients
-  async getClients() {
-    return api._fetch('/clients');
-  },
-  async createClient(data) {
-    return api._fetch('/clients', { method: 'POST', body: JSON.stringify(data) });
-  },
-  async updateClient(id, data) {
-    return api._fetch('/clients/' + id, { method: 'PUT', body: JSON.stringify(data) });
-  },
-  async deleteClient(id) {
-    return api._fetch('/clients/' + id, { method: 'DELETE' });
-  },
-
-  // Invoices
-  async getInvoices() {
-    return api._fetch('/invoices');
-  },
-  async createInvoice(data) {
-    return api._fetch('/invoices', { method: 'POST', body: JSON.stringify(data) });
-  },
-  async updateInvoice(id, data) {
-    return api._fetch('/invoices/' + id, { method: 'PUT', body: JSON.stringify(data) });
-  },
-  async deleteInvoice(id) {
-    return api._fetch('/invoices/' + id, { method: 'DELETE' });
-  },
-
-  // Price history
-  async getPriceHistory(materialId) {
-    return api._fetch('/price-history/material/' + materialId);
-  },
-
-  // Activity
-  async getActivity() {
-    return api._fetch('/activity');
-  },
-  async logActivity(action, details, entityType, entityId) {
-    return api._fetch('/activity', {
-      method: 'POST',
-      body: JSON.stringify({ action, details, entity_type: entityType, entity_id: entityId }),
-    });
-  },
-
   // Referrals
   async getReferralStats() {
     return api._fetch('/auth/referral-stats');

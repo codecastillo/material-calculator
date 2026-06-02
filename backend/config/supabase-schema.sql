@@ -25,6 +25,8 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
 -- Values mirror Stripe subscription statuses: active, past_due, canceled, etc.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status TEXT;
+-- Subscription webhooks look the user up by Stripe customer id on every event.
+CREATE INDEX IF NOT EXISTS idx_users_stripe_customer ON users (stripe_customer_id);
 
 CREATE TABLE IF NOT EXISTS suppliers (
     id SERIAL PRIMARY KEY,

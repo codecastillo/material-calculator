@@ -2,8 +2,13 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../config/database');
 const { authenticate } = require('../middleware/auth');
+const { requireActiveLicense } = require('../middleware/requireActiveLicense');
 
 router.use(authenticate);
+// Writes require an active license; GET reads stay open so the app can load.
+router.use((req, res, next) =>
+  req.method === 'GET' ? next() : requireActiveLicense(req, res, next)
+);
 
 // Verify supplier belongs to the authenticated user
 async function verifySupplierOwnership(supplierId, userId) {
