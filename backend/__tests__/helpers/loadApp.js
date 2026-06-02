@@ -60,6 +60,18 @@ function loadApp() {
 
   const fake = createFakeSupabase();
 
+  // Default users row: lifetime license so requireActiveLicense passes in every
+  // test that doesn't explicitly override the users table. Tests that need to
+  // verify paywall rejection should call fake.setResponse('users', ...) with a
+  // row that has an expired license_expires.
+  fake.setDefault('users', {
+    id: 'user-uuid-default',
+    email: 'test@example.com',
+    role: 'user',
+    license_type: 'lifetime',
+    license_expires: null,
+  });
+
   // Stub the resend package: its constructor throws when RESEND_API_KEY is
   // absent, which happens at module load time in routes/auth.js and
   // routes/orderEmail.js. The stub is a harmless no-op class.

@@ -3,6 +3,8 @@ const jwt = require('jsonwebtoken');
 const { Resend } = require('resend');
 const supabase = require('../config/database');
 const { JWT_SECRET } = require('../config/auth');
+const { authenticate } = require('../middleware/auth');
+const { requireActiveLicense } = require('../middleware/requireActiveLicense');
 const router = express.Router();
 
 // RFC-ish email validation: single @, sane local and domain parts, real TLD.
@@ -215,7 +217,7 @@ router.post('/preview', async (req, res, next) => {
   }
 });
 
-router.post('/send', async (req, res, next) => {
+router.post('/send', authenticate, requireActiveLicense, async (req, res, next) => {
   try {
     const {
       to,

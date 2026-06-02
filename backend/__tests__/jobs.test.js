@@ -13,7 +13,9 @@ let authHeader;
 
 before(() => {
   ({ app, fake } = loadApp());
-  // A valid token that the middleware will accept for all jobs tests
+  // A valid token that the middleware will accept for all jobs tests.
+  // The default users response set by loadApp is a lifetime-licensed user, so
+  // paywall checks pass without each test having to configure it explicitly.
   const token = jwt.sign(
     { id: 'user-uuid-jobs', email: 'builder@example.com', name: 'Builder', role: 'user' },
     'test-secret-value',
@@ -173,5 +175,56 @@ describe('PUT /api/jobs/:id - invalid numeric field rejected before DB', () => {
     assert.equal(res.status, 200);
     assert.ok(res.body.job);
     assert.equal(fake.updateWasCalled('jobs'), true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Paywall: requireActiveLicense on POST /api/jobs and PUT /api/jobs/:id
+// ---------------------------------------------------------------------------
+describe('POST /api/jobs - paywall enforcement', () => {
+  test('unlicensed user (expired license) -> 402 LICENSE_REQUIRED, insert NOT called', async () => {
+    fake.reset();
+    // Override the users default to simulate an expired subscription.
+    fake.setResponse('users', {
+      id: 'user-uuid-jobs',
+      role: 'user',
+      license_type: 'monthly',
+      license_expires: new Date(Date.now() - 1000).toISOString(), // expired 1 second ago
+    });
+
+    const res = await request(app)
+      .post('/api/jobs')
+      .set('Authorization', authHeader)
+      .send({ name: 'Unlicensed Job' });
+
+    assert.equal(res.status, 402);
+    assert.equal(res.body.code, 'LICENSE_REQUIRED');
+    assert.equal(
+      fake.insertWasCalled('jobs'),
+      false,
+      'insert must not be called on unlicensed user'
+    );
+  });
+
+  test('licensed user (active subscription) -> passes paywall, reaches DB', async () => {
+    fake.reset();
+    // setResponse overrides the default for this test; use an active license.
+    fake.setResponse('users', {
+      id: 'user-uuid-jobs',
+      role: 'user',
+      license_type: 'monthly',
+      license_expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+    const jobRow = { id: 'job-uuid-2', user_id: 'user-uuid-jobs', name: 'Licensed Job' };
+    fake.setResponse('jobs', jobRow);
+
+    const res = await request(app)
+      .post('/api/jobs')
+      .set('Authorization', authHeader)
+      .send({ name: 'Licensed Job' });
+
+    assert.equal(res.status, 201);
+    assert.ok(res.body.job);
+    assert.equal(fake.insertWasCalled('jobs'), true);
   });
 });
