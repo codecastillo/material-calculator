@@ -258,6 +258,24 @@ html {
   }
 }
 
+/* FOCUS RING
+   Visible keyboard focus for interactive elements. Skipped for pointer clicks
+   via :focus-visible so the ring only appears when the user tabs or uses arrow keys. */
+:focus-visible {
+  outline: 2px solid var(--pri);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+/* Inputs already paint a box-shadow ring on :focus; suppress the outline
+   there so the two styles don't stack awkwardly. */
+.input:focus-visible,
+.calc-v2-input:focus-visible,
+.inline-input:focus-visible,
+.toolbar-search:focus-visible,
+.toolbar-select:focus-visible {
+  outline: none;
+}
+
 /* BUTTONS */
 .btn {
   padding: 10px 20px;
@@ -2403,7 +2421,11 @@ tr.drag-over td {
   --v2-accent-hover: #2f81f7;
   --v2-accent-soft: #17283d;
   --v2-status-dot-green: #5dcf8a;
-  --v2-status-dot-amber: #4493f8;
+  --v2-status-dot-amber: #e3a14a;
+  /* Amber/orange warning token. Used for stale-price indicators, trial badges, etc.
+     Intentionally warmer than --warn (#d29922) so it reads clearly on dark surfaces. */
+  --v2-warn: #e3a14a;
+  --v2-warn-soft: rgba(227, 161, 74, 0.12);
   --v2-badge-surface-neutral: #1f242c;
 
   /* shadows */

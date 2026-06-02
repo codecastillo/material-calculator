@@ -904,12 +904,37 @@ function notify(msg, type) {
   setTimeout(() => el.classList.add('show'), 10);
   setTimeout(() => el.classList.remove('show'), 3000);
 }
+// Track the element that had focus before a modal opened so we can restore it.
+let _modalFocusOrigin = null;
+
 function openModal(id) {
-  document.getElementById(id).classList.add('open');
+  const overlay = document.getElementById(id);
+  if (!overlay) return;
+  _modalFocusOrigin = document.activeElement;
+  overlay.classList.add('open');
+  // Move focus into the first focusable element so screen readers announce the dialog.
+  const firstFocusable = overlay.querySelector(
+    'input:not([disabled]), button:not([disabled]), [href], select, textarea, [tabindex]:not([tabindex="-1"])'
+  );
+  if (firstFocusable) firstFocusable.focus();
 }
 function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
+  const overlay = document.getElementById(id);
+  if (!overlay) return;
+  overlay.classList.remove('open');
+  // Return focus to the element that triggered the modal (if it is still in the DOM).
+  if (_modalFocusOrigin && document.contains(_modalFocusOrigin)) {
+    _modalFocusOrigin.focus();
+    _modalFocusOrigin = null;
+  }
 }
+
+// Dismiss any open non-gated modal on Escape.
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape') return;
+  const open = document.querySelector('.modal-overlay.open:not([data-no-close])');
+  if (open) closeModal(open.id);
+});
 function toggleUserMenu() {
   document.getElementById('userBadge').classList.toggle('open');
 }
@@ -3746,6 +3771,12 @@ function prepareOrderFromCalc() {
     notify('Calculate first', 'error');
     return;
   }
+  // Admins bypass the license gate. Everyone else must have a valid license to
+  // generate an order (the calculation itself is always free).
+  if (!isLicensed()) {
+    checkLicenseGate();
+    return;
+  }
   const r = currentCalc;
   const supplier = r.supplier || '';
   const isMulti = supplier === 'All Suppliers' || supplier === 'Best per phase' || !!r.bestPerPhase;
@@ -4087,6 +4118,13 @@ async function doSaveJob() {
         selling_price: job.sellingPrice,
       });
     } catch (err) {
+      // A 402/403 with code LICENSE_REQUIRED means the backend rejected the save
+      // because the user's license lapsed server-side. Surface the upgrade modal.
+      if (err.code === 'LICENSE_REQUIRED' || err.status === 402 || err.status === 403) {
+        closeModal('saveJobModal');
+        checkLicenseGate();
+        return;
+      }
       console.warn('API save failed:', err.message);
     }
   }
@@ -4569,18 +4607,18 @@ async function renderDashboard() {
   const metricsHtml = `
         <div class="dash-v2-metrics" role="group" aria-label="Catalog overview">
             <div class="dash-v2-metric">
-                <div class="dash-v2-metric-label">Saved jobs</div>
+                <div class="dash-v2-metric-label">Saved calculations</div>
                 <div class="dash-v2-metric-row">
                     <span class="dash-v2-metric-num">${nonTemplates.length}</span>
-                    <span class="dash-v2-metric-unit">jobs</span>
+                    <span class="dash-v2-metric-unit">saved</span>
                 </div>
-                <div class="dash-v2-metric-trend">${templates.length} template${templates.length === 1 ? '' : 's'}</div>
+                <div class="dash-v2-metric-trend">${templates.length} reusable template${templates.length === 1 ? '' : 's'}</div>
             </div>
             <div class="dash-v2-metric">
-                <div class="dash-v2-metric-label">Materials catalog</div>
+                <div class="dash-v2-metric-label">Catalog items</div>
                 <div class="dash-v2-metric-row">
                     <span class="dash-v2-metric-num">${materialCount}</span>
-                    <span class="dash-v2-metric-unit">items</span>
+                    <span class="dash-v2-metric-unit">materials</span>
                 </div>
                 <div class="dash-v2-metric-trend">across ${supplierCount} supplier${supplierCount === 1 ? '' : 's'}</div>
             </div>
@@ -4590,7 +4628,7 @@ async function renderDashboard() {
                     <span class="dash-v2-metric-num">${supplierCount}</span>
                     <span class="dash-v2-metric-unit">linked</span>
                 </div>
-                <div class="dash-v2-metric-trend">covering ${phasesCovered} phase${phasesCovered === 1 ? '' : 's'}</div>
+                <div class="dash-v2-metric-trend">${phasesCovered} phase${phasesCovered === 1 ? '' : 's'} covered</div>
             </div>
             <div class="dash-v2-metric${staleMod}">
                 <div class="dash-v2-metric-label">Stale prices</div>
@@ -4598,7 +4636,7 @@ async function renderDashboard() {
                     <span class="dash-v2-metric-num">${staleCount}</span>
                     <span class="dash-v2-metric-unit">items</span>
                 </div>
-                <div class="dash-v2-metric-trend">${staleCount > 0 ? 'older than 30 days' : 'all prices fresh'}</div>
+                <div class="dash-v2-metric-trend">${staleCount > 0 ? 'update in catalog' : 'all prices current'}</div>
             </div>
         </div>`;
 
@@ -4614,11 +4652,11 @@ async function renderDashboard() {
             </colgroup>
             <thead>
                 <tr>
-                    <th class="dash-v2-th-job">Job&nbsp;#</th>
-                    <th>Name / Client</th>
+                    <th class="dash-v2-th-job">Calc&nbsp;#</th>
+                    <th>Name / Project</th>
                     <th class="dash-v2-th-phase">Phases</th>
                     <th class="text-right">Sq&middot;ft&nbsp;&nbsp;Date</th>
-                    <th class="text-right">Total</th>
+                    <th class="text-right">Mat. cost</th>
                     <th></th>
                 </tr>
             </thead>
@@ -4655,7 +4693,7 @@ async function renderDashboard() {
                   .join('')}
             </tbody>
         </table>`
-    : `<div class="dash-v2-empty">No orders yet. Start with <strong>New calculation</strong>.</div>`;
+    : `<div class="dash-v2-empty">No calculations saved yet. Hit <strong>New calculation</strong> to start one.</div>`;
 
   const suppliersHtml = supRows.length
     ? `<div class="dash-v2-supplier-list">${supRows
@@ -4689,7 +4727,7 @@ async function renderDashboard() {
                 </div>
                 <h1 class="dash-v2-title">Welcome back, ${escHtml(userName)}</h1>
                 <p class="dash-v2-subtitle">
-                    <span>${nonTemplates.length} saved job${nonTemplates.length === 1 ? '' : 's'}</span>
+                    <span>${nonTemplates.length} saved calculation${nonTemplates.length === 1 ? '' : 's'}</span>
                     <span class="dash-v2-sub-sep">&middot;</span>
                     <span>${materialCount} material${materialCount === 1 ? '' : 's'} across ${supplierCount} supplier${supplierCount === 1 ? '' : 's'}</span>
                 </p>
@@ -4708,7 +4746,7 @@ async function renderDashboard() {
 
                 <div class="dash-v2-section-head">
                     <div class="dash-v2-section-head-left">
-                        <span class="dash-v2-section-eyebrow">Recent jobs</span>
+                        <span class="dash-v2-section-eyebrow">Calculations</span>
                         <h2 class="dash-v2-section-title">Recent calculations</h2>
                     </div>
                     <div class="dash-v2-section-head-right">

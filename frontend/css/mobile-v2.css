@@ -1,1 +1,594 @@
-/* mobile-v2: page-scoped redesign. See docs/calc-redesign/pages-spec.md */
+/* mobile-v2.css
+   Responsive layout overrides for <=768px (primary) and <=480px (narrow).
+   Builds on top of the per-page CSS files; only adjusts what those files
+   don't already handle, or tightens rules they leave at a suboptimal size.
+   All class names and design tokens are taken verbatim from the existing codebase.
+   No class renames. No new design language. */
+
+/* ============================================================
+   SHARED: global helpers at <=768px
+   ============================================================ */
+
+@media (max-width: 768px) {
+  /* Prevent anything from blowing out the viewport width. */
+  * {
+    min-width: 0;
+  }
+
+  .main-container {
+    padding: 12px 12px 80px;
+  }
+
+  /* Modals should be near-full-width on small screens. */
+  .modal {
+    min-width: 0;
+    width: calc(100vw - 32px);
+    max-width: 480px;
+    padding: 20px 18px;
+  }
+
+  /* Wide modal (e.g. email composer) collapses to single column. */
+  .modal.modal-wide {
+    min-width: 0;
+    width: calc(100vw - 32px);
+    max-width: 600px;
+  }
+
+  /* Onboarding modal */
+  #onboardingModal .modal {
+    min-width: 0;
+    width: calc(100vw - 32px);
+    max-width: 480px;
+  }
+
+  /* License gate modal */
+  #licenseGateModal .modal {
+    min-width: 0;
+    width: calc(100vw - 32px);
+    max-width: 420px;
+  }
+
+  /* Push fixed notification up from the bottom nav area on small screens. */
+  .notification {
+    top: auto;
+    bottom: 16px;
+    right: 12px;
+    left: 12px;
+    transform: translateY(120%);
+    text-align: center;
+  }
+  .notification.show {
+    transform: translateY(0);
+  }
+}
+
+/* ============================================================
+   CALCULATOR (calc-v2-page) at <=768px
+   Spec: 2-col grid (inputs + sticky 400px summary) must stack
+   to one column with summary BELOW the inputs. Sticky removed.
+   Already handled partially in styles.css (@media max-width: 1100px)
+   which collapses the grid and at 768px handles phase table columns.
+   This layer fixes tap targets, panel padding, and the summary position.
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .calc-v2-page {
+    padding: 0 12px 80px;
+  }
+
+  /* Header: stack title and actions. */
+  .calc-v2-header {
+    padding-top: 16px;
+    gap: 12px;
+  }
+
+  .calc-v2-title {
+    font-size: 1.7rem;
+  }
+
+  .calc-v2-header-right {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* CTA button: full-width for easy tapping. */
+  .calc-v2-cta {
+    width: 100%;
+    height: 48px;
+    justify-content: center;
+    font-size: 0.95rem;
+  }
+
+  /* Metrics strip: 2-up on mobile (already in styles.css at 768px,
+     but ensure supplier metric takes full width when it is the only one). */
+  .calc-v2-metrics-single {
+    display: grid;
+    grid-template-columns: 1fr;
+    min-width: 0;
+    width: 100%;
+  }
+
+  /* Input panels: reduce side padding. */
+  .calc-v2-panel-body {
+    padding: 16px 14px;
+  }
+
+  /* Form rows: already stacked to 1-col in styles.css 768px block,
+     add comfortable tap height. */
+  .calc-v2-input,
+  select.calc-v2-input {
+    height: 44px;
+    padding: 0 12px;
+  }
+
+  /* Phase chips: allow wrapping with enough tap room. */
+  .calc-v2-phase-selector .phase-chip {
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* Drywall area rows: wrap naturally, full-width inputs. */
+  .dw-area-row {
+    flex-wrap: wrap;
+  }
+  .dw-area-row .dw-area-label {
+    width: 100%;
+  }
+  .dw-area-row .dw-area-sheet,
+  .dw-area-row .dw-area-val {
+    flex: 1;
+  }
+  .dw-area-row select,
+  .dw-area-row input {
+    height: 40px;
+    font-size: 0.88rem;
+  }
+
+  /* Summary sidebar: static, sits below inputs (grid is already single-col
+     from the 1100px breakpoint in styles.css). Re-affirm no sticky. */
+  .calc-v2-summary {
+    position: static;
+  }
+
+  .calc-v2-summary-card {
+    padding: 18px 16px;
+  }
+
+  /* Customer price: scale down on very small screens. */
+  .calc-v2-cprice {
+    font-size: 2.4rem;
+  }
+
+  /* Action buttons in summary: stack vertically, full width. */
+  .calc-v2-summary-ctas {
+    gap: 10px;
+  }
+  .calc-v2-btn-block {
+    height: 48px;
+    font-size: 0.95rem;
+  }
+
+  /* Phase result cards: keep full width, tighter header padding. */
+  .calc-v2-phase-bar {
+    padding: 10px 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: auto;
+  }
+  .calc-v2-phase-right {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  /* Actions row (Calculate button row): center and stack if needed. */
+  .calc-v2-actions-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .calc-v2-actions-row .calc-v2-btn {
+    width: 100%;
+    height: 48px;
+    justify-content: center;
+  }
+}
+
+/* <=480px: tighter calculator pass */
+@media (max-width: 480px) {
+  .calc-v2-page {
+    padding: 0 8px 72px;
+  }
+
+  .calc-v2-title {
+    font-size: 1.45rem;
+  }
+
+  .calc-v2-panel-body {
+    padding: 12px 10px;
+  }
+
+  .calc-v2-cprice {
+    font-size: 2rem;
+  }
+
+  .calc-v2-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  /* Mini pills in phase bars: collapse to a simpler inline list. */
+  .calc-v2-mini-pill {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .calc-v2-mini-pill-value {
+    font-size: 0.78rem;
+    padding: 3px 8px;
+  }
+}
+
+/* ============================================================
+   PRICING (price-v2-page) at <=768px
+   The 900px breakpoint in pricing-v2.css collapses the 2-col grid
+   and turns the supplier list into a horizontal scroll strip.
+   This layer handles narrower widths: toolbar wrapping, filter
+   chip rows, and making the table usable at 480px.
+   SKU and coverage columns are already hidden at 768px in pricing-v2.css.
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .price-v2-page {
+    padding: 16px 12px 72px;
+    gap: 16px;
+  }
+
+  .price-v2-title {
+    font-size: 1.7rem;
+  }
+
+  /* Toolbar: already stacked to column in pricing-v2.css at 768px.
+     Ensure search is full-width. */
+  .price-v2-search-wrap {
+    flex: none;
+    width: 100%;
+  }
+
+  .price-v2-toolbar-right {
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .price-v2-sort-select,
+  .price-v2-toolbar-action {
+    height: 40px;
+  }
+
+  /* Add material button: full-width on narrow screens. */
+  .price-v2-cta {
+    width: 100%;
+    height: 44px;
+    justify-content: center;
+  }
+
+  /* Table: price and actions columns have adequate tap area. */
+  .price-v2-table tbody td {
+    padding: 12px 12px;
+  }
+  .price-v2-btn-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .price-v2-page {
+    padding: 12px 8px 72px;
+  }
+
+  .price-v2-title {
+    font-size: 1.45rem;
+  }
+
+  /* Supplier strip: tighter pills. */
+  .price-v2-supplier-item {
+    min-width: 130px;
+    padding: 8px 10px;
+    font-size: 0.84rem;
+  }
+
+  /* Table price column: allow it to shrink enough to stay on screen. */
+  .price-v2-table colgroup col.col-price {
+    width: 72px;
+  }
+  .price-v2-table colgroup col.col-act {
+    width: 72px;
+  }
+  .price-v2-table colgroup col.col-sku {
+    width: 80px;
+  }
+  /* Hide category column at 480px to keep name and price visible. */
+  .price-v2-table colgroup col.col-cat {
+    width: 0;
+  }
+  .price-v2-table thead th.col-h-cat,
+  .price-v2-table tbody td.col-c-cat {
+    display: none;
+  }
+
+  /* Inline edit: stack the save/cancel actions. */
+  .price-v2-edit-actions {
+    flex-direction: column;
+    gap: 6px;
+  }
+}
+
+/* ============================================================
+   ORDER FORM (order-v2-page) at <=768px
+   The 1024px breakpoint in orders-v2.css collapses the 2-col grid.
+   The 768px block hides SKU/each columns, stacks letterhead, etc.
+   This layer handles remaining gaps: overall padding, full-width buttons.
+   ============================================================ */
+
+@media (max-width: 768px) {
+  #orderPage.order-v2-page {
+    padding: 16px 12px 72px;
+  }
+
+  .order-v2-paper {
+    padding: 18px 14px;
+  }
+
+  /* Controls row: stack vertically, full-width buttons. */
+  .order-v2-controls {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .order-v2-controls .order-v2-btn {
+    width: 100%;
+    justify-content: center;
+    height: 44px;
+  }
+
+  /* Qty inputs: easier to tap. */
+  .order-qty-input,
+  .calc-v2-qty-input {
+    width: 72px;
+    height: 40px;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  #orderPage.order-v2-page {
+    padding: 12px 8px 72px;
+  }
+
+  .order-v2-paper {
+    padding: 14px 10px;
+  }
+
+  /* Phase section headers in order table: smaller font. */
+  .phase-header td {
+    font-size: 0.72rem;
+    padding: 10px 10px;
+  }
+
+  /* Table cells: tighter. */
+  .order-v2-items tbody td,
+  .order-v2-items thead th {
+    padding: 10px 8px;
+  }
+}
+
+/* ============================================================
+   DASHBOARD (dash-v2-page) at <=768px
+   The 1100px breakpoint in dashboard-v2.css collapses the 2-col grid.
+   The 768px block handles header stacking and metric reflow.
+   This layer closes gaps: overall padding, "New calculation" CTA prominence.
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .dash-v2-page {
+    padding: 16px 12px 80px;
+  }
+
+  /* Primary action: full-width, comfortable height. */
+  .dash-v2-btn {
+    height: 44px;
+  }
+  .dash-v2-btn-primary {
+    width: 100%;
+    justify-content: center;
+    height: 48px;
+    font-size: 0.95rem;
+  }
+
+  /* Metric strip: already 2-up from dashboard-v2.css; ensure border logic is clean. */
+  .dash-v2-metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .dash-v2-metric {
+    padding: 14px 14px;
+  }
+  .dash-v2-metric-num {
+    font-size: 1.35rem;
+  }
+
+  /* Jobs table: tighten cells. */
+  .dash-v2-jobs-table thead th,
+  .dash-v2-jobs-table tbody td {
+    padding: 12px 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dash-v2-page {
+    padding: 12px 8px 72px;
+  }
+
+  /* Metric strip: single column on the narrowest phones. */
+  .dash-v2-metrics {
+    grid-template-columns: 1fr;
+  }
+  /* Reset border logic when in a single column. */
+  .dash-v2-metric + .dash-v2-metric {
+    border-left: none;
+    border-top: 1px solid var(--v2-border-hairline);
+  }
+  .dash-v2-metric:nth-child(odd) {
+    border-left: none;
+  }
+  .dash-v2-metric:nth-child(3),
+  .dash-v2-metric:nth-child(4) {
+    border-top: 1px solid var(--v2-border-hairline);
+  }
+
+  .dash-v2-title {
+    font-size: 1.5rem;
+  }
+
+  .dash-v2-metric-num {
+    font-size: 1.2rem;
+  }
+
+  /* Jobs table: job name cell truncates at a shorter width. */
+  .dash-v2-job-name {
+    max-width: 140px;
+  }
+}
+
+/* ============================================================
+   ACCOUNT (account-v2-page) at <=768px
+   account-v2.css already handles the 2-col grid collapse at 1024px
+   and identity/header stacking at 768px.
+   This layer adds padding cleanup and tap-target fixes.
+   ============================================================ */
+
+@media (max-width: 768px) {
+  #accountPage.account-v2-page {
+    padding: 16px 12px 72px;
+  }
+
+  /* Activate license row: stack on narrow screens. */
+  .account-v2-activate-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .account-v2-activate-row .account-v2-input {
+    width: 100%;
+  }
+  .account-v2-activate-row .account-v2-cta {
+    width: 100%;
+    height: 44px;
+    justify-content: center;
+  }
+
+  /* Section cards: tighter padding. */
+  .account-v2-card,
+  .account-v2-section {
+    padding: 18px 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  #accountPage.account-v2-page {
+    padding: 12px 8px 72px;
+  }
+
+  .account-v2-title {
+    font-size: 1.45rem;
+  }
+}
+
+/* ============================================================
+   ADMIN (admin-v2-page) at <=768px
+   admin-v2.css handles the main grid collapse and header stacking.
+   This layer handles padding and form-row widths.
+   ============================================================ */
+
+@media (max-width: 768px) {
+  #adminPage.admin-v2-page {
+    padding: 16px 12px 72px;
+  }
+
+  .admin-v2-genform-row {
+    grid-template-columns: 1fr;
+  }
+
+  /* Generate license button: full-width on mobile. */
+  .admin-v2-genform-row > button {
+    width: 100%;
+    height: 44px;
+    justify-content: center;
+  }
+
+  /* User table: tighter cells. */
+  .admin-v2-users-table thead th,
+  .admin-v2-users-table tbody td {
+    padding: 10px 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  #adminPage.admin-v2-page {
+    padding: 12px 8px 72px;
+  }
+
+  .admin-v2-title {
+    font-size: 1.45rem;
+  }
+
+  /* Metrics in admin: already 2-up; collapse to 1 at 480px. */
+  .admin-v2-metrics {
+    grid-template-columns: 1fr;
+  }
+  .admin-v2-metric {
+    border-left: none !important;
+    border-top: 1px solid var(--v2-border-hairline);
+  }
+  .admin-v2-metric:first-child {
+    border-top: none;
+  }
+}
+
+/* ============================================================
+   SAVED JOBS (jobs-v2-page) at <=768px
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .jobs-v2-page {
+    padding: 16px 12px 72px;
+  }
+
+  .jobs-v2-toolbar {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .jobs-v2-toolbar .jobs-v2-search-wrap {
+    width: 100%;
+  }
+
+  .jobs-v2-table thead th,
+  .jobs-v2-table tbody td {
+    padding: 12px 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .jobs-v2-page {
+    padding: 12px 8px 72px;
+  }
+
+  /* Hide less-critical columns to keep name and total visible. */
+  .jobs-v2-table colgroup col.jobs-v2-col-phases {
+    width: 0;
+  }
+  .jobs-v2-table thead th.jobs-v2-th-phases,
+  .jobs-v2-table tbody td.jobs-v2-td-phases {
+    display: none;
+  }
+}
