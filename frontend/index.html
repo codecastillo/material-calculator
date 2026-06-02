@@ -933,11 +933,15 @@
                 </div>
                 <div class="calc-v2-summary-content hidden" id="calcV2SummaryContent">
                   <div class="calc-v2-cprice-block">
-                    <div class="calc-v2-eyebrow"><span>Customer Price</span></div>
+                    <div class="calc-v2-eyebrow"><span>Lowest profitable bid</span></div>
                     <div class="calc-v2-cprice" id="calcV2CustomerPrice">$0</div>
                     <div class="calc-v2-cprice-sub">
                       <span>per sqft</span
                       ><span class="calc-v2-mono" id="calcV2PerSqft">$0.00</span>
+                    </div>
+                    <div class="calc-v2-cost-sub" style="margin-top: 6px">
+                      Covers every cost plus your margin. Enter the final bid in your bidding
+                      software.
                     </div>
                   </div>
 
@@ -1334,12 +1338,13 @@
                 </div>
               </section>
 
-              <!-- Business Expenses (folded into each job's overhead) -->
-              <section class="account-v2-card" aria-label="Business expenses">
-                <div class="account-v2-card-eyebrow"><span>BUSINESS EXPENSES</span></div>
+              <!-- Overhead (amortized into each job's Total Job Cost) -->
+              <section class="account-v2-card" aria-label="Overhead">
+                <div class="account-v2-card-eyebrow"><span>OVERHEAD</span></div>
                 <p class="account-v2-help-line">
-                  Recurring overhead (QuickBooks, insurance, phone, etc.) gets amortized into each
-                  job's overhead based on your average jobs per month.
+                  Recurring fixed costs (insurance, phone, truck, software, etc.) are spread across
+                  your average jobs per month and added to every job's Total Job Cost. Example: $200
+                  per month over 20 jobs adds $10 per job.
                 </p>
                 <div class="account-v2-form-row" style="margin-top: 12px">
                   <div class="account-v2-field">

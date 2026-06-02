@@ -66,6 +66,38 @@ window.loadBusinessExpenses = loadBusinessExpenses;
 window.saveBusinessExpenses = saveBusinessExpenses;
 window.businessExpensePerJob = businessExpensePerJob;
 
+// Shared cost model. Turns material cost plus supplier fees, labor, and amortized
+// overhead into a Total Job Cost (break-even), then applies the markup to get the
+// lowest the contractor can bid and still hit their target margin. The real bid is
+// made in their bidding software. The credit-card fee is the supplier's card
+// surcharge on the material order, so it is a cost, not a markup on the bid. Field
+// names (sellingPrice, subtotalBeforeProfit, businessExpensesTotal) are kept for the
+// order form and saved jobs that already read them.
+function applyCostModel(r, opts) {
+  const taxPct = Number(opts.taxPct) || 0;
+  const deliveryFee = Number(opts.deliveryFee) || 0;
+  const ccFeePct = Number(opts.ccFeePct) || 0;
+  const laborRate = Number(opts.laborRate) || 0;
+  const totalSqft = Number(opts.totalSqft) || 0;
+  const profitPct = Number(opts.profitPct) || 0;
+
+  r.taxAmount = r.materialTotal * (taxPct / 100);
+  r.materialPlusTax = r.materialTotal + r.taxAmount;
+  r.deliveryTotal = deliveryFee;
+  r.ccFeeBase = r.materialPlusTax + r.deliveryTotal;
+  r.ccFeeAmount = r.ccFeeBase * (ccFeePct / 100);
+  r.materialsAllIn = r.ccFeeBase + r.ccFeeAmount;
+  r.laborTotal = laborRate * totalSqft;
+  r.overheadTotal = businessExpensePerJob();
+  r.businessExpensesTotal = r.overheadTotal;
+  r.totalJobCost = r.materialsAllIn + r.laborTotal + r.overheadTotal;
+  r.subtotalBeforeProfit = r.totalJobCost;
+  r.profitAmount = r.totalJobCost * (profitPct / 100);
+  r.lowestBid = r.totalJobCost + r.profitAmount;
+  r.sellingPrice = r.lowestBid;
+  r.grossMargin = r.lowestBid > 0 ? (r.profitAmount / r.lowestBid) * 100 : 0;
+}
+
 // Scope grouping: which broad scope each phase belongs to
 const SCOPE_GROUPS = {
   Stucco: ['Lath', 'Gray Coat', 'Color Coat'],
@@ -2923,19 +2955,7 @@ function calculateJob() {
     };
   }
 
-  r.taxAmount = r.materialTotal * (taxPct / 100);
-  r.materialPlusTax = r.materialTotal + r.taxAmount;
-  r.laborTotal = laborRate * totalSqft;
-  r.deliveryTotal = deliveryFee;
-  // Business expenses (recurring subscriptions, insurance, etc.) folded into the cost basis.
-  r.businessExpensesTotal = businessExpensePerJob();
-  r.subtotalBeforeProfit =
-    r.materialPlusTax + r.laborTotal + r.deliveryTotal + r.businessExpensesTotal;
-  r.profitAmount = r.subtotalBeforeProfit * (profitPct / 100);
-  r.sellingBeforeCC = r.subtotalBeforeProfit + r.profitAmount;
-  r.ccFeeAmount = r.sellingBeforeCC * (ccFeePct / 100);
-  r.sellingPrice = r.sellingBeforeCC + r.ccFeeAmount;
-  r.grossMargin = r.sellingPrice > 0 ? (r.profitAmount / r.sellingPrice) * 100 : 0;
+  applyCostModel(r, { taxPct, deliveryFee, ccFeePct, laborRate, totalSqft, profitPct });
   // Snapshot the user's material picks so saveJob serializes them.
   r.selectedMaterials = JSON.parse(JSON.stringify(selectedMaterials || {}));
   currentCalc = r;
@@ -3181,50 +3201,60 @@ function renderCalcResults(r) {
   if (sumEmpty) sumEmpty.classList.add('hidden');
   if (sumContent) sumContent.classList.remove('hidden');
 
-  const customerPrice = r.sellingPrice || 0;
-  const perSqft = totalSqft > 0 ? customerPrice / totalSqft : 0;
+  const lowestBid = r.sellingPrice || 0;
+  const perSqft = totalSqft > 0 ? lowestBid / totalSqft : 0;
   const cpEl = document.getElementById('calcV2CustomerPrice');
-  if (cpEl) cpEl.textContent = v2FmtMoney(customerPrice);
+  if (cpEl) cpEl.textContent = v2FmtMoney(lowestBid);
   const psEl = document.getElementById('calcV2PerSqft');
   if (psEl) psEl.textContent = v2FmtMoney2(perSqft);
 
-  // Cost stack per spec §6.3 / §10: Materials, Labor, Overhead, Markup, Total cost.
-  // Tax / Delivery / CC Fee remain in the data model and surface on the order outputs but not in this sidebar.
+  // Cost sheet: each real cost builds to Total Job Cost (break-even). The markup
+  // sits in the profit block, and the hero above is cost + markup = the lowest
+  // profitable bid. The card fee is the supplier's card surcharge, a cost.
   const totalItems = (r.items || []).reduce((s, i) => s + (i.qty > 0 ? 1 : 0), 0);
   const totalPhases = activePhases.length;
-  // Overhead: combine ancillary line items (tax + delivery + cc fee) under one "Overhead" row so the spec's
-  // canonical spine is preserved while no data is lost. If none of those exist, fall back to 8% of materials.
-  const overheadFromExtras =
-    (r.taxAmount || 0) +
-    (r.deliveryTotal || 0) +
-    (r.ccFeeAmount || 0) +
-    (r.businessExpensesTotal || 0);
-  const overheadPct = 0.08;
-  const overheadAmount =
-    overheadFromExtras > 0 ? overheadFromExtras : (r.materialTotal || 0) * overheadPct;
-  const subParts = [];
-  if ((r.taxAmount || 0) > 0) subParts.push('tax');
-  if ((r.deliveryTotal || 0) > 0) subParts.push('delivery');
-  if ((r.ccFeeAmount || 0) > 0) subParts.push('CC fee');
-  if ((r.businessExpensesTotal || 0) > 0) subParts.push('business expenses');
-  const overheadSub = subParts.length
-    ? subParts.join(' + ')
-    : `${(overheadPct * 100).toFixed(1)}% of materials`;
-  const totalCost =
-    (r.materialTotal || 0) + (r.laborTotal || 0) + overheadAmount + (r.profitAmount || 0);
+  const overheadJpm = loadBusinessExpenses().avgJobsPerMonth || 4;
   const rows = [];
   rows.push({
     label: 'Materials',
     sub: `${totalItems} item${totalItems === 1 ? '' : 's'}, ${totalPhases} phase${totalPhases === 1 ? '' : 's'}`,
     amt: v2FmtMoney2(r.materialTotal),
   });
-  rows.push({
-    label: 'Labor',
-    sub: `${v2FmtInt(totalSqft)} sqft @ ${v2FmtMoney2(r.laborRate || 0)}/sqft`,
-    amt: v2FmtMoney2(r.laborTotal || 0),
-  });
-  rows.push({ label: 'Overhead', sub: overheadSub, amt: v2FmtMoney2(overheadAmount) });
-  rows.push({ label: 'Markup', sub: `${r.profitPct}% on cost`, amt: v2FmtMoney2(r.profitAmount) });
+  if ((r.taxAmount || 0) > 0) {
+    rows.push({
+      label: 'Supplier tax',
+      sub: `${r.taxPct}% on materials`,
+      amt: v2FmtMoney2(r.taxAmount),
+    });
+  }
+  if ((r.deliveryTotal || 0) > 0) {
+    rows.push({
+      label: 'Delivery',
+      sub: 'supplier delivery fee',
+      amt: v2FmtMoney2(r.deliveryTotal),
+    });
+  }
+  if ((r.ccFeeAmount || 0) > 0) {
+    rows.push({
+      label: 'Card fee',
+      sub: `${r.ccFeePct}% supplier card surcharge`,
+      amt: v2FmtMoney2(r.ccFeeAmount),
+    });
+  }
+  if ((r.laborTotal || 0) > 0) {
+    rows.push({
+      label: 'Labor',
+      sub: `${v2FmtInt(totalSqft)} sqft @ ${v2FmtMoney2(r.laborRate || 0)}/sqft`,
+      amt: v2FmtMoney2(r.laborTotal),
+    });
+  }
+  if ((r.overheadTotal || 0) > 0) {
+    rows.push({
+      label: 'Overhead',
+      sub: `fixed costs over ${overheadJpm} jobs/mo`,
+      amt: v2FmtMoney2(r.overheadTotal),
+    });
+  }
 
   let stackHtml = rows
     .map(
@@ -3239,8 +3269,8 @@ function renderCalcResults(r) {
     )
     .join('');
   stackHtml += `<div class="calc-v2-cost-row calc-v2-cost-total">
-        <div class="calc-v2-cost-label">Total cost</div>
-        <div class="calc-v2-cost-amount">${v2FmtMoney(totalCost)}</div>
+        <div class="calc-v2-cost-label">Total Job Cost</div>
+        <div class="calc-v2-cost-amount">${v2FmtMoney(r.totalJobCost || 0)}</div>
     </div>`;
   document.getElementById('calcV2CostStack').innerHTML = stackHtml;
 
@@ -6097,16 +6127,14 @@ function overrideCalcQty(id, val) {
   });
   currentCalc.materialTotal = materialTotal;
   const r = currentCalc;
-  r.taxAmount = r.materialTotal * (r.taxPct / 100);
-  r.materialPlusTax = r.materialTotal + r.taxAmount;
-  r.laborTotal = r.laborRate * (r.totalSqft || r.sqft || 0);
-  r.deliveryTotal = r.deliveryFee || 0;
-  r.subtotalBeforeProfit = r.materialPlusTax + r.laborTotal + r.deliveryTotal;
-  r.profitAmount = r.subtotalBeforeProfit * (r.profitPct / 100);
-  r.sellingBeforeCC = r.subtotalBeforeProfit + r.profitAmount;
-  r.ccFeeAmount = r.sellingBeforeCC * (r.ccFeePct / 100);
-  r.sellingPrice = r.sellingBeforeCC + r.ccFeeAmount;
-  r.grossMargin = r.sellingPrice > 0 ? (r.profitAmount / r.sellingPrice) * 100 : 0;
+  applyCostModel(r, {
+    taxPct: r.taxPct,
+    deliveryFee: r.deliveryFee,
+    ccFeePct: r.ccFeePct,
+    laborRate: r.laborRate,
+    totalSqft: r.totalSqft || r.sqft || 0,
+    profitPct: r.profitPct,
+  });
   // Re-render full results so summary + phase totals stay in sync with the override
   renderCalcResults(r);
 }
