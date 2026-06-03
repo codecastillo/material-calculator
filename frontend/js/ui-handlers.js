@@ -47,8 +47,13 @@ function navAdminFromMenu() {
   showPage('admin');
   toggleUserMenu();
 }
+function navOverheadFromMenu() {
+  showPage('overhead');
+  toggleUserMenu();
+}
 window.navAccountFromMenu = navAccountFromMenu;
 window.navAdminFromMenu = navAdminFromMenu;
+window.navOverheadFromMenu = navOverheadFromMenu;
 
 // --- CSV import trigger (proxy click to hidden file input) ---
 function triggerCsvImport() {

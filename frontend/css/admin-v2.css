@@ -304,6 +304,25 @@ body:has(#adminPage.admin-v2-page.active) {
   justify-content: space-between;
   gap: 12px;
 }
+.admin-v2-card-header-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.admin-v2-bulk-delete {
+  background: #f85149;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-family: var(--v2-font-sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.admin-v2-bulk-delete:hover {
+  background: #da3633;
+}
 
 /* Shared table chrome */
 .admin-v2-table {

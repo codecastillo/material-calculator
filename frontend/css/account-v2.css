@@ -13,6 +13,21 @@
   font-size: 14px;
   line-height: 1.45;
 }
+
+/* Overhead is its own page; it reuses the account-v2 card styling in a narrower
+   single column. */
+#overheadPage.overhead-v2-page {
+  padding: 24px 40px 64px;
+  max-width: 760px;
+  margin: 0 auto;
+  font-family: var(--v2-font-sans);
+  color: var(--v2-text-primary);
+  font-size: 14px;
+  line-height: 1.45;
+}
+body:has(#overheadPage.overhead-v2-page.active) {
+  background: var(--v2-bg-app);
+}
 #accountPage.account-v2-page * {
   font-variant-numeric: tabular-nums;
 }

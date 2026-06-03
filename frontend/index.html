@@ -454,6 +454,7 @@
                   <span class="license-badge trial" id="licenseBadge">TRIAL</span>
                 </div>
                 <button data-on-click="navAccountFromMenu">Account</button>
+                <button data-on-click="navOverheadFromMenu">Overhead</button>
                 <button id="adminNavLink" data-on-click="navAdminFromMenu" style="display: none">
                   Admin
                 </button>
@@ -1333,51 +1334,6 @@
                   </button>
                 </div>
               </section>
-
-              <!-- Overhead (amortized into each job's Total Job Cost) -->
-              <section class="account-v2-card" aria-label="Overhead">
-                <div class="account-v2-card-eyebrow"><span>OVERHEAD</span></div>
-                <p class="account-v2-help-line">
-                  Recurring fixed costs (insurance, phone, truck, software, etc.) are spread across
-                  your average jobs per month and added to every job's Total Job Cost. Example: $200
-                  per month over 20 jobs adds $10 per job.
-                </p>
-                <div class="account-v2-form-row" style="margin-top: 12px">
-                  <div class="account-v2-field">
-                    <label class="account-v2-label" for="bizJobsPerMonth"
-                      >AVERAGE JOBS PER MONTH</label
-                    >
-                    <input
-                      type="number"
-                      class="account-v2-input"
-                      id="bizJobsPerMonth"
-                      min="1"
-                      step="1"
-                      value="4"
-                      data-on-input="bizExpensesSave"
-                    />
-                  </div>
-                </div>
-                <div id="bizExpensesList" style="margin-top: 14px"></div>
-                <div
-                  style="
-                    margin-top: 12px;
-                    display: flex;
-                    gap: 10px;
-                    align-items: center;
-                    justify-content: space-between;
-                  "
-                >
-                  <button type="button" class="account-v2-cta" data-on-click="bizExpensesAdd">
-                    Add expense
-                  </button>
-                  <div
-                    id="bizExpensesPerJob"
-                    class="account-v2-hint"
-                    style="font-family: var(--v2-font-mono)"
-                  ></div>
-                </div>
-              </section>
             </div>
 
             <!-- Right rail -->
@@ -1402,6 +1358,57 @@
               </section>
             </aside>
           </div>
+        </div>
+
+        <!-- ===== OVERHEAD ===== -->
+        <div class="page overhead-v2-page" id="overheadPage">
+          <header class="account-v2-header">
+            <div class="account-v2-header-left">
+              <div class="account-v2-eyebrow">SETTINGS</div>
+              <h1 class="account-v2-title">Overhead</h1>
+            </div>
+          </header>
+          <section class="account-v2-card" aria-label="Overhead">
+            <div class="account-v2-card-eyebrow"><span>RECURRING FIXED COSTS</span></div>
+            <p class="account-v2-help-line">
+              Recurring fixed costs (insurance, phone, truck, software, etc.) are spread across your
+              average jobs per month and added to every job's Total Job Cost. Example: $200 per
+              month over 20 jobs adds $10 per job.
+            </p>
+            <div class="account-v2-form-row" style="margin-top: 12px">
+              <div class="account-v2-field">
+                <label class="account-v2-label" for="bizJobsPerMonth">AVERAGE JOBS PER MONTH</label>
+                <input
+                  type="number"
+                  class="account-v2-input"
+                  id="bizJobsPerMonth"
+                  min="1"
+                  step="1"
+                  value="4"
+                  data-on-input="bizExpensesSave"
+                />
+              </div>
+            </div>
+            <div id="bizExpensesList" style="margin-top: 14px"></div>
+            <div
+              style="
+                margin-top: 12px;
+                display: flex;
+                gap: 10px;
+                align-items: center;
+                justify-content: space-between;
+              "
+            >
+              <button type="button" class="account-v2-cta" data-on-click="bizExpensesAdd">
+                Add expense
+              </button>
+              <div
+                id="bizExpensesPerJob"
+                class="account-v2-hint"
+                style="font-family: var(--v2-font-mono)"
+              ></div>
+            </div>
+          </section>
         </div>
 
         <!-- ===== ADMIN PANEL ===== -->
@@ -1495,14 +1502,25 @@
                 <span class="admin-v2-card-eyebrow" id="adminKeysEyebrow" style="margin: 0"
                   >LICENSE KEYS</span
                 >
-                <span
-                  style="
-                    font-family: var(--v2-font-sans);
-                    font-size: 0.78rem;
-                    color: var(--v2-text-tertiary);
-                  "
-                  >Click to copy</span
-                >
+                <span class="admin-v2-card-header-right">
+                  <button
+                    type="button"
+                    id="adminDeleteSelectedKeys"
+                    class="admin-v2-bulk-delete"
+                    data-on-click="adminDeleteSelectedKeys"
+                    style="display: none"
+                  >
+                    Delete selected
+                  </button>
+                  <span
+                    style="
+                      font-family: var(--v2-font-sans);
+                      font-size: 0.78rem;
+                      color: var(--v2-text-tertiary);
+                    "
+                    >Click to copy</span
+                  >
+                </span>
               </div>
               <div id="adminKeysList"></div>
             </div>
