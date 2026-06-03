@@ -83,8 +83,22 @@ const authLimiter = rateLimit({
 });
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
-app.use('/api/auth/forgot-password', authLimiter);
 app.use('/api/auth/reset-password', authLimiter);
+app.use('/api/auth/verify', authLimiter);
+
+// Endpoints that send an email on every call get an even tighter cap. Both are
+// reachable with a freshly issued token (register hands one out before the email
+// is verified), so without this a caller could bomb a victim's inbox and burn the
+// email quota. Legitimate users rarely need more than one or two sends.
+const emailDispatchLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: process.env.NODE_ENV === 'production' ? 5 : 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please wait before requesting another email.' },
+});
+app.use('/api/auth/forgot-password', emailDispatchLimiter);
+app.use('/api/auth/resend-code', emailDispatchLimiter);
 
 // Body parsing: skip JSON for the Stripe webhook so signature verification
 // has access to the raw body (the stripe router uses express.raw on that path).
