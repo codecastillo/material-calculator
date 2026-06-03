@@ -2499,27 +2499,8 @@ tr.drag-over td {
   border-bottom: 1px solid var(--v2-border-hairline);
   box-shadow: none;
 }
-/* Light theme: keep the v2 topnav legible (dark surface) - matches the design language */
-[data-theme='light'] .v2-topnav {
-  background: #13171d;
-  border-bottom-color: #1f242c;
-}
-[data-theme='light'] .v2-nav-link {
-  color: #9aa0a9;
-}
-[data-theme='light'] .v2-nav-link.active {
-  color: #e6e8ec;
-}
-[data-theme='light'] .v2-brand {
-  color: #e6e8ec;
-}
-[data-theme='light'] .v2-topnav-search {
-  background: #181d24;
-  border-color: #1f242c;
-}
-[data-theme='light'] .v2-topnav-search input {
-  color: #e6e8ec;
-}
+/* The topnav follows the theme tokens (light surface in light mode); the brand
+   lockup is inverted to stay legible on the light background (rule below). */
 .v2-topnav-inner {
   max-width: 1440px;
   margin: 0 auto;
