@@ -106,6 +106,12 @@ ALTER TABLE onboarding_tokens ADD COLUMN IF NOT EXISTS stripe_subscription_id TE
 CREATE INDEX IF NOT EXISTS idx_onboarding_tokens_token ON onboarding_tokens(token);
 CREATE INDEX IF NOT EXISTS idx_onboarding_tokens_session ON onboarding_tokens(stripe_session_id);
 
+-- Per-code attempt cap (anti-bruteforce). A wrong guess increments attempts; once
+-- it reaches the cap the code is deleted, so a distributed attacker can't outrun the
+-- per-IP rate limit to brute-force the 6-digit code before it expires. verification_codes
+-- is created outside this file, hence IF EXISTS.
+ALTER TABLE IF EXISTS verification_codes ADD COLUMN IF NOT EXISTS attempts INTEGER NOT NULL DEFAULT 0;
+
 -- Row Level Security as defense in depth.
 -- The backend connects with the Supabase secret (service) key, which bypasses
 -- RLS, so enabling it does not change how the API reads or writes data. With RLS
