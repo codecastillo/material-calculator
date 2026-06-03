@@ -38,6 +38,23 @@ function buildCheckoutEvent(sessionId, email, plan) {
   };
 }
 
+// Build a checkout.session.completed event with metadata.user_id set (logged-in path).
+function buildLoggedInCheckoutEvent(sessionId, email, plan, userId) {
+  return {
+    id: 'evt_test_loggedin_001',
+    type: 'checkout.session.completed',
+    data: {
+      object: {
+        id: sessionId,
+        customer: 'cus_test_loggedin',
+        subscription: 'sub_test_loggedin',
+        customer_details: { email },
+        metadata: { plan, user_id: String(userId) },
+      },
+    },
+  };
+}
+
 function signedHeader(payload) {
   return stripeForSig.webhooks.generateTestHeaderString({
     payload,
@@ -198,5 +215,118 @@ describe('POST /api/stripe/webhook - STRIPE_WEBHOOK_SECRET unset', () => {
 
     assert.equal(res.status, 503);
     assert.equal(fake.insertWasCalled('onboarding_tokens'), false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Logged-in upgrade path: metadata.user_id present
+//
+// When user_id is in session metadata the webhook must apply the license
+// directly to that user row (no onboarding_tokens insert, no magic-link email).
+// When user_id is absent the existing anonymous path must still run.
+// ---------------------------------------------------------------------------
+describe('POST /api/stripe/webhook - logged-in upgrade path', () => {
+  test('user_id in metadata -> updates users row, no onboarding_tokens insert', async () => {
+    fake.reset();
+
+    const targetUserId = 'user-uuid-upgrade-test';
+    const event = buildLoggedInCheckoutEvent(
+      'cs_test_loggedin_session_1',
+      'upgrader@example.com',
+      'yearly',
+      targetUserId
+    );
+    const payload = JSON.stringify(event);
+    const sig = signedHeader(payload);
+
+    const res = await request(app)
+      .post('/api/stripe/webhook')
+      .set('Content-Type', 'application/json')
+      .set('stripe-signature', sig)
+      .send(payload);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.received, true);
+    assert.equal(res.body.applied, true, 'response should include applied: true');
+
+    // License applied directly to users, not via onboarding_tokens.
+    assert.equal(
+      fake.updateWasCalled('users'),
+      true,
+      'should update the users row with the new license'
+    );
+    assert.equal(
+      fake.insertWasCalled('onboarding_tokens'),
+      false,
+      'should NOT insert an onboarding token for a logged-in upgrade'
+    );
+
+    // Verify the patch fields are correct.
+    const patch = fake.updatePayload('users');
+    assert.equal(patch.license_type, 'yearly');
+    assert.equal(patch.subscription_status, 'active');
+    assert.ok(patch.license_expires, 'yearly plan should have a non-null license_expires');
+    assert.equal(patch.stripe_customer_id, 'cus_test_loggedin');
+    assert.equal(patch.stripe_subscription_id, 'sub_test_loggedin');
+  });
+
+  test('user_id in metadata for lifetime plan -> license_expires is null', async () => {
+    fake.reset();
+
+    const event = buildLoggedInCheckoutEvent(
+      'cs_test_loggedin_session_2',
+      'upgrader@example.com',
+      'lifetime',
+      'user-uuid-lifetime-test'
+    );
+    // No subscription for one-time payment
+    event.data.object.subscription = null;
+    const payload = JSON.stringify(event);
+    const sig = signedHeader(payload);
+
+    const res = await request(app)
+      .post('/api/stripe/webhook')
+      .set('Content-Type', 'application/json')
+      .set('stripe-signature', sig)
+      .send(payload);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.applied, true);
+
+    const patch = fake.updatePayload('users');
+    assert.equal(patch.license_type, 'lifetime');
+    // Lifetime has no expiry.
+    assert.equal(patch.license_expires, null);
+    assert.equal(patch.stripe_subscription_id, undefined, 'no subscription_id for lifetime');
+  });
+
+  test('no user_id in metadata -> anonymous path runs, onboarding_tokens inserted', async () => {
+    fake.reset();
+    // Idempotency check returns no existing token
+    fake.setResponse('onboarding_tokens', null);
+
+    const event = buildCheckoutEvent('cs_test_anon_session_6', 'anon@example.com', 'monthly');
+    const payload = JSON.stringify(event);
+    const sig = signedHeader(payload);
+
+    const res = await request(app)
+      .post('/api/stripe/webhook')
+      .set('Content-Type', 'application/json')
+      .set('stripe-signature', sig)
+      .send(payload);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.received, true);
+    // Anonymous path inserts an onboarding token; never touches users directly.
+    assert.equal(
+      fake.insertWasCalled('onboarding_tokens'),
+      true,
+      'anonymous checkout should insert an onboarding token'
+    );
+    assert.equal(
+      fake.updateWasCalled('users'),
+      false,
+      'anonymous checkout should not update the users row'
+    );
   });
 });

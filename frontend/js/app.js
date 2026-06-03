@@ -4959,6 +4959,21 @@ async function renderAccountPage() {
       : keyFull
     : '-';
 
+  // Show upgrade actions for non-lifetime, non-admin users. Admins don't need them;
+  // lifetime users already have the top tier. Monthly/yearly subscribers get a
+  // billing-portal link so they can manage or cancel without contacting support.
+  const showUpgrade = !isAdmin && !isLifetimeNow;
+  const isRecurring =
+    !isAdmin && !isLifetimeNow && isLicensedNow && (lt === 'monthly' || lt === 'yearly');
+  const upgradeHtml = showUpgrade
+    ? `<div class="account-v2-license-actions" style="margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+            <button type="button" class="account-v2-cta" style="font-size:0.82rem;padding:7px 14px;" data-on-click="startCheckout" data-args="monthly">Monthly &mdash; $8/mo</button>
+            <button type="button" class="account-v2-cta" style="font-size:0.82rem;padding:7px 14px;" data-on-click="startCheckout" data-args="yearly">Yearly &mdash; $69/yr</button>
+            <button type="button" class="account-v2-cta" style="font-size:0.82rem;padding:7px 14px;" data-on-click="startCheckout" data-args="lifetime">Lifetime &mdash; $199</button>
+            ${isRecurring ? '<button type="button" class="account-v2-cta-secondary" style="font-size:0.82rem;" data-on-click="openBillingPortal">Manage billing</button>' : ''}
+        </div>`
+    : '';
+
   licenseEl.innerHTML = `
         <div class="account-v2-license-row">
             <div class="account-v2-license-state">
@@ -4979,7 +4994,8 @@ async function renderAccountPage() {
                 <div class="account-v2-license-meta-label">KEY</div>
                 <div class="account-v2-license-meta-value ${!hasKey ? 'is-muted' : ''}">${hasKey ? keyMasked : isLicensedNow ? 'admin-set' : 'none'}</div>
             </div>
-        </div>`;
+        </div>
+        ${upgradeHtml}`;
 
   // Quick stats rail -----------------------------------------------
   const statsEl = document.getElementById('accountQuickStats');
@@ -6287,6 +6303,26 @@ async function initApp() {
   // state doesn't warrant them.
   checkLicenseGate();
   checkOnboarding();
+
+  // Stripe redirects logged-in users back with ?upgraded=1 after a successful
+  // checkout. The license is already applied server-side; re-fetch the user so
+  // the UI reflects the new plan, show a toast, then scrub the param so a
+  // refresh doesn't replay it.
+  const upgradeParams = new URLSearchParams(window.location.search);
+  if (upgradeParams.get('upgraded') === '1') {
+    history.replaceState({}, '', window.location.pathname + window.location.hash);
+    if (api.getToken()) {
+      try {
+        const r = await api.getMe();
+        currentUser = r.user;
+        renderAccountPage();
+        checkLicenseGate();
+      } catch {
+        /* getMe failed; the license state stays as-is, toast still shows */
+      }
+    }
+    notify('Upgrade complete. Your plan is now active.', 'success');
+  }
 }
 
 document.addEventListener('DOMContentLoaded', async function () {
@@ -6294,6 +6330,48 @@ document.addEventListener('DOMContentLoaded', async function () {
   const loggedIn = await checkAuth();
   if (loggedIn) initApp();
 });
+
+// === Stripe upgrade helpers ===
+
+// Start a Stripe Checkout session for the given plan ('monthly', 'yearly', 'lifetime').
+// Sends the Bearer token so the purchase is tied to the logged-in account; on success
+// Stripe redirects back to /index.html?upgraded=1 where initApp picks it up.
+async function startCheckout(plan) {
+  try {
+    const data = await api._fetch('/stripe/checkout', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + api.getToken() },
+      body: JSON.stringify({ plan }),
+    });
+    if (data && data.url) {
+      window.location.assign(data.url);
+    } else {
+      notify('Could not start checkout: no redirect URL returned.', 'error');
+    }
+  } catch (e) {
+    notify('Could not start checkout: ' + (e.message || 'unknown error'), 'error');
+  }
+}
+window.startCheckout = startCheckout;
+
+// Open the Stripe billing portal for subscription management (cancel, update card, etc.).
+// Only relevant for users who have an active recurring subscription.
+async function openBillingPortal() {
+  try {
+    const data = await api._fetch('/stripe/billing-portal', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + api.getToken() },
+    });
+    if (data && data.url) {
+      window.location.assign(data.url);
+    } else {
+      notify('Could not open billing portal.', 'error');
+    }
+  } catch (e) {
+    notify('Could not open billing portal: ' + (e.message || 'unknown error'), 'error');
+  }
+}
+window.openBillingPortal = openBillingPortal;
 
 // === Inline handler wrappers (post-CSP refactor) ===
 // These named functions replace inline JS that previously lived in onXxx= attributes.

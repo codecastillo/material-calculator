@@ -2,11 +2,13 @@
 
 const express = require('express');
 const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const supabase = require('../config/database');
 const { Resend } = require('resend');
 const { createLicenseKey, PLAN_DURATION_DAYS } = require('../lib/keys');
 const { authenticate } = require('../middleware/auth');
+const { JWT_SECRET } = require('../config/auth');
 
 const router = express.Router();
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -35,8 +37,39 @@ const PLAN_MODES = {
   lifetime: 'payment',
 };
 
-// POST /api/stripe/checkout: create a Checkout Session for a plan
+// Attempt to resolve the JWT from the Authorization header without throwing.
+// Returns the user row { id, email, stripe_customer_id } on success, or null
+// if the token is absent, malformed, or expired. Anonymous checkout must still
+// work, so we never 401 from here.
+async function resolveLoggedInUser(req) {
+  const authHeader = req.headers && req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+
+  let decoded;
+  try {
+    decoded = jwt.verify(authHeader.slice(7), JWT_SECRET);
+  } catch {
+    // Token invalid or expired -- fall through to anonymous checkout.
+    return null;
+  }
+
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('id, email, stripe_customer_id')
+    .eq('id', decoded.id)
+    .single();
+
+  if (error || !user) return null;
+  return user;
+}
+
+// POST /api/stripe/checkout: create a Checkout Session for a plan.
 // Body: { plan: 'monthly' | 'yearly' | 'lifetime' }
+//
+// Works for both anonymous (landing page) and logged-in (in-app upgrade)
+// callers. When a valid Bearer JWT is present the session is linked to the
+// existing account so the webhook can apply the license directly instead of
+// going through the magic-link onboarding flow.
 router.post('/checkout', express.json(), async (req, res, next) => {
   try {
     const stripe = getStripe();
@@ -46,15 +79,33 @@ router.post('/checkout', express.json(), async (req, res, next) => {
     if (!priceId) return res.status(400).json({ error: 'Unknown plan' });
 
     const base = process.env.APP_BASE_URL || req.protocol + '://' + req.get('host');
-    const session = await stripe.checkout.sessions.create({
+
+    const loggedInUser = await resolveLoggedInUser(req);
+
+    const sessionParams = {
       mode: PLAN_MODES[plan],
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: base + '/landing.html?purchase=success',
-      cancel_url: base + '/landing.html#pricing',
       allow_promotion_codes: true,
       billing_address_collection: 'auto',
       metadata: { plan },
-    });
+    };
+
+    if (loggedInUser) {
+      // Link to the existing account so the webhook bypasses magic-link onboarding.
+      sessionParams.metadata.user_id = String(loggedInUser.id);
+      if (loggedInUser.stripe_customer_id) {
+        sessionParams.customer = loggedInUser.stripe_customer_id;
+      } else {
+        sessionParams.customer_email = loggedInUser.email;
+      }
+      sessionParams.success_url = base + '/index.html?upgraded=1';
+      sessionParams.cancel_url = base + '/index.html';
+    } else {
+      sessionParams.success_url = base + '/landing.html?purchase=success';
+      sessionParams.cancel_url = base + '/landing.html#pricing';
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     res.json({ url: session.url, id: session.id });
   } catch (err) {
@@ -112,6 +163,35 @@ const webhookRateLimit = rateLimit({
 // reflects the current Stripe state.
 const INACTIVE_STATUSES = new Set(['canceled', 'past_due', 'unpaid', 'incomplete_expired']);
 
+// Apply a purchased license directly to an existing user by id. Used by the
+// webhook when a logged-in user completes checkout (metadata.user_id is set),
+// so we skip the magic-link onboarding flow entirely. Intentionally idempotent:
+// it only overwrites license fields, so a duplicate Stripe delivery is harmless.
+// Do not add side effects here (emails, charges) without a dedup guard.
+async function applyLicenseToUser(userId, plan, customerId, subscriptionId) {
+  const durationDays = PLAN_DURATION_DAYS[plan];
+  const licenseExpires =
+    durationDays == null
+      ? null
+      : new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+
+  const patch = {
+    license_type: plan,
+    license_expires: licenseExpires,
+    subscription_status: 'active',
+  };
+  if (customerId) patch.stripe_customer_id = customerId;
+  if (subscriptionId) patch.stripe_subscription_id = subscriptionId;
+
+  const { error } = await supabase.from('users').update(patch).eq('id', userId);
+
+  if (error) {
+    console.error('[stripe] applyLicenseToUser failed for user', userId, ':', error.message);
+  } else {
+    console.log('[stripe] license', plan, 'applied directly to user', userId);
+  }
+}
+
 // Update a user's license when their subscription changes or is canceled.
 // Looks up by stripe_customer_id. If the user is not found, logs and returns
 // so we don't surface a 500 to Stripe (which would cause retries).
@@ -141,6 +221,10 @@ async function handleSubscriptionChange(subscription) {
     // Revoke access: clear license_expires so the paywall blocks future requests.
     // We do not touch license_type so admins can see what plan lapsed.
     patch.license_expires = new Date(0).toISOString();
+  } else if ((status === 'active' || status === 'trialing') && subscription.current_period_end) {
+    // Extend the license window on renewal events so monthly/yearly subscribers
+    // don't lapse after the first billing cycle.
+    patch.license_expires = new Date(subscription.current_period_end * 1000).toISOString();
   }
 
   const { error: updateError } = await supabase.from('users').update(patch).eq('id', user.id);
@@ -182,8 +266,19 @@ router.post(
       try {
         const session = event.data.object;
         const stripeSessionId = session.id;
+        const plan = (session.metadata && session.metadata.plan) || 'monthly';
+        const stripeCustomerId = session.customer || null;
+        const stripeSubscriptionId = session.subscription || null;
 
-        // Idempotency: skip if we've already created a token for this session.
+        // Logged-in upgrade path: apply the license directly to the existing
+        // account and skip the magic-link onboarding flow entirely.
+        const userId = session.metadata && session.metadata.user_id;
+        if (userId) {
+          await applyLicenseToUser(userId, plan, stripeCustomerId, stripeSubscriptionId);
+          return res.json({ received: true, applied: true });
+        }
+
+        // Anonymous path: idempotency check before creating an onboarding token.
         const { data: existing } = await supabase
           .from('onboarding_tokens')
           .select('id')
@@ -193,17 +288,11 @@ router.post(
           return res.json({ received: true, idempotent: true });
         }
 
-        const plan = (session.metadata && session.metadata.plan) || 'monthly';
         const email = session.customer_details && session.customer_details.email;
         if (!email) {
           console.warn('[stripe] no email on session', stripeSessionId);
           return res.json({ received: true, ignored: 'no-email' });
         }
-
-        // Capture Stripe billing identifiers so we can handle future subscription
-        // events (cancel, update) and open billing portal sessions for this customer.
-        const stripeCustomerId = session.customer || null;
-        const stripeSubscriptionId = session.subscription || null;
 
         // Create the license key matching the purchased plan.
         const durationDays = PLAN_DURATION_DAYS[plan];

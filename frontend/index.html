@@ -1903,7 +1903,7 @@
         </div>
       </div>
 
-      <!-- Trial-expired / license-required gate. Blocks app until a valid key is entered. -->
+      <!-- Trial-expired / license-required gate. Blocks app until a valid key is entered or a plan is purchased. -->
       <div class="modal-overlay" id="licenseGateModal" data-no-close>
         <div class="modal">
           <h3 id="licenseGateTitle">Your trial has ended</h3>
@@ -1911,10 +1911,21 @@
             id="licenseGateText"
             style="font-size: 0.92rem; color: var(--text2); margin-bottom: 18px"
           >
-            Enter a license key to continue, or see plans to purchase.
+            Pick a plan to continue, or enter a license key below if you already have one.
           </p>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px">
+            <button class="btn btn-primary" data-on-click="startCheckout" data-args="monthly">
+              Monthly &mdash; $8/mo
+            </button>
+            <button class="btn btn-primary" data-on-click="startCheckout" data-args="yearly">
+              Yearly &mdash; $69/yr
+            </button>
+            <button class="btn btn-primary" data-on-click="startCheckout" data-args="lifetime">
+              Lifetime &mdash; $199
+            </button>
+          </div>
           <div class="field">
-            <label>License key</label
+            <label>Have a license key?</label
             ><input
               type="text"
               class="input"
@@ -1930,8 +1941,9 @@
             style="font-size: 0.82rem; margin-top: 6px; min-height: 18px"
           ></div>
           <div class="modal-actions">
-            <a href="/landing.html#pricing" class="btn btn-secondary">See plans</a>
-            <button class="btn btn-primary" data-on-click="activateLicenseGate">Activate</button>
+            <button class="btn btn-secondary" data-on-click="activateLicenseGate">
+              Activate key
+            </button>
           </div>
         </div>
       </div>
