@@ -5,6 +5,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const fs = require('fs');
 
 // Boot-time env check: validates SUPABASE_* vars and exits if missing.
 require('./config/database');
@@ -113,21 +114,45 @@ app.use(express.urlencoded({ extended: true }));
 // ---------------------------------------------------------------------------
 const frontendPath = path.join(__dirname, '..', 'frontend');
 
+// Cache-bust token: a fresh value every deploy/restart. The HTML below is served
+// no-cache (always revalidated), and the token is appended to its local JS/CSS
+// URLs, so a deploy's new scripts reach the browser even though Cloudflare keeps
+// a long max-age on the asset files. Without this, the HTML could update while a
+// stale cached app.js / ui-handlers.js kept running.
+const ASSET_VERSION = String(Date.now());
+function versionedHtml(file) {
+  const raw = fs.readFileSync(path.join(frontendPath, file), 'utf8');
+  return raw.replace(
+    /((?:href|src)=")(\/?(?:css|js)\/[^"?]+\.(?:css|js))(")/g,
+    `$1$2?v=${ASSET_VERSION}$3`
+  );
+}
+let LANDING_HTML = null;
+let INDEX_HTML = null;
+try {
+  LANDING_HTML = versionedHtml('landing.html');
+  INDEX_HTML = versionedHtml('index.html');
+} catch (err) {
+  console.warn('Asset versioning skipped, serving raw HTML:', err.message);
+}
+function sendAppHtml(res, html, file) {
+  res.setHeader('Cache-Control', 'no-cache');
+  if (html) res.type('html').send(html);
+  else res.sendFile(path.join(frontendPath, file));
+}
+
 // HTML and the service worker must always revalidate so a deploy reaches the
-// browser instead of being pinned by a long-lived cached copy. Static assets
-// (JS/CSS) keep their default caching; the service worker fetches those with
-// cache: 'reload', and bumping its CACHE_NAME rotates the offline copy.
+// browser instead of being pinned by a long-lived cached copy.
 function noCacheHtml(res, filePath) {
   if (filePath.endsWith('.html') || filePath.endsWith('sw.js')) {
     res.setHeader('Cache-Control', 'no-cache');
   }
 }
 
-// Landing page at root (before static middleware)
-app.get('/', (req, res) => {
-  res.setHeader('Cache-Control', 'no-cache');
-  res.sendFile(path.join(frontendPath, 'landing.html'));
-});
+// Landing at root, app at /index.html: both served with versioned asset URLs,
+// before the static middleware so these win over the raw files.
+app.get('/', (req, res) => sendAppHtml(res, LANDING_HTML, 'landing.html'));
+app.get('/index.html', (req, res) => sendAppHtml(res, INDEX_HTML, 'index.html'));
 
 app.use(express.static(frontendPath, { index: false, setHeaders: noCacheHtml }));
 
@@ -158,13 +183,7 @@ app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api/')) {
     return next();
   }
-  res.setHeader('Cache-Control', 'no-cache');
-  res.sendFile(path.join(frontendPath, 'index.html'), (err) => {
-    if (err) {
-      // Frontend may not exist yet; that's fine
-      res.status(404).json({ error: 'Not found' });
-    }
-  });
+  sendAppHtml(res, INDEX_HTML, 'index.html');
 });
 
 // ---------------------------------------------------------------------------
