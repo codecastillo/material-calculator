@@ -4262,14 +4262,14 @@ function renderSavedJobs() {
   const subEl = document.getElementById('jobsV2Subtitle');
   if (subEl) {
     const jobsN = counts.All - counts.Templates;
-    subEl.innerHTML = `${jobsN} job${jobsN === 1 ? '' : 's'}<span class="sep">·</span>${counts.Templates} template${counts.Templates === 1 ? '' : 's'}<span class="sep">·</span>search, filter, duplicate`;
+    subEl.innerHTML = `${jobsN} job${jobsN === 1 ? '' : 's'}<span class="sep">·</span>${counts.Templates} template${counts.Templates === 1 ? '' : 's'}`;
   }
   const sIn = document.getElementById('jobsV2Search');
   if (sIn && sIn.value !== window.jobsV2State.search) sIn.value = window.jobsV2State.search || '';
   // Filtered rows
   const rows = jobsV2FilterList();
   if (!savedJobs.length) {
-    listEl.innerHTML = `<div class="jobs-v2-table-wrap"><div class="jobs-v2-empty"><div class="jobs-v2-empty-title">No saved jobs yet</div><div class="jobs-v2-empty-text">Save a calculation from the Calculator page to build your library.</div><button class="jobs-v2-cta" data-on-click="jobsV2NewJob">New job</button></div></div>`;
+    listEl.innerHTML = `<div class="jobs-v2-table-wrap"><div class="jobs-v2-empty"><div class="jobs-v2-empty-title">No saved jobs yet</div><div class="jobs-v2-empty-text">Save a calculation from the Calculator page to build your library.</div></div></div>`;
   } else if (!rows.length) {
     listEl.innerHTML = `<div class="jobs-v2-table-wrap"><div class="jobs-v2-empty"><div class="jobs-v2-empty-title">No matches</div><div class="jobs-v2-empty-text">Try clearing the search or switching tabs.</div></div></div>`;
   } else {
@@ -4331,16 +4331,11 @@ function renderSavedJobs() {
       .join('');
     listEl.innerHTML = `<div class="jobs-v2-table-wrap"><table class="jobs-v2-table">${colg}${head}<tbody>${body}</tbody></table></div>`;
   }
-  // Footer aggregates (based on full library, not filtered)
+  // Footer: just the visible-row count. Financial aggregates (YTD value, avg
+  // margin) were removed; they implied sales tracking the app doesn't do.
   const footEl = document.getElementById('jobsV2Footer');
   if (footEl) {
-    const nonTpl = savedJobs.filter((j) => !j.isTemplate);
-    const ytd = nonTpl.reduce((s, j) => s + (Number(j.sellingPrice) || 0), 0);
-    const margins = nonTpl.map((j) => Number(j.profitPct) || 0).filter((n) => n > 0);
-    const avgMargin = margins.length ? margins.reduce((s, n) => s + n, 0) / margins.length : 0;
-    footEl.innerHTML =
-      `<div>Showing <span class="num">${rows.length}</span> of <span class="num">${counts.All}</span><span class="sep">&middot;</span>YTD value <span class="num">${jobsV2FmtCompactMoney(ytd)}</span></div>` +
-      `<div>Avg margin <span class="num">${avgMargin.toFixed(1)}%</span></div>`;
+    footEl.innerHTML = `<div>Showing <span class="num">${rows.length}</span> of <span class="num">${counts.All}</span></div>`;
   }
 }
 
