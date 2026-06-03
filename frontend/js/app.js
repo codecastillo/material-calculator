@@ -2737,9 +2737,15 @@ function calcForSupplier(supplier, waste, selectedPhases, opts = {}) {
     const allowedSkus = new Set();
     const phasesWithoutRecipe = [];
     recipeOverrideBySku = {};
+    // Recipes are keyed by the curated SKUs of the built-in catalog. A supplier's
+    // own catalog often uses different (or blank) SKUs, so only apply the recipe
+    // filter to a phase when this supplier actually stocks some of its recipe
+    // SKUs. Otherwise fall back to including the phase by category, so a custom
+    // catalog still produces an order instead of being filtered down to nothing.
+    const supplierSkus = new Set(mats.map((m) => m.sku).filter(Boolean));
     selectedPhases.forEach((phase) => {
       const recipe = PHASE_RECIPES[phase];
-      if (!recipe) {
+      if (!recipe || !recipe.some((line) => supplierSkus.has(line.sku))) {
         phasesWithoutRecipe.push(phase);
         return;
       }
