@@ -1370,25 +1370,37 @@ function openAddSupplierModal() {
       if (el) el.value = '';
     }
   );
+  // Same Google Places autocomplete the calculator and account pages use.
+  const addr = document.getElementById('newSupplierAddress');
+  if (addr && typeof attachPlacesAutocomplete === 'function') attachPlacesAutocomplete(addr);
   openModal('addSupplierModal');
 }
 async function addSupplier() {
   const name = document.getElementById('newSupplierName').value.trim();
   if (!name) {
-    notify('Enter name', 'error');
+    notify('Enter a supplier name', 'error');
     return;
   }
   if (suppliers.includes(name)) {
     notify('Already exists', 'error');
     return;
   }
+  // Validate the optional contact fields so a typo (or random text) can't be saved.
+  const email = document.getElementById('newSupplierEmail')?.value.trim() || '';
+  const phone = document.getElementById('newSupplierPhone')?.value.trim() || '';
+  const address = document.getElementById('newSupplierAddress')?.value.trim() || '';
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    notify('Enter a valid email address', 'error');
+    return;
+  }
+  if (phone && !/^[+\d][\d\s().-]{6,}$/.test(phone)) {
+    notify('Enter a valid phone number', 'error');
+    return;
+  }
   pushUndo();
   suppliers.push(name);
   materialsBySupplier[name] = [];
   activeSupplier = name;
-  const email = document.getElementById('newSupplierEmail')?.value.trim();
-  const phone = document.getElementById('newSupplierPhone')?.value.trim();
-  const address = document.getElementById('newSupplierAddress')?.value.trim();
   if (email || phone || address) setSupplierInfo(name, { email, phone, address });
   if (api.getToken()) {
     try {
@@ -1899,12 +1911,29 @@ async function doAddMaterial(catName) {
   editingId = String(m.id);
   document.getElementById('categoryFilter').value = 'All';
   document.getElementById('materialSearch').value = '';
+  // Phase groups default to collapsed, so expand the one the item landed in,
+  // then scroll the new edit row into view instead of leaving it off-screen.
+  (window.priceV2ExpandedGroups || (window.priceV2ExpandedGroups = new Set())).add(catName);
   renderMaterialTable();
+  const newRow = document.querySelector(`.price-v2-edit-row[data-id="${m.id}"]`);
+  if (newRow) newRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
-async function deleteMaterial(id) {
+let pendingDeleteMaterialId = null;
+function deleteMaterial(id) {
   const mats = materialsBySupplier[activeSupplier] || [];
   const mat = mats.find((m) => String(m.id) === String(id));
-  if (!mat || !confirm(`Delete "${mat.name}"?`)) return;
+  if (!mat) return;
+  pendingDeleteMaterialId = String(id);
+  const nameEl = document.getElementById('deleteMaterialName');
+  if (nameEl) nameEl.textContent = mat.name || 'this material';
+  openModal('deleteMaterialModal');
+}
+async function confirmDeleteMaterial() {
+  const id = pendingDeleteMaterialId;
+  pendingDeleteMaterialId = null;
+  closeModal('deleteMaterialModal');
+  if (id == null) return;
+  const mats = materialsBySupplier[activeSupplier] || [];
   pushUndo();
   if (api.getToken()) {
     try {
@@ -1918,6 +1947,7 @@ async function deleteMaterial(id) {
   renderMaterialTable();
   notify('Deleted', 'success');
 }
+window.confirmDeleteMaterial = confirmDeleteMaterial;
 // Duplicate
 let duplicateMatId = null;
 function openDuplicate(id) {

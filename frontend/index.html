@@ -1692,6 +1692,22 @@
         </div>
       </div>
 
+      <div class="modal-overlay" id="deleteMaterialModal">
+        <div class="modal">
+          <h3>Delete Material</h3>
+          <p>Delete "<span id="deleteMaterialName"></span>"? This cannot be undone.</p>
+          <div class="modal-actions">
+            <button
+              class="btn btn-secondary"
+              data-on-click="closeModal"
+              data-args="deleteMaterialModal"
+            >
+              Cancel</button
+            ><button class="btn btn-danger" data-on-click="confirmDeleteMaterial">Delete</button>
+          </div>
+        </div>
+      </div>
+
       <div class="modal-overlay" id="emailOrderModal">
         <div class="modal modal-wide">
           <h3>Send Order to Supplier</h3>
