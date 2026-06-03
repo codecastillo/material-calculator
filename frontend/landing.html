@@ -99,18 +99,6 @@
         color: var(--v2-text-primary);
         background: var(--v2-bg-surface-hover);
       }
-      .nav-cta {
-        padding: 8px 16px;
-        background: var(--v2-accent);
-        color: #fff;
-        font-weight: 600;
-        border-radius: 6px;
-        font-size: 0.88rem;
-        transition: background 0.12s;
-      }
-      .nav-cta:hover {
-        background: var(--v2-accent-hover);
-      }
 
       /* Shared eyebrow / title */
       .eyebrow {
@@ -153,7 +141,7 @@
         );
       }
       .hero-inner {
-        max-width: 880px;
+        max-width: 1000px;
         margin: 0 auto;
         position: relative;
         display: flex;
@@ -175,6 +163,12 @@
       .hero h1 .accent {
         color: var(--v2-accent);
         display: block;
+      }
+      /* Keep the first sentence on a single line on desktop; it wraps again
+         below 1000px where the column is too narrow to hold it. */
+      .hero h1 .lead-line {
+        display: block;
+        white-space: nowrap;
       }
       .hero p.lede {
         font-family: var(--v2-font-sans);
@@ -656,6 +650,11 @@
       }
 
       /* ===== Responsive ===== */
+      @media (max-width: 1000px) {
+        .hero h1 .lead-line {
+          white-space: normal;
+        }
+      }
       @media (max-width: 880px) {
         .hero {
           padding: 120px 24px 72px;
@@ -714,7 +713,6 @@
           <a href="#features" class="nav-link hide-mobile">Features</a>
           <a href="#pricing" class="nav-link hide-mobile">Pricing</a>
           <a href="/index.html" class="nav-link">Log in</a>
-          <a href="/index.html" class="nav-cta">Start free</a>
         </div>
       </div>
     </nav>
@@ -723,7 +721,7 @@
       <div class="hero-inner">
         <p class="eyebrow">MATERIAL CALCULATOR &middot; V4</p>
         <h1>
-          Order exactly what you need.
+          <span class="lead-line">Order exactly what you need.</span>
           <span class="accent">Nothing more.</span>
         </h1>
         <p class="lede">
@@ -739,17 +737,22 @@
 
     <section class="preview-wrap">
       <div class="preview-card">
-        <div class="preview-eyebrow"><span>02 &middot; CALCULATOR</span><span>ORDER 001</span></div>
+        <div class="preview-eyebrow">
+          <span>02 &middot; CALCULATOR</span><span>ORDER 1000</span>
+        </div>
         <div class="preview-title">Smith Residence</div>
         <div class="preview-sub">2,400 sq&middot;ft &middot; Drywall + Stucco</div>
         <div class="preview-row">
           <span class="lbl">Drywall Sheets 1/2" (4×8)</span><span class="val">38 sheets</span>
         </div>
         <div class="preview-row">
-          <span class="lbl">Joint Compound (5 gal)</span><span class="val">4 buckets</span>
+          <span class="lbl">Red Dot (box)</span><span class="val">5 boxes</span>
         </div>
         <div class="preview-row">
-          <span class="lbl">Paper Tape (500')</span><span class="val">3 rolls</span>
+          <span class="lbl">TNT Lite (box)</span><span class="val">3 boxes</span>
+        </div>
+        <div class="preview-row">
+          <span class="lbl">Wallboard Tape (500')</span><span class="val">3 rolls</span>
         </div>
         <div class="preview-row">
           <span class="lbl">Screws 1-1/4" (5lb)</span><span class="val">2 boxes</span>
@@ -788,7 +791,7 @@
       <div class="section-inner">
         <div class="section-head">
           <p class="eyebrow">03 &middot; HOW IT WORKS</p>
-          <h2 class="section-title">Catalog, calculator, order.</h2>
+          <h2 class="section-title">Catalog, calculate, order.</h2>
           <p class="section-desc">
             A straight line from job dimensions to a clean order sent to your supplier. No
             spreadsheets, no over-ordering.
