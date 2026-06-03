@@ -158,13 +158,17 @@
   font-weight: 500;
   font-size: 3rem;
   line-height: 1.28;
-  letter-spacing: -0.01em;
+  /* Russo One sets wide tracking; pull it in so the trailing period hugs the
+     last letter instead of floating away from it. */
+  letter-spacing: -0.04em;
   color: var(--v2-text-primary);
   margin: 0 0 24px;
 }
 
+/* Each phrase stays on one line (e.g. "Measure once." never breaks to two). */
 .login-v2-headline span {
   display: block;
+  white-space: nowrap;
 }
 
 .login-v2-headline .login-v2-accent-phrase {
