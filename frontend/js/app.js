@@ -1099,7 +1099,7 @@ function getProjectAddress() {
 // Navigation
 const PAGE_TITLES = {
   dashboard: 'Dashboard',
-  pricing: 'Material Pricing',
+  pricing: 'Material Catalog',
   calculator: 'Job Calculator',
   order: 'Order Form',
   savedJobs: 'Saved Jobs',
@@ -6330,6 +6330,27 @@ async function initApp() {
     notify('Upgrade complete. Your plan is now active.', 'success');
   }
 }
+
+// Highlight a field's current value when it gains focus so typing overwrites it
+// without first deleting. The mouseup guard stops the click that delivered focus
+// from collapsing the selection to a caret; a second click in the same field
+// still places the caret normally. Skips textareas (notes) on purpose.
+let fieldFocusJustSelected = false;
+function isTextEntryField(el) {
+  return el instanceof HTMLInputElement && /^(number|text|tel|search|email|url|)$/i.test(el.type);
+}
+document.addEventListener('focusin', (e) => {
+  if (isTextEntryField(e.target) && e.target.value !== '') {
+    e.target.select();
+    fieldFocusJustSelected = true;
+  }
+});
+document.addEventListener('mouseup', (e) => {
+  if (fieldFocusJustSelected && isTextEntryField(e.target)) {
+    e.preventDefault();
+  }
+  fieldFocusJustSelected = false;
+});
 
 document.addEventListener('DOMContentLoaded', async function () {
   // Check if user has a valid token; if so, skip login
