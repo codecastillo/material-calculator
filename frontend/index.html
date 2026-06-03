@@ -1495,14 +1495,25 @@
                 <span class="admin-v2-card-eyebrow" id="adminKeysEyebrow" style="margin: 0"
                   >LICENSE KEYS</span
                 >
-                <span
-                  style="
-                    font-family: var(--v2-font-sans);
-                    font-size: 0.78rem;
-                    color: var(--v2-text-tertiary);
-                  "
-                  >Click to copy</span
-                >
+                <span class="admin-v2-card-header-right">
+                  <button
+                    type="button"
+                    id="adminDeleteSelectedKeys"
+                    class="admin-v2-bulk-delete"
+                    data-on-click="adminDeleteSelectedKeys"
+                    style="display: none"
+                  >
+                    Delete selected
+                  </button>
+                  <span
+                    style="
+                      font-family: var(--v2-font-sans);
+                      font-size: 0.78rem;
+                      color: var(--v2-text-tertiary);
+                    "
+                    >Click to copy</span
+                  >
+                </span>
               </div>
               <div id="adminKeysList"></div>
             </div>

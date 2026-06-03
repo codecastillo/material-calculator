@@ -5886,7 +5886,7 @@ async function renderAdminPanel() {
       keysEl.innerHTML = '<div class="admin-v2-empty">No keys generated yet.</div>';
     } else {
       keysEl.innerHTML =
-        '<table class="admin-v2-table"><thead><tr><th>KEY</th><th style="width:90px">TYPE</th><th style="width:60px">DUR</th><th style="width:60px">USES</th><th style="width:120px">BY</th><th style="width:40px"></th></tr></thead><tbody>' +
+        '<table class="admin-v2-table"><thead><tr><th class="align-center" style="width:34px"><input type="checkbox" title="Select all" data-on-click="adminToggleAllKeys"></th><th>KEY</th><th style="width:90px">TYPE</th><th style="width:60px">DUR</th><th style="width:60px">USES</th><th style="width:120px">BY</th><th style="width:40px"></th></tr></thead><tbody>' +
         keys
           .map((k) => {
             const u = keyUserMap[k.key];
@@ -5895,10 +5895,16 @@ async function renderAdminPanel() {
                 escHtml(adminV2ShortName(u.name || u.email)) +
                 '</span>'
               : '<span class="admin-v2-by unused">Unused</span>';
+            const isChecked =
+              window.adminSelectedKeys && window.adminSelectedKeys.has(String(k.id));
             return (
               '<tr data-on-click="copyKey" data-args="' +
               escAttr(k.key) +
-              '"><td class="admin-v2-key-cell">' +
+              '"><td class="align-center"><input type="checkbox" class="admin-v2-key-check" data-on-click="adminToggleKeySelect" data-args="' +
+              k.id +
+              '"' +
+              (isChecked ? ' checked' : '') +
+              '></td><td class="admin-v2-key-cell">' +
               escHtml(k.key) +
               '</td><td><span class="admin-v2-type ' +
               escHtml(k.type) +
@@ -5920,6 +5926,7 @@ async function renderAdminPanel() {
           .join('') +
         '</tbody></table>';
     }
+    adminUpdateBulkDeleteBtn();
 
     // ---- Users table ----------------------------------------------
     const usersEyebrow = document.getElementById('adminUsersEyebrow');
@@ -6108,6 +6115,55 @@ async function confirmDeleteKey() {
   }
 }
 window.confirmDeleteKey = confirmDeleteKey;
+
+// ----- Bulk key selection + delete -----
+window.adminSelectedKeys = new Set();
+function adminUpdateBulkDeleteBtn() {
+  const btn = document.getElementById('adminDeleteSelectedKeys');
+  if (!btn) return;
+  const n = window.adminSelectedKeys.size;
+  btn.style.display = n ? '' : 'none';
+  btn.textContent = `Delete selected (${n})`;
+}
+window.adminToggleKeySelect = function (id, event) {
+  if (event) event.stopPropagation();
+  const key = String(id);
+  if (window.adminSelectedKeys.has(key)) window.adminSelectedKeys.delete(key);
+  else window.adminSelectedKeys.add(key);
+  adminUpdateBulkDeleteBtn();
+};
+window.adminToggleAllKeys = function () {
+  const checked = this.checked;
+  document.querySelectorAll('.admin-v2-key-check').forEach((cb) => {
+    cb.checked = checked;
+    const id = String(cb.dataset.args);
+    if (checked) window.adminSelectedKeys.add(id);
+    else window.adminSelectedKeys.delete(id);
+  });
+  adminUpdateBulkDeleteBtn();
+};
+window.adminDeleteSelectedKeys = async function () {
+  const ids = [...window.adminSelectedKeys];
+  if (!ids.length) return;
+  if (
+    !confirm(
+      `Delete ${ids.length} selected key${ids.length === 1 ? '' : 's'}? This cannot be undone.`
+    )
+  )
+    return;
+  let deleted = 0;
+  for (const id of ids) {
+    try {
+      await api.deleteKey(id);
+      deleted++;
+    } catch (e) {
+      console.warn('[admin] delete key failed:', id, e.message);
+    }
+  }
+  window.adminSelectedKeys.clear();
+  notify(`Deleted ${deleted} key${deleted === 1 ? '' : 's'}`, deleted ? 'success' : 'error');
+  renderAdminPanel();
+};
 
 async function toggleUserActive(id, active) {
   try {
