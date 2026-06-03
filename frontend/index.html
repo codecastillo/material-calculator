@@ -505,10 +505,6 @@
                 <h1 class="price-v2-title">Material catalog</h1>
                 <p class="price-v2-subtitle" id="priceV2Subtitle">
                   <span class="price-v2-sub-text" id="priceV2SkuCount">0 SKUs</span>
-                  <span class="price-v2-sub-sep">&middot;</span>
-                  <span class="price-v2-sub-text" id="priceV2PhaseCount">0 phases</span>
-                  <span class="price-v2-sub-sep">&middot;</span>
-                  <span class="price-v2-sub-text">Price history tracked</span>
                 </p>
               </div>
               <div class="price-v2-header-right">
@@ -528,6 +524,9 @@
             </header>
 
             <hr class="price-v2-divider" />
+
+            <!-- Catalog overview stats -->
+            <div class="price-v2-stats" id="statsBar"></div>
 
             <!-- Toolbar -->
             <div class="price-v2-toolbar">
@@ -619,9 +618,8 @@
             <!-- Catalog table (rendered by renderMaterialTable into #scopeGroups) -->
             <div class="scope-groups" id="scopeGroups"></div>
 
-            <!-- Recent + stats -->
+            <!-- Recent items -->
             <div class="price-v2-recent" id="recentMaterials"></div>
-            <div class="price-v2-stats" id="statsBar"></div>
           </div>
         </div>
 
