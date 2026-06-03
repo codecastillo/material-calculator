@@ -1221,25 +1221,8 @@ function priceV2UpdateEyebrow() {
 }
 function priceV2UpdateSubtitle() {
   const mats = materialsBySupplier[activeSupplier] || [];
-  // Find the most recent material update for a rough "last sync" timestamp.
-  const latest = mats.reduce((max, m) => {
-    const u = m.lastUpdated || 0;
-    return u > max ? u : max;
-  }, 0);
   const skuEl = document.getElementById('priceV2SkuCount');
-  const phEl = document.getElementById('priceV2PhaseCount');
   if (skuEl) skuEl.textContent = `${mats.length} SKU${mats.length === 1 ? '' : 's'}`;
-  if (phEl) {
-    if (latest) {
-      const d = new Date(latest);
-      const sameDay = d.toDateString() === new Date().toDateString();
-      const hh = String(d.getHours()).padStart(2, '0');
-      const mm = String(d.getMinutes()).padStart(2, '0');
-      phEl.textContent = `Last sync ${hh}:${mm}${sameDay ? ' today' : ''}`;
-    } else {
-      phEl.textContent = 'Last sync -';
-    }
-  }
 }
 
 function renderSupplierTabs() {
@@ -1264,10 +1247,10 @@ function renderSupplierTabs() {
     })
     .join('');
 
-  // Filter rows: All + every category present in active supplier.
-  // Spec §2.3: additive multi-select checkboxes. `All categories` is the
-  // first row and checked when the per-category selection is empty.
-  const supplierPhases = getSupplierPhases(activeSupplier);
+  // Filter rows: All + every phase in the catalog (not just those the active
+  // supplier stocks), so newly added phases show up and stay manageable even
+  // before any material is assigned to them.
+  const supplierPhases = categories.slice();
   const selected = window.priceV2FilterState.selected;
   const allChecked = !selected || !selected.length;
   const filterAll = `<li><label class="price-v2-filter-row">
@@ -1301,7 +1284,6 @@ function renderSupplierTabs() {
             <div class="price-v2-eyebrow">MANAGE</div>
             <button class="price-v2-add-supplier" data-on-click="openModal" data-args="addCategoryModal">Add phase</button>
             <button class="price-v2-add-supplier" data-on-click="openDeleteCategoryModal">&minus; Phase</button>
-            <button class="price-v2-add-supplier" data-on-click="resetToDefaults">Reset to defaults</button>
         </section>`;
   priceV2UpdateEyebrow();
   priceV2UpdateSubtitle();
@@ -1388,25 +1370,37 @@ function openAddSupplierModal() {
       if (el) el.value = '';
     }
   );
+  // Same Google Places autocomplete the calculator and account pages use.
+  const addr = document.getElementById('newSupplierAddress');
+  if (addr && typeof attachPlacesAutocomplete === 'function') attachPlacesAutocomplete(addr);
   openModal('addSupplierModal');
 }
 async function addSupplier() {
   const name = document.getElementById('newSupplierName').value.trim();
   if (!name) {
-    notify('Enter name', 'error');
+    notify('Enter a supplier name', 'error');
     return;
   }
   if (suppliers.includes(name)) {
     notify('Already exists', 'error');
     return;
   }
+  // Validate the optional contact fields so a typo (or random text) can't be saved.
+  const email = document.getElementById('newSupplierEmail')?.value.trim() || '';
+  const phone = document.getElementById('newSupplierPhone')?.value.trim() || '';
+  const address = document.getElementById('newSupplierAddress')?.value.trim() || '';
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    notify('Enter a valid email address', 'error');
+    return;
+  }
+  if (phone && !/^[+\d][\d\s().-]{6,}$/.test(phone)) {
+    notify('Enter a valid phone number', 'error');
+    return;
+  }
   pushUndo();
   suppliers.push(name);
   materialsBySupplier[name] = [];
   activeSupplier = name;
-  const email = document.getElementById('newSupplierEmail')?.value.trim();
-  const phone = document.getElementById('newSupplierPhone')?.value.trim();
-  const address = document.getElementById('newSupplierAddress')?.value.trim();
   if (email || phone || address) setSupplierInfo(name, { email, phone, address });
   if (api.getToken()) {
     try {
@@ -1500,7 +1494,7 @@ async function addCategory() {
   notify(`Phase "${name}" added`, 'success');
 }
 function openDeleteCategoryModal() {
-  const sp = getSupplierPhases(activeSupplier);
+  const sp = categories.slice();
   document.getElementById('deleteCategorySelect').innerHTML = sp
     .map((c) => `<option>${c}</option>`)
     .join('');
@@ -1612,7 +1606,7 @@ function renderMaterialTable() {
   priceV2UpdateSubtitle();
 
   if (!mats.length) {
-    container.innerHTML = `<div class="price-v2-table-wrap"><div class="price-v2-empty">No materials match the current filter.</div></div><div class="price-v2-footer"><span>Showing 0 of ${all.length}<span class="price-v2-sub-sep">&middot;</span>0 selected</span><span class="price-v2-footer-right">Catalog total value: <span class="price-v2-footer-mono">$0</span><span class="price-v2-sub-sep">&middot;</span>Avg margin: 2.1% supplier</span></div>`;
+    container.innerHTML = `<div class="price-v2-table-wrap"><div class="price-v2-empty">No materials match the current filter.</div></div><div class="price-v2-footer"><span>Showing 0 of ${all.length}</span></div>`;
     updateStatsBar();
     return;
   }
@@ -1632,11 +1626,6 @@ function renderMaterialTable() {
         <th class="col-h-trend right">30D</th>
     </tr></thead>`;
 
-  let totalValue = 0;
-  mats.forEach((m) => {
-    totalValue += Number(m.pricePerUnit || 0);
-  });
-
   const viewMode = (window.priceV2FilterState && window.priceV2FilterState.view) || 'dense';
 
   // Build a single body of rows (above) only once. To group by phase, partition
@@ -1652,15 +1641,15 @@ function renderMaterialTable() {
       buckets.get(c).push(m);
     });
   });
-  const collapsed = window.priceV2CollapsedGroups || (window.priceV2CollapsedGroups = new Set());
+  // Phase groups start collapsed so the page doesn't render the whole catalog at
+  // once; a group expands only when the user opens it (tracked in expandedGroups).
+  const expanded = window.priceV2ExpandedGroups || (window.priceV2ExpandedGroups = new Set());
 
   let groupsHtml = '';
-  let renderedCount = 0;
   buckets.forEach((items, cat) => {
     if (!items.length) return;
-    renderedCount += items.length;
     const chipCls = v2ChipClass(cat);
-    const isCollapsed = collapsed.has(cat);
+    const isCollapsed = !expanded.has(cat);
     let sectionBody = '';
     items.forEach((m) => {
       // Reuse the per-row markup we built above. We split `body` per-id
@@ -1688,8 +1677,7 @@ function renderMaterialTable() {
     groupsHtml +
     `
         <div class="price-v2-footer">
-            <span>Showing ${mats.length} of ${all.length}<span class="price-v2-sub-sep">&middot;</span>${renderedCount - mats.length > 0 ? renderedCount + ' placements' : '0 selected'}</span>
-            <span class="price-v2-footer-right">Catalog total value: <span class="price-v2-footer-mono">${fmt(totalValue)}</span><span class="price-v2-sub-sep">&middot;</span>Avg margin: 2.1% supplier</span>
+            <span>Showing ${mats.length} of ${all.length}</span>
         </div>`;
   updateStatsBar();
 }
@@ -1763,11 +1751,12 @@ function renderMaterialRow(m, sectionCat) {
     </tr>`;
 }
 
-// Collapse / expand a phase group on the pricing page.
+// Collapse / expand a phase group on the pricing page. Groups default to
+// collapsed; clicking a header toggles it in the expanded set.
 function togglePhaseGroup(cat) {
-  const collapsed = window.priceV2CollapsedGroups || (window.priceV2CollapsedGroups = new Set());
-  if (collapsed.has(cat)) collapsed.delete(cat);
-  else collapsed.add(cat);
+  const expanded = window.priceV2ExpandedGroups || (window.priceV2ExpandedGroups = new Set());
+  if (expanded.has(cat)) expanded.delete(cat);
+  else expanded.add(cat);
   renderMaterialTable();
 }
 window.togglePhaseGroup = togglePhaseGroup;
@@ -1783,12 +1772,12 @@ window.toggleEditCategoryChip = toggleEditCategoryChip;
 function updateStatsBar() {
   const root = document.getElementById('statsBar');
   if (!root) return;
-  const mats = materialsBySupplier[activeSupplier] || [];
-  const phases = getSupplierPhases(activeSupplier);
-  const staleCount = mats.filter(isStale).length;
+  // Catalog-wide totals (across all suppliers), shown once at the top of the page.
+  const allMats = Object.values(materialsBySupplier).flat();
+  const staleCount = allMats.filter(isStale).length;
   root.innerHTML = `
-        <div class="price-v2-stat"><div class="price-v2-stat-label">Materials</div><div class="price-v2-stat-value">${mats.length}</div></div>
-        <div class="price-v2-stat"><div class="price-v2-stat-label">Phases</div><div class="price-v2-stat-value">${phases.length}</div></div>
+        <div class="price-v2-stat"><div class="price-v2-stat-label">Materials</div><div class="price-v2-stat-value">${allMats.length}</div></div>
+        <div class="price-v2-stat"><div class="price-v2-stat-label">Phases</div><div class="price-v2-stat-value">${categories.length}</div></div>
         <div class="price-v2-stat"><div class="price-v2-stat-label">Suppliers</div><div class="price-v2-stat-value">${suppliers.length}</div></div>
         <div class="price-v2-stat"><div class="price-v2-stat-label">Stale</div><div class="price-v2-stat-value${staleCount ? ' warn' : ''}">${staleCount}</div></div>`;
 }
@@ -1922,12 +1911,29 @@ async function doAddMaterial(catName) {
   editingId = String(m.id);
   document.getElementById('categoryFilter').value = 'All';
   document.getElementById('materialSearch').value = '';
+  // Phase groups default to collapsed, so expand the one the item landed in,
+  // then scroll the new edit row into view instead of leaving it off-screen.
+  (window.priceV2ExpandedGroups || (window.priceV2ExpandedGroups = new Set())).add(catName);
   renderMaterialTable();
+  const newRow = document.querySelector(`.price-v2-edit-row[data-id="${m.id}"]`);
+  if (newRow) newRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
-async function deleteMaterial(id) {
+let pendingDeleteMaterialId = null;
+function deleteMaterial(id) {
   const mats = materialsBySupplier[activeSupplier] || [];
   const mat = mats.find((m) => String(m.id) === String(id));
-  if (!mat || !confirm(`Delete "${mat.name}"?`)) return;
+  if (!mat) return;
+  pendingDeleteMaterialId = String(id);
+  const nameEl = document.getElementById('deleteMaterialName');
+  if (nameEl) nameEl.textContent = mat.name || 'this material';
+  openModal('deleteMaterialModal');
+}
+async function confirmDeleteMaterial() {
+  const id = pendingDeleteMaterialId;
+  pendingDeleteMaterialId = null;
+  closeModal('deleteMaterialModal');
+  if (id == null) return;
+  const mats = materialsBySupplier[activeSupplier] || [];
   pushUndo();
   if (api.getToken()) {
     try {
@@ -1941,17 +1947,7 @@ async function deleteMaterial(id) {
   renderMaterialTable();
   notify('Deleted', 'success');
 }
-function resetToDefaults() {
-  if (!confirm('Reset ALL data to defaults?')) return;
-  pushUndo();
-  resetAllToDefaults(false);
-  editingId = null;
-  renderSupplierTabs();
-  populateCategoryFilter();
-  renderMaterialTable();
-  populateOrderPhaseFilter();
-}
-
+window.confirmDeleteMaterial = confirmDeleteMaterial;
 // Duplicate
 let duplicateMatId = null;
 function openDuplicate(id) {
