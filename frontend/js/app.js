@@ -3629,7 +3629,14 @@ function renderOrderForm(r, selections) {
   const onEl = document.getElementById('orderNumber');
   if (onEl) onEl.textContent = orderNum;
   const sub = document.getElementById('orderLetterheadSub');
-  if (sub) sub.textContent = 'Issued ' + today;
+  if (sub) {
+    const issued = new Date().toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+    sub.textContent = 'Issued ' + issued;
+  }
 
   // ----- Deliver-to -----
   const jobCode =
@@ -3687,9 +3694,6 @@ function renderOrderForm(r, selections) {
       escHtml(supplier) +
       '</span>' +
       '</div>' +
-      '<div class="order-v2-group-subtotal">' +
-      fmt(subtotal) +
-      '</div>' +
       '</div>' +
       '<table class="order-v2-items">' +
       '<colgroup><col class="col-sku"><col><col class="col-qty"><col class="col-each"><col class="col-line"></colgroup>' +
@@ -3721,26 +3725,15 @@ function renderOrderForm(r, selections) {
         '</td>' +
         '</tr>';
     });
-    html +=
-      '</tbody>' +
-      '<tfoot><tr>' +
-      '<td colspan="4" class="order-v2-subtotal-label">Subtotal</td>' +
-      '<td class="order-v2-each order-v2-subtotal-amount">' +
-      fmt(subtotal) +
-      '</td>' +
-      '</tr></tfoot>' +
-      '</table>' +
-      '</div>';
+    html += '</tbody></table></div>';
   });
   body.innerHTML =
     html ||
     '<div style="padding:32px 0;text-align:center;color:var(--v2-text-tertiary);font-size:.85rem">No line items.</div>';
 
-  // ----- Grand totals -----
-  let totalsHtml =
-    '<div class="order-v2-total-row"><span class="label">Material subtotal</span><span class="amount">' +
-    fmt(grandSub) +
-    '</span></div>';
+  // ----- Grand totals: a single Order total (plus tax when set), matching the
+  // supplier email. The per-supplier subtotals are intentionally not repeated. -----
+  let totalsHtml = '';
   let tot = grandSub;
   if (r.taxPct > 0) {
     const tax = grandSub * (r.taxPct / 100);
