@@ -165,7 +165,9 @@ const INACTIVE_STATUSES = new Set(['canceled', 'past_due', 'unpaid', 'incomplete
 
 // Apply a purchased license directly to an existing user by id. Used by the
 // webhook when a logged-in user completes checkout (metadata.user_id is set),
-// so we skip the magic-link onboarding flow entirely.
+// so we skip the magic-link onboarding flow entirely. Intentionally idempotent:
+// it only overwrites license fields, so a duplicate Stripe delivery is harmless.
+// Do not add side effects here (emails, charges) without a dedup guard.
 async function applyLicenseToUser(userId, plan, customerId, subscriptionId) {
   const durationDays = PLAN_DURATION_DAYS[plan];
   const licenseExpires =
