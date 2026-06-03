@@ -4891,7 +4891,6 @@ async function renderAccountPage() {
 
   const statusPill = document.getElementById('accountStatusPill');
   const licenseEl = document.getElementById('accountLicense');
-  const licenseEyebrowMeta = document.getElementById('accountLicenseEyebrowMeta');
 
   statusPill.classList.remove('is-active', 'is-trial', 'is-expired', 'is-none');
 
@@ -4948,8 +4947,6 @@ async function renderAccountPage() {
     statusPill.classList.add('is-active');
     statusPill.textContent = typeLabel;
   }
-
-  if (licenseEyebrowMeta) licenseEyebrowMeta.textContent = planLabel;
 
   const keyFull = currentUser.license_key || '';
   const keyMasked = keyFull
