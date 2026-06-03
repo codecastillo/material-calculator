@@ -236,14 +236,6 @@
   font-weight: 400;
   color: var(--v2-text-tertiary);
 }
-.order-v2-group-subtotal {
-  font-family: var(--v2-font-sans);
-  font-weight: 600;
-  font-size: 1.2rem;
-  color: var(--v2-text-primary);
-  font-variant-numeric: tabular-nums;
-  flex-shrink: 0;
-}
 
 /* Items table */
 .order-v2-items {
@@ -264,7 +256,8 @@
   background: transparent;
 }
 .order-v2-items thead th.col-qty,
-.order-v2-items thead th.col-each {
+.order-v2-items thead th.col-each,
+.order-v2-items thead th.col-line {
   text-align: right;
 }
 
@@ -387,8 +380,6 @@
 /* Notes printed area */
 .order-v2-notes-print {
   margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--v2-border-hairline);
   font-family: var(--v2-font-sans);
   font-size: 0.85rem;
   color: var(--v2-text-secondary);
@@ -932,25 +923,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Per-supplier subtotal row in tfoot */
-.order-v2-items tfoot td {
-  padding: 10px 0;
-  border-top: 1px solid var(--v2-border-hairline);
-}
-.order-v2-subtotal-label {
-  font-family: var(--v2-font-sans);
-  font-size: 0.82rem;
-  color: var(--v2-text-tertiary);
-  text-align: right;
-  padding-right: 16px;
-}
-.order-v2-subtotal-amount {
-  font-family: var(--v2-font-mono);
-  font-weight: 600;
-  color: var(--v2-text-primary);
-  font-variant-numeric: tabular-nums;
-}
-
 /* Actions row at the bottom of the printable area (no rail) */
 .order-v2-actions {
   display: flex;
@@ -1195,10 +1167,4 @@
 [data-theme='light'] .order-v2-compare-option-price,
 [data-theme='light'] .order-v2-qty-static {
   color: #111;
-}
-[data-theme='light'] .order-v2-subtotal-amount {
-  color: #111;
-}
-[data-theme='light'] .order-v2-items tfoot td {
-  border-color: #e2e2dd;
 }
