@@ -1105,8 +1105,9 @@ const PAGE_TITLES = {
   savedJobs: 'Saved Jobs',
   admin: 'Admin Panel',
   account: 'Account',
+  overhead: 'Overhead',
 };
-const PAGES_WITH_BACK = ['pricing', 'order', 'savedJobs', 'admin', 'account'];
+const PAGES_WITH_BACK = ['pricing', 'order', 'savedJobs', 'admin', 'account', 'overhead'];
 let currentPageId = 'dashboard';
 
 // Mobile menu
@@ -1159,6 +1160,7 @@ function showPage(id) {
   if (id === 'savedJobs') renderSavedJobs();
   if (id === 'admin') renderAdminPanel();
   if (id === 'account') renderAccountPage();
+  if (id === 'overhead') bizExpensesRender();
 }
 function goBack() {
   pageHistory.pop();
@@ -5029,9 +5031,6 @@ async function renderAccountPage() {
                 <span class="account-v2-stat-value">${role}</span>
             </div>`;
   }
-
-  // Business expenses panel
-  bizExpensesRender();
 
   // Company info form (used on printed order forms)
   const ci = loadCompanyInfo();
