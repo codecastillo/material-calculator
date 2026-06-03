@@ -31,6 +31,10 @@ function navAccount() {
   showPage('account');
   closeMobileMenu();
 }
+function navOverhead() {
+  showPage('overhead');
+  closeMobileMenu();
+}
 
 // --- User dropdown logout (logout then close menu) ---
 function logoutAndCloseMenu() {
@@ -47,13 +51,8 @@ function navAdminFromMenu() {
   showPage('admin');
   toggleUserMenu();
 }
-function navOverheadFromMenu() {
-  showPage('overhead');
-  toggleUserMenu();
-}
 window.navAccountFromMenu = navAccountFromMenu;
 window.navAdminFromMenu = navAdminFromMenu;
-window.navOverheadFromMenu = navOverheadFromMenu;
 
 // --- CSV import trigger (proxy click to hidden file input) ---
 function triggerCsvImport() {
@@ -160,6 +159,7 @@ window.navOrder = navOrder;
 window.navSavedJobs = navSavedJobs;
 window.navAdmin = navAdmin;
 window.navAccount = navAccount;
+window.navOverhead = navOverhead;
 window.logoutAndCloseMenu = logoutAndCloseMenu;
 window.triggerCsvImport = triggerCsvImport;
 window.toggleCCFeeInput = toggleCCFeeInput;
