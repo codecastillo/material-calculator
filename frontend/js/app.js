@@ -1454,9 +1454,14 @@ async function deleteSupplier() {
 // Categories
 function getSupplierPhases(supplier) {
   const mats = materialsBySupplier[supplier] || [];
-  return [...new Set(mats.map((m) => m.category))].sort(
-    (a, b) => categories.indexOf(a) - categories.indexOf(b)
-  );
+  // Order by the global phase list so every supplier lists its phases in the
+  // same sequence. A category missing from the list sorts to the end rather
+  // than the front (indexOf -1), keeping the order stable across suppliers.
+  const rank = (c) => {
+    const i = categories.indexOf(c);
+    return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+  };
+  return [...new Set(mats.map((m) => m.category))].sort((a, b) => rank(a) - rank(b));
 }
 function populateCategoryFilter() {
   const sel = document.getElementById('categoryFilter');
@@ -5871,7 +5876,6 @@ async function renderAdminPanel() {
             <div class="admin-v2-metric">
                 <div class="admin-v2-metric-label">MRR</div>
                 <div class="admin-v2-metric-value">$${mrr.toLocaleString()}</div>
-                <div class="admin-v2-metric-sub"><span class="arrow">&uarr;</span> +12% MoM</div>
             </div>`;
 
     // ---- Keys table -----------------------------------------------

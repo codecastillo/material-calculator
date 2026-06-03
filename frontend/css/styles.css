@@ -2198,6 +2198,15 @@ tr.drag-over td {
   color: var(--v2-text-primary);
   background: var(--v2-bg-app);
 }
+/* The theme toggle is a button inside the menu, so the full-width button rule
+   above would stretch it into a bar and the knob would only travel partway.
+   Restore its fixed switch size. */
+.user-dropdown-menu button.theme-toggle {
+  width: 40px;
+  flex: none;
+  padding: 0;
+  border-radius: 11px;
+}
 
 /* ACCOUNT PAGE */
 .account-card {
@@ -2649,9 +2658,10 @@ tr.drag-over td {
   background: var(--v2-bg-surface-2);
   border: 1px solid var(--v2-border-hairline);
   border-radius: var(--v2-r-button);
-  min-width: 240px;
-  max-width: 360px;
-  flex: 1 1 260px;
+  /* Fixed width pinned to the right so the search doesn't grow into the centered
+     nav links. The right column right-aligns it, leaving an even gap. */
+  width: 220px;
+  flex: none;
 }
 .v2-topnav-search input {
   background: none;
@@ -3832,6 +3842,11 @@ body[data-page='calculator'] .main-container {
   justify-content: space-between;
   gap: 8px;
   padding: 10px 14px;
+}
+/* When the license badge is hidden (admin/lifetime), collapse its row so there
+   is no empty gap above the Account item. */
+.user-dropdown-menu .user-dropdown-row:has(#licenseBadge[style*='none']) {
+  display: none;
 }
 .user-dropdown-menu .user-dropdown-label {
   font-size: 0.78rem;
