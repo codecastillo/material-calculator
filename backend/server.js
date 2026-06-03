@@ -113,12 +113,23 @@ app.use(express.urlencoded({ extended: true }));
 // ---------------------------------------------------------------------------
 const frontendPath = path.join(__dirname, '..', 'frontend');
 
+// HTML and the service worker must always revalidate so a deploy reaches the
+// browser instead of being pinned by a long-lived cached copy. Static assets
+// (JS/CSS) keep their default caching; the service worker fetches those with
+// cache: 'reload', and bumping its CACHE_NAME rotates the offline copy.
+function noCacheHtml(res, filePath) {
+  if (filePath.endsWith('.html') || filePath.endsWith('sw.js')) {
+    res.setHeader('Cache-Control', 'no-cache');
+  }
+}
+
 // Landing page at root (before static middleware)
 app.get('/', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache');
   res.sendFile(path.join(frontendPath, 'landing.html'));
 });
 
-app.use(express.static(frontendPath, { index: false }));
+app.use(express.static(frontendPath, { index: false, setHeaders: noCacheHtml }));
 
 // ---------------------------------------------------------------------------
 // API Routes
@@ -147,6 +158,7 @@ app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api/')) {
     return next();
   }
+  res.setHeader('Cache-Control', 'no-cache');
   res.sendFile(path.join(frontendPath, 'index.html'), (err) => {
     if (err) {
       // Frontend may not exist yet; that's fine

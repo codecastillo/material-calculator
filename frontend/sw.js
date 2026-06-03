@@ -1,4 +1,4 @@
-const CACHE_NAME = 'esticount-v17';
+const CACHE_NAME = 'esticount-v18';
 const APP_SHELL = [
   '/index.html',
   '/css/styles.css',
@@ -76,8 +76,11 @@ self.addEventListener('fetch', (event) => {
   const isFreshFirst = /\.(css|js|html)$/.test(url.pathname) || event.request.mode === 'navigate';
 
   if (isFreshFirst) {
+    // cache: 'reload' bypasses the browser HTTP cache so a new deploy is picked
+    // up immediately, even while Cloudflare still advertises a long max-age on
+    // the asset. The cached copy is only a fallback for offline.
     event.respondWith(
-      fetch(event.request)
+      fetch(event.request, { cache: 'reload' })
         .then((response) => {
           if (response.ok && url.origin === self.location.origin) {
             const clone = response.clone();
