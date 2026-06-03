@@ -775,7 +775,8 @@
   background: var(--v2-bg-surface);
   border: 1px solid var(--v2-border-hairline);
   border-radius: var(--v2-r-inner);
-  margin-top: 16px;
+  margin-top: 4px;
+  margin-bottom: 20px;
   overflow: hidden;
 }
 .price-v2-stat {

@@ -1120,7 +1120,7 @@ function closeMobileMenu() {
   document.getElementById('mobileOverlay').classList.remove('open');
 }
 
-function showPage(id) {
+function showPage(id, fromPopState) {
   // Save phase selection before leaving calculator
   if (currentPageId === 'calculator') {
     const boxes = document.querySelectorAll('#phaseCheckboxes input[type="checkbox"]');
@@ -1161,7 +1161,21 @@ function showPage(id) {
   if (id === 'admin') renderAdminPanel();
   if (id === 'account') renderAccountPage();
   if (id === 'overhead') bizExpensesRender();
+
+  // Keep the browser Back/Forward buttons inside the app. The first navigation
+  // replaces the current history entry (the post-login landing slot) so Back
+  // doesn't jump straight to the marketing page; later navigations push, so Back
+  // returns to the previous in-app page. popstate (below) re-shows without pushing.
+  if (!fromPopState) {
+    const navState = { appPage: id };
+    if (history.state && history.state.appPage) history.pushState(navState, '');
+    else history.replaceState(navState, '');
+  }
 }
+window.addEventListener('popstate', (e) => {
+  const target = e.state && e.state.appPage;
+  if (target && document.getElementById(target + 'Page')) showPage(target, true);
+});
 function goBack() {
   pageHistory.pop();
   const prev = pageHistory[pageHistory.length - 1] || 'dashboard';
