@@ -153,3 +153,135 @@ describe('POST /api/auth/login - validation', () => {
     assert.ok(res.body.error);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Per-code attempt cap (anti-bruteforce) on /verify and /reset-password
+// ---------------------------------------------------------------------------
+describe('verification code attempt cap', () => {
+  const userToken = jwt.sign(
+    { id: 'user-uuid-1', email: 'jane@example.com', name: 'Jane', role: 'user' },
+    'test-secret-value',
+    { expiresIn: '1h' }
+  );
+  const future = () => new Date(Date.now() + 10 * 60 * 1000).toISOString();
+  const past = () => new Date(Date.now() - 60 * 1000).toISOString();
+
+  test('/verify wrong code below cap -> 400 and attempts incremented, code kept', async () => {
+    fake.setResponse('verification_codes', {
+      id: 'vc1',
+      user_id: 'user-uuid-1',
+      code: '111111',
+      attempts: 0,
+      expires_at: future(),
+    });
+
+    const res = await request(app)
+      .post('/api/auth/verify')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ code: '999999' });
+
+    assert.equal(res.status, 400);
+    assert.equal(res.body.error, 'Invalid code');
+    assert.ok(fake.updateWasCalled('verification_codes'), 'attempts should be incremented');
+    assert.equal(fake.updatePayload('verification_codes').attempts, 1);
+    assert.ok(!fake.deleteWasCalled('verification_codes'), 'code should not be deleted yet');
+    fake.reset();
+  });
+
+  test('/verify wrong code at cap -> 400 and code deleted', async () => {
+    fake.setResponse('verification_codes', {
+      id: 'vc1',
+      user_id: 'user-uuid-1',
+      code: '111111',
+      attempts: 4,
+      expires_at: future(),
+    });
+
+    const res = await request(app)
+      .post('/api/auth/verify')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ code: '999999' });
+
+    assert.equal(res.status, 400);
+    assert.match(res.body.error, /too many/i);
+    assert.ok(fake.deleteWasCalled('verification_codes'), 'code should be destroyed at the cap');
+    fake.reset();
+  });
+
+  test('/verify expired code -> 400 and code deleted', async () => {
+    fake.setResponse('verification_codes', {
+      id: 'vc1',
+      user_id: 'user-uuid-1',
+      code: '111111',
+      attempts: 0,
+      expires_at: past(),
+    });
+
+    const res = await request(app)
+      .post('/api/auth/verify')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ code: '111111' });
+
+    assert.equal(res.status, 400);
+    assert.match(res.body.error, /expired/i);
+    assert.ok(fake.deleteWasCalled('verification_codes'));
+    fake.reset();
+  });
+
+  test('/verify correct code -> 200 and email verified', async () => {
+    fake.setResponse('verification_codes', {
+      id: 'vc1',
+      user_id: 'user-uuid-1',
+      code: '111111',
+      attempts: 0,
+      expires_at: future(),
+    });
+
+    const res = await request(app)
+      .post('/api/auth/verify')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ code: '111111' });
+
+    assert.equal(res.status, 200);
+    assert.match(res.body.message, /verified/i);
+    fake.reset();
+  });
+
+  test('/reset-password wrong code below cap -> 400 and attempts incremented', async () => {
+    fake.setResponse('verification_codes', {
+      id: 'vc1',
+      user_id: 'user-uuid-default',
+      code: '111111',
+      attempts: 1,
+      expires_at: future(),
+    });
+
+    const res = await request(app)
+      .post('/api/auth/reset-password')
+      .send({ email: 'jane@example.com', code: '999999', password: 'StrongPass1' });
+
+    assert.equal(res.status, 400);
+    assert.equal(res.body.error, 'Invalid code');
+    assert.equal(fake.updatePayload('verification_codes').attempts, 2);
+    fake.reset();
+  });
+
+  test('/reset-password wrong code at cap -> 400 and code deleted', async () => {
+    fake.setResponse('verification_codes', {
+      id: 'vc1',
+      user_id: 'user-uuid-default',
+      code: '111111',
+      attempts: 4,
+      expires_at: future(),
+    });
+
+    const res = await request(app)
+      .post('/api/auth/reset-password')
+      .send({ email: 'jane@example.com', code: '999999', password: 'StrongPass1' });
+
+    assert.equal(res.status, 400);
+    assert.match(res.body.error, /too many/i);
+    assert.ok(fake.deleteWasCalled('verification_codes'));
+    fake.reset();
+  });
+});

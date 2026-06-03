@@ -23,6 +23,45 @@ function generateCode() {
   return crypto.randomInt(100000, 999999).toString();
 }
 
+// A 6-digit code has only 900k values, so a per-IP rate limit alone can't stop a
+// distributed attacker from guessing it within the 15-minute expiry. Cap the number
+// of wrong guesses per code: once it's hit, the code is destroyed and the user must
+// request a new one, which makes the codespace irrelevant to a brute-force attempt.
+const MAX_CODE_ATTEMPTS = 5;
+
+// Validate a submitted email/reset code against the user's most recent stored code
+// and enforce the attempt cap. Returns { ok: true } on a match, otherwise
+// { ok: false, error } with a client-safe message. Wrong guesses increment the
+// attempt counter; an expired code or one that hits the cap is deleted.
+async function validateUserCode(userId, submittedCode) {
+  const { data: record } = await supabase
+    .from('verification_codes')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (!record) return { ok: false, error: 'Invalid or expired code. Request a new one.' };
+
+  if (new Date(record.expires_at) < new Date()) {
+    await supabase.from('verification_codes').delete().eq('user_id', userId);
+    return { ok: false, error: 'Code has expired. Request a new one.' };
+  }
+
+  if (record.code !== String(submittedCode).trim()) {
+    const attempts = (record.attempts || 0) + 1;
+    if (attempts >= MAX_CODE_ATTEMPTS) {
+      await supabase.from('verification_codes').delete().eq('user_id', userId);
+      return { ok: false, error: 'Too many incorrect attempts. Request a new code.' };
+    }
+    await supabase.from('verification_codes').update({ attempts }).eq('id', record.id);
+    return { ok: false, error: 'Invalid code' };
+  }
+
+  return { ok: true };
+}
+
 function generateReferralCode() {
   return 'REF-' + crypto.randomBytes(4).toString('hex').toUpperCase();
 }
@@ -170,18 +209,8 @@ router.post('/verify', authenticate, async (req, res, next) => {
     const { code } = req.body;
     if (!code) return res.status(400).json({ error: 'Verification code is required' });
 
-    const { data: record } = await supabase
-      .from('verification_codes')
-      .select('*')
-      .eq('user_id', req.user.id)
-      .eq('code', code.trim())
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (!record) return res.status(400).json({ error: 'Invalid code' });
-    if (new Date(record.expires_at) < new Date())
-      return res.status(400).json({ error: 'Code has expired. Request a new one.' });
+    const check = await validateUserCode(req.user.id, code);
+    if (!check.ok) return res.status(400).json({ error: check.error });
 
     // Mark user as verified
     const { data: user, error } = await supabase
@@ -495,18 +524,8 @@ router.post('/reset-password', async (req, res, next) => {
       .single();
     if (!user) return res.status(400).json({ error: 'Invalid email or code' });
 
-    const { data: record } = await supabase
-      .from('verification_codes')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('code', code.trim())
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (!record) return res.status(400).json({ error: 'Invalid code' });
-    if (new Date(record.expires_at) < new Date())
-      return res.status(400).json({ error: 'Code has expired. Request a new one.' });
+    const check = await validateUserCode(user.id, code);
+    if (!check.ok) return res.status(400).json({ error: check.error });
 
     // Update password
     const hash = bcrypt.hashSync(password, 10);
