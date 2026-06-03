@@ -1454,9 +1454,14 @@ async function deleteSupplier() {
 // Categories
 function getSupplierPhases(supplier) {
   const mats = materialsBySupplier[supplier] || [];
-  return [...new Set(mats.map((m) => m.category))].sort(
-    (a, b) => categories.indexOf(a) - categories.indexOf(b)
-  );
+  // Order by the global phase list so every supplier lists its phases in the
+  // same sequence. A category missing from the list sorts to the end rather
+  // than the front (indexOf -1), keeping the order stable across suppliers.
+  const rank = (c) => {
+    const i = categories.indexOf(c);
+    return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+  };
+  return [...new Set(mats.map((m) => m.category))].sort((a, b) => rank(a) - rank(b));
 }
 function populateCategoryFilter() {
   const sel = document.getElementById('categoryFilter');
@@ -4262,14 +4267,14 @@ function renderSavedJobs() {
   const subEl = document.getElementById('jobsV2Subtitle');
   if (subEl) {
     const jobsN = counts.All - counts.Templates;
-    subEl.innerHTML = `${jobsN} job${jobsN === 1 ? '' : 's'}<span class="sep">·</span>${counts.Templates} template${counts.Templates === 1 ? '' : 's'}<span class="sep">·</span>search, filter, duplicate`;
+    subEl.innerHTML = `${jobsN} job${jobsN === 1 ? '' : 's'}<span class="sep">·</span>${counts.Templates} template${counts.Templates === 1 ? '' : 's'}`;
   }
   const sIn = document.getElementById('jobsV2Search');
   if (sIn && sIn.value !== window.jobsV2State.search) sIn.value = window.jobsV2State.search || '';
   // Filtered rows
   const rows = jobsV2FilterList();
   if (!savedJobs.length) {
-    listEl.innerHTML = `<div class="jobs-v2-table-wrap"><div class="jobs-v2-empty"><div class="jobs-v2-empty-title">No saved jobs yet</div><div class="jobs-v2-empty-text">Save a calculation from the Calculator page to build your library.</div><button class="jobs-v2-cta" data-on-click="jobsV2NewJob">New job</button></div></div>`;
+    listEl.innerHTML = `<div class="jobs-v2-table-wrap"><div class="jobs-v2-empty"><div class="jobs-v2-empty-title">No saved jobs yet</div><div class="jobs-v2-empty-text">Save a calculation from the Calculator page to build your library.</div></div></div>`;
   } else if (!rows.length) {
     listEl.innerHTML = `<div class="jobs-v2-table-wrap"><div class="jobs-v2-empty"><div class="jobs-v2-empty-title">No matches</div><div class="jobs-v2-empty-text">Try clearing the search or switching tabs.</div></div></div>`;
   } else {
@@ -4331,16 +4336,11 @@ function renderSavedJobs() {
       .join('');
     listEl.innerHTML = `<div class="jobs-v2-table-wrap"><table class="jobs-v2-table">${colg}${head}<tbody>${body}</tbody></table></div>`;
   }
-  // Footer aggregates (based on full library, not filtered)
+  // Footer: just the visible-row count. Financial aggregates (YTD value, avg
+  // margin) were removed; they implied sales tracking the app doesn't do.
   const footEl = document.getElementById('jobsV2Footer');
   if (footEl) {
-    const nonTpl = savedJobs.filter((j) => !j.isTemplate);
-    const ytd = nonTpl.reduce((s, j) => s + (Number(j.sellingPrice) || 0), 0);
-    const margins = nonTpl.map((j) => Number(j.profitPct) || 0).filter((n) => n > 0);
-    const avgMargin = margins.length ? margins.reduce((s, n) => s + n, 0) / margins.length : 0;
-    footEl.innerHTML =
-      `<div>Showing <span class="num">${rows.length}</span> of <span class="num">${counts.All}</span><span class="sep">&middot;</span>YTD value <span class="num">${jobsV2FmtCompactMoney(ytd)}</span></div>` +
-      `<div>Avg margin <span class="num">${avgMargin.toFixed(1)}%</span></div>`;
+    footEl.innerHTML = `<div>Showing <span class="num">${rows.length}</span> of <span class="num">${counts.All}</span></div>`;
   }
 }
 
@@ -4891,7 +4891,6 @@ async function renderAccountPage() {
 
   const statusPill = document.getElementById('accountStatusPill');
   const licenseEl = document.getElementById('accountLicense');
-  const licenseEyebrowMeta = document.getElementById('accountLicenseEyebrowMeta');
 
   statusPill.classList.remove('is-active', 'is-trial', 'is-expired', 'is-none');
 
@@ -4948,8 +4947,6 @@ async function renderAccountPage() {
     statusPill.classList.add('is-active');
     statusPill.textContent = typeLabel;
   }
-
-  if (licenseEyebrowMeta) licenseEyebrowMeta.textContent = planLabel;
 
   const keyFull = currentUser.license_key || '';
   const keyMasked = keyFull
@@ -5876,7 +5873,6 @@ async function renderAdminPanel() {
             <div class="admin-v2-metric">
                 <div class="admin-v2-metric-label">MRR</div>
                 <div class="admin-v2-metric-value">$${mrr.toLocaleString()}</div>
-                <div class="admin-v2-metric-sub"><span class="arrow">&uarr;</span> +12% MoM</div>
             </div>`;
 
     // ---- Keys table -----------------------------------------------
