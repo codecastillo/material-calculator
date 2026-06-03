@@ -139,6 +139,10 @@ function createFakeSupabase() {
     insertPayload(table) {
       return lastBuilders[table] ? lastBuilders[table]._insertPayload : null;
     },
+
+    updatePayload(table) {
+      return lastBuilders[table] ? lastBuilders[table]._updatePayload : null;
+    },
   };
 }
 
