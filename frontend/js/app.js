@@ -2959,7 +2959,10 @@ function calculateJob() {
   }
 
   const isAll = supplier === 'All Suppliers';
-  const calcOpts = { paintCoats, drywallAreas, phaseDims };
+  const grayThicknessIn =
+    parseFloat(document.getElementById('calcGrayThickness')?.value) || undefined;
+  const paintSurface = document.getElementById('calcPaintSurface')?.value || 'smooth';
+  const calcOpts = { paintCoats, drywallAreas, phaseDims, grayThicknessIn, paintSurface };
 
   let r;
   if (isAll) {
