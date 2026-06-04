@@ -30,7 +30,7 @@ describe('materialRole detection', () => {
     ['0.31mil 9x400 Painters Plastic', null],
     ['Duct Tape White 2"x60yd', null],
     ['Green Foam Float 5"x12"', null],
-    ['Diamond Mesh 27"x96" 2.50#', null],
+    ['Diamond Mesh 27"x96" 2.50#', 'lath'],
   ];
   for (const [name, expected] of cases) {
     test(`${name} -> ${expected}`, () => {
@@ -54,10 +54,11 @@ describe('Lath net yields (code laps)', () => {
 });
 
 describe('Gray Coat volumetric (1.25 shrinkage, 1:3 mix)', () => {
-  test('cement bags and sand cubic yards at 3/4" over 1000 sf', () => {
+  test('cement bags, lime, and sand cubic yards at 3/4" over 1000 sf', () => {
     const r = eng.computePhase('Gray Coat', 1000, { grayThicknessIn: 0.75 });
-    // wet=62.5cf, dry=78.125cf, cement=ceil(19.53)=20 bags, sand=58.59cf=2.17cy
+    // wet=62.5cf, dry=78.125cf, cement=ceil(19.53)=20 bags, lime=ceil(9.77)=10, sand=58.59cf=2.17cy
     assert.equal(r.cement.qty, 20);
+    assert.equal(r.lime.qty, 10);
     assert.equal(r.sand.qty, 2.17);
     assert.equal(r.sand.unit, 'cubic yard');
   });
@@ -175,5 +176,92 @@ describe('waste factor by application method', () => {
     assert.equal(eng.wasteFactor('spray'), 1.05);
     assert.equal(eng.wasteFactor('trowel'), 1.12);
     assert.equal(eng.wasteFactor(undefined), 1.12);
+  });
+});
+
+describe('parsePackage box-of-rolls', () => {
+  test('24 rolls/box of 300ft -> 7200 ft', () => {
+    assert.deepEqual(eng.parsePackage('Mesh Tape 2"x300\' Blue (24 rolls/box)'), {
+      value: 7200,
+      unit: 'ft',
+    });
+  });
+  test('a plain 500ft roll is still 500 ft', () => {
+    assert.deepEqual(eng.parsePackage("Joint Tape 500'"), { value: 500, unit: 'ft' });
+  });
+});
+
+describe('expanded materialRole (real catalog names)', () => {
+  const cases = [
+    ['Diamond Mesh 27"x96" 2.50#', 'lath'],
+    ['A19 1/4" Tacker Staples 5M', 'staple'],
+    ['Casing Bead #66 1/2" SF w/Weep', 'trim'],
+    ["CornerAid Straight 10'", 'trim'],
+    ['Omega DiamondWall Grey 80lb', 'basecoat'],
+    ['Western 1-Kote Sanded 80#', 'basecoat'],
+    ['Fine Sand 1.0 5Gl Base White', 'colorcoat'], // not 'sand'
+    ['Full Circle Level 360 Sanding Disc 8-3/4" 150 Grit', 'sanding'],
+    ['Trim-Tex 560 Pro Fine Sanding Pads 120G 4/Box', 'sanding'], // not colorcoat
+    ["Clinch-On Paper Faced Tape-On Jumbo Wide Cornerbead 10'", 'cornerbead'],
+    ['Trim-Tex Architectural Z Shadow Bead 1/2"x1/2"x10\'', 'cornerbead'],
+    ['Dryvit Color Vial 8oz', 'pigment'],
+    ['Sherwin Elastomeric Coating 5gal', 'paint'],
+    ['Plaster Sand 1yd', 'sand'],
+    ['Stucco Wire 17 Ga 36"x150\'', 'wire'],
+    // dropped extras
+    ['Green Foam Float 5"x12"', null],
+    ['3M 8511 N95 Particulate Mask with Valve', null],
+    ["EPS 1# T&G Foam Sheet 1\"x4'x8'", null],
+    ['Roofing Nails EG 1-3/4"', null],
+  ];
+  for (const [name, expected] of cases) {
+    test(`${name} -> ${expected}`, () => {
+      assert.equal(eng.materialRole({ name }), expected);
+    });
+  }
+});
+
+describe('phaseWasteFactor', () => {
+  test('coating phases follow the application method', () => {
+    assert.equal(eng.phaseWasteFactor('Gray Coat', 'spray'), 1.05);
+    assert.equal(eng.phaseWasteFactor('Gray Coat', 'trowel'), 1.12);
+    assert.equal(eng.phaseWasteFactor('Color Coat', 'spray'), 1.05);
+  });
+  test('other phases use built-in defaults', () => {
+    assert.equal(eng.phaseWasteFactor('Lath', 'trowel'), 1.1);
+    assert.equal(eng.phaseWasteFactor('Drywall', 'spray'), 1.1);
+    assert.equal(eng.phaseWasteFactor('Painting', 'trowel'), 1.05);
+  });
+});
+
+describe('roleAllowedForPhase', () => {
+  test('on-list roles pass, off-list and null are dropped', () => {
+    assert.equal(eng.roleAllowedForPhase('paper', 'Lath'), true);
+    assert.equal(eng.roleAllowedForPhase('trim', 'Lath'), true);
+    assert.equal(eng.roleAllowedForPhase('mud', 'Drywall'), true);
+    assert.equal(eng.roleAllowedForPhase('staple', 'Drywall'), false); // screws, not staples
+    assert.equal(eng.roleAllowedForPhase(null, 'Lath'), false);
+    assert.equal(eng.roleAllowedForPhase('paint', 'Accessories'), false); // no auto roles
+  });
+});
+
+describe('paintYield', () => {
+  test('elastomeric vs textured vs smooth', () => {
+    assert.equal(eng.paintYield({ elastomeric: true }), 100);
+    assert.equal(eng.paintYield({ surface: 'textured' }), 250);
+    assert.equal(eng.paintYield({ surface: 'smooth' }), 400);
+    assert.equal(eng.isElastomeric('Sherwin Elastomeric 5gal'), true);
+    assert.equal(eng.isElastomeric('A-100 Latex 5gal'), false);
+  });
+});
+
+describe('Lath staples + packagesForRole', () => {
+  test('staple count then 5M-box conversion', () => {
+    const r = eng.computePhase('Lath', 1000, {});
+    assert.equal(r.staple.qty, 2000); // ceil(1000 / 0.5)
+    assert.equal(
+      eng.packagesForRole('staple', r.staple, { name: 'A19 Tacker Staples 5M', unit: 'box' }),
+      1 // ceil(2000 / 5000)
+    );
   });
 });

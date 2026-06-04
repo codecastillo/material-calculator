@@ -18,15 +18,20 @@
     WIRE_NETTING_SF_PER_ROLL: 431.56, // 3'x150' gross 450sf, minus 1" side / 2" end laps
     COLOR_COAT_SF_PER_BAG: 140, // 80 lb pre-blend at 1/8"
     PRIMER_SF_PER_GAL: 350,
-    PAINT_SMOOTH_SF_PER_GAL: 400,
-    PAINT_TEXTURED_SF_PER_GAL: 250,
+    PAINT_SMOOTH_SF_PER_GAL: 400, // smooth drywall
+    PAINT_TEXTURED_SF_PER_GAL: 250, // textured / stucco
+    ELASTOMERIC_SF_PER_GAL: 100, // high-build elastomeric (assumption, tunable; product coverage overrides)
     MUD_GAL_PER_SF: 0.05, // 3-coat tape + texture
-    SCREW_SF_PER_SCREW: 1.3, // 12" o.c. walls + ceilings
+    SCREW_SF_PER_SCREW: 1.3, // blended walls + ceilings (fallback when area isn't split)
+    SCREW_SF_WALL: 1.5, // 16" o.c. field
+    SCREW_SF_CEILING: 1.0, // 12" o.c. field
+    STAPLE_SF_PER_STAPLE: 0.5, // lath/netting fastening ~6-7" o.c. (assumption, tunable)
     TAPE_LF_PER_SF: 0.37,
     CEMENT_BAG_CF: 1.0, // one 94 lb bag = 1 cf loose dry
     SHRINKAGE: 1.25, // dry-to-wet compaction
     CEMENT_DRY_FRACTION: 0.25, // 1 part cement : 3 parts sand
     SAND_DRY_FRACTION: 0.75,
+    LIME_PER_CEMENT: 0.5, // Type S adds hydrated lime up to ~1/2 the cement volume
     CF_PER_CY: 27,
     STONE_CORNER_SF_PER_LF: 0.6, // flat coverage absorbed by each lf of corner stone
     MORTAR_LB_PER_SF: 1.25,
@@ -34,41 +39,160 @@
     GRAY_COAT_DEFAULT_THICKNESS_IN: 0.75, // 3/8" scratch + 3/8" brown
   };
 
+  // Application method waste (how a coating goes on the wall). Drives the stucco
+  // coating phases; other phases use PHASE_WASTE defaults.
   const WASTE = { spray: 1.05, trowel: 1.12 };
   function wasteFactor(method) {
     return WASTE[method] || WASTE.trowel;
   }
 
-  // Classify a product into a calc role from its name (+ unit/calc hints). Returns
-  // a role key the formulas understand, or null when the product should fall back
-  // to plain coverage math.
+  // Built-in per-phase waste. Gray/Color coat defer to the application method.
+  const PHASE_WASTE = {
+    Lath: 0.1,
+    Drywall: 0.1,
+    Painting: 0.05,
+    Stone: 0.1,
+    Accessories: 0.1,
+  };
+  function phaseWasteFactor(phase, method) {
+    if (phase === 'Gray Coat' || phase === 'Color Coat') return wasteFactor(method);
+    return 1 + (PHASE_WASTE[phase] != null ? PHASE_WASTE[phase] : 0.1);
+  }
+
+  // Roles each phase actually consumes. A material is auto-quantified only when
+  // its role is on its phase's list; everything else (floats, masks, duct tape,
+  // misc) is treated as an optional extra the user can still add by hand.
+  const PHASE_ROLES = {
+    Lath: ['paper', 'wire', 'lath', 'staple', 'nail', 'trim', 'basecoat'],
+    'Gray Coat': ['basecoat', 'cement', 'sand', 'lime', 'fiber'],
+    'Color Coat': ['colorcoat', 'pigment'],
+    Drywall: ['sheet', 'mud', 'tape', 'screw', 'cornerbead', 'sanding'],
+    Painting: ['paint', 'primer'],
+    Stone: ['stone_flat', 'stone_corner', 'mortar'],
+  };
+  function roleAllowedForPhase(role, phase) {
+    const set = PHASE_ROLES[phase];
+    return !!role && !!set && set.indexOf(role) !== -1;
+  }
+
+  function isElastomeric(name) {
+    return /elastomeric|elasto/i.test(String(name || ''));
+  }
+  function paintYield(opts) {
+    opts = opts || {};
+    if (opts.elastomeric) return C.ELASTOMERIC_SF_PER_GAL;
+    return opts.surface === 'textured' ? C.PAINT_TEXTURED_SF_PER_GAL : C.PAINT_SMOOTH_SF_PER_GAL;
+  }
+
+  // Classify a product into a calc role from its name (+ drywall-sheet hint).
+  // Returns a role key the formulas/allowlist understand, or null for items with
+  // no standard role (which fall back to coverage or are dropped as extras).
   function materialRole(m) {
     const name = String((m && m.name) || '').toLowerCase();
     const has = (...words) => words.some((w) => name.includes(w));
 
-    // Accessories that share keywords with real roles but have no formula here.
+    // Tools / consumables / sheeting that share keywords with real roles.
     if (has('caulk')) return null;
-    if (has('poly', 'visqueen', 'plastic', 'sheeting')) return null; // poly sheeting, not paint
+    if (has('poly', 'visqueen', 'plastic', 'sheeting')) return null;
     if (has('duct tape')) return null;
+    if (has('float', 'hawk', 'darby', 'margin trowel')) return null;
+    if (has('mask', 'respirator', 'n95')) return null;
+    if (has('roofing nail')) return null;
+    if (has('eps', 'foam sheet', 'foam board', 't&g foam')) return null; // job-specific insulation
 
     if (has('mortar')) return 'mortar';
     if (has('corner stone', 'stone corner', 'corner veneer')) return 'stone_corner';
     if (has('stone veneer', 'flat stone', 'stone flat', 'veneer flat')) return 'stone_flat';
+    if (has('color vial', 'pigment', 'colorant')) return 'pigment';
     if (has('primer')) return 'primer';
-    if (has('paint', 'latex', 'enamel')) return 'paint';
+    if (has('elastomeric', 'elasto', 'paint', 'enamel', 'coating')) return 'paint';
+    if (has('latex') && !has('caulk')) return 'paint';
     if (has('screw')) return 'screw';
+    if (has('staple', 'tacker')) return 'staple';
+    if (has('furring nail')) return 'nail';
+    if (has('shadow bead', 'z bead', 'cornerbead', 'corner bead', 'tape-on')) return 'cornerbead';
+    if (has('sanding', 'sandpaper', 'sanding disc', 'sanding pad', 'sanding sponge'))
+      return 'sanding';
     if (has('mesh tape', 'joint tape', 'paper tape', 'wallboard tape', 'drywall tape'))
       return 'tape';
-    if (has('joint compound', 'all purpose', 'all-purpose', 'taping', 'topping', 'mud', 'tnt'))
+    if (
+      has(
+        'joint compound',
+        'all purpose',
+        'all-purpose',
+        'taping',
+        'topping',
+        'mud',
+        'tnt',
+        'fast set',
+        'red dot',
+        'hamilton'
+      )
+    )
       return 'mud';
+    if (m && m.isDrywallSheet) return 'sheet';
     if (
       has('drywall', 'sheetrock', 'gypsum', 'type x', 'soffit board', 'tile backer', 'densshield')
     )
       return 'sheet';
-    if (has('color coat', 'finish coat', 'marblewall', 'dryvit', 'senerflex', 'versatex'))
+    if (
+      has(
+        'fine sand',
+        'medium sand',
+        'perfect swirl',
+        'swirl',
+        'marblewall',
+        'versatex',
+        'senerflex',
+        'dryvit',
+        'color coat',
+        'finish coat',
+        'freestyle',
+        'mojave',
+        'sandblast',
+        'stuccoat',
+        'lace'
+      )
+    )
       return 'colorcoat';
+    if (has('fiber mesh', 'fibermesh', 'fiberglass mesh')) return 'fiber';
+    if (
+      has(
+        'diamondwall',
+        'dry bond',
+        '1-kote',
+        'one kote',
+        '1 kote',
+        'base coat',
+        'basecoat',
+        'genesis',
+        'hangtite',
+        'scratch coat'
+      )
+    )
+      return 'basecoat';
     if (has('plastic cement', 'portland', 'plaster cement')) return 'cement';
+    if (has('lime')) return 'lime';
     if (has('plaster sand', 'masonry sand', 'sand')) return 'sand';
+    if (has('diamond mesh', 'metal lath', 'expanded metal', '3.4 lath')) return 'lath';
+    if (
+      has(
+        'casing',
+        'j metal',
+        'j-mold',
+        'j mold',
+        'weep',
+        'corner aid',
+        'corneraid',
+        'cornerite',
+        'bullnose',
+        'stock aid',
+        'short flange',
+        'short-flange',
+        '#66'
+      )
+    )
+      return 'trim';
     if (has('building paper', 'craft paper', 'kraft', '2-ply', '2 ply', 'weather barrier'))
       return 'paper';
     if (has('wire', 'netting', 'k-lath', 'klath')) return 'wire';
@@ -85,8 +209,8 @@
 
   // Compute per-role target quantities for one phase. `area` is the net wall area
   // already multiplied by the chosen waste factor. Returns { role: { qty, unit } }.
-  // Stone returns adjusted areas (flat sqft, corner lf) that downstream coverage
-  // converts into purchasable units; everything else returns final counts.
+  // Stone returns adjusted areas; screws/paint that depend on per-area or
+  // per-product detail are computed in the caller, this is the generic path.
   function computePhase(phase, area, opts) {
     opts = opts || {};
     const out = {};
@@ -94,21 +218,26 @@
       case 'Lath':
         out.paper = { qty: ceil(area / C.PAPER_2PLY_SF_PER_ROLL), unit: 'roll' };
         out.wire = { qty: ceil(area / C.WIRE_NETTING_SF_PER_ROLL), unit: 'roll' };
+        out.staple = { qty: ceil(area / C.STAPLE_SF_PER_STAPLE), unit: 'staple' };
         break;
       case 'Gray Coat': {
         const thickness = opts.grayThicknessIn || C.GRAY_COAT_DEFAULT_THICKNESS_IN;
         const wetCf = area * (thickness / 12);
         const dryCf = wetCf * C.SHRINKAGE;
-        out.cement = { qty: ceil((dryCf * C.CEMENT_DRY_FRACTION) / C.CEMENT_BAG_CF), unit: 'bag' };
-        const sandCf = dryCf * C.SAND_DRY_FRACTION;
-        out.sand = { qty: round(sandCf / C.CF_PER_CY, 2), unit: 'cubic yard' };
+        const cementCf = dryCf * C.CEMENT_DRY_FRACTION;
+        out.cement = { qty: ceil(cementCf / C.CEMENT_BAG_CF), unit: 'bag' };
+        out.lime = { qty: ceil((cementCf * C.LIME_PER_CEMENT) / C.CEMENT_BAG_CF), unit: 'bag' };
+        out.sand = {
+          qty: round((dryCf * C.SAND_DRY_FRACTION) / C.CF_PER_CY, 2),
+          unit: 'cubic yard',
+        };
         break;
       }
       case 'Color Coat':
         out.colorcoat = { qty: ceil(area / C.COLOR_COAT_SF_PER_BAG), unit: 'bag' };
         break;
       case 'Drywall': {
-        const sheetSqft = opts.sheetSqft === 48 ? 48 : opts.sheetSqft === 32 ? 32 : 48;
+        const sheetSqft = opts.sheetSqft === 32 ? 32 : 48;
         out.sheet = { qty: ceil(area / sheetSqft), unit: 'sheet' };
         out.mud = { qty: round(area * C.MUD_GAL_PER_SF, 1), unit: 'gallon' };
         out.screw = { qty: ceil(area / C.SCREW_SF_PER_SCREW), unit: 'screw' };
@@ -117,9 +246,8 @@
       }
       case 'Painting': {
         const coats = opts.coats > 0 ? opts.coats : 1;
-        const yield_ =
-          opts.surface === 'textured' ? C.PAINT_TEXTURED_SF_PER_GAL : C.PAINT_SMOOTH_SF_PER_GAL;
-        out.paint = { qty: ceil((area / yield_) * coats), unit: 'gallon' };
+        const yld = paintYield({ elastomeric: opts.elastomeric, surface: opts.surface });
+        out.paint = { qty: ceil((area / yld) * coats), unit: 'gallon' };
         out.primer = { qty: ceil(area / C.PRIMER_SF_PER_GAL), unit: 'gallon' };
         break;
       }
@@ -137,15 +265,16 @@
     return out;
   }
 
-  // Read a package size out of a product name (or unit). Returns { value, unit }
-  // where unit is one of gal | ft | count | lb, or null when nothing is found.
-  // Used to convert a role's net need (gallons, screws, linear ft) into the
-  // product's real container (pail, box, roll). A stored package on the material
-  // takes precedence over this.
+  // Read a package size out of a product name. Returns { value, unit } where unit
+  // is gal | ft | count | lb, or null. A box of rolls ("24 rolls/box") with a
+  // per-roll length is multiplied out so a box isn't mistaken for one roll.
   function parsePackage(name) {
     const s = String(name || '').toLowerCase();
     let m;
     if ((m = s.match(/(\d+(?:\.\d+)?)\s*gal/))) return { value: +m[1], unit: 'gal' };
+    const rollsBox = s.match(/(\d+)\s*rolls?\s*\/\s*box/);
+    const lenForBox = s.match(/(\d+)\s*'/);
+    if (rollsBox && lenForBox) return { value: +rollsBox[1] * +lenForBox[1], unit: 'ft' };
     if ((m = s.match(/(\d+)\s*pc\s*\/\s*box/))) return { value: +m[1], unit: 'count' };
     if ((m = s.match(/(\d+(?:\.\d+)?)\s*m\b/))) return { value: +m[1] * 1000, unit: 'count' }; // 8M = 8000
     if ((m = s.match(/x\s*(\d+)\s*yd/))) return { value: +m[1] * 3, unit: 'ft' }; // 60yd -> 180 ft
@@ -167,6 +296,7 @@
       case 'wire':
       case 'sheet':
       case 'cement':
+      case 'lime':
       case 'mortar':
         return er.qty; // formula already yields the purchase unit (roll/sheet/bag)
       case 'colorcoat':
@@ -177,6 +307,7 @@
       case 'primer':
         return okPkg('gal') ? ceil(er.qty / pkg.value) : null;
       case 'screw':
+      case 'staple':
         return okPkg('count') ? ceil(er.qty / pkg.value) : null;
       case 'tape': {
         const lf = er.area != null ? er.area : er.qty;
@@ -189,14 +320,20 @@
       case 'sand':
         return /ton/i.test((m && m.unit) || '') ? ceil(er.qty * 1.35) : ceil(er.qty);
       default:
-        return null;
+        return null; // lath / trim / basecoat / fiber / cornerbead / sanding / nail / pigment -> coverage
     }
   }
 
   return {
     CONSTANTS: C,
     WASTE,
+    PHASE_WASTE,
+    PHASE_ROLES,
     wasteFactor,
+    phaseWasteFactor,
+    roleAllowedForPhase,
+    isElastomeric,
+    paintYield,
     materialRole,
     computePhase,
     parsePackage,
