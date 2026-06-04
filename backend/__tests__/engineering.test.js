@@ -108,6 +108,68 @@ describe('Stone (corner subtraction + mortar)', () => {
   });
 });
 
+describe('parsePackage from product names', () => {
+  const cases = [
+    ['Hamilton All-Purpose Joint Compound 3.5 Gal', { value: 3.5, unit: 'gal' }],
+    ['A-100 Exterior Latex 5gal', { value: 5, unit: 'gal' }],
+    ['Screws 1-1/4" 8M', { value: 8000, unit: 'count' }],
+    ["Joint Tape 500'", { value: 500, unit: 'ft' }],
+    ['Red Dot All Purpose 50#', { value: 50, unit: 'lb' }],
+    ["Bullnose II 10' 50 Pc/Box", { value: 50, unit: 'count' }],
+    ['Green Foam Float 5"x12"', null], // inch marks, not feet
+  ];
+  for (const [name, expected] of cases) {
+    test(`${name}`, () => {
+      assert.deepEqual(eng.parsePackage(name), expected);
+    });
+  }
+});
+
+describe('packagesForRole converts net need to purchase units', () => {
+  test('mud gallons -> 3.5gal pails', () => {
+    const r = eng.computePhase('Drywall', 1000, { sheetSqft: 48 });
+    assert.equal(
+      eng.packagesForRole('mud', r.mud, { name: 'Hamilton All-Purpose 3.5 Gal', unit: 'pail' }),
+      15 // ceil(50 / 3.5)
+    );
+  });
+  test('screws count -> 8M boxes', () => {
+    const r = eng.computePhase('Drywall', 1000, { sheetSqft: 48 });
+    assert.equal(
+      eng.packagesForRole('screw', r.screw, { name: 'Screws 1-1/4" 8M', unit: 'box' }),
+      1
+    ); // ceil(770/8000)
+  });
+  test("tape linear ft -> 500' rolls", () => {
+    const r = eng.computePhase('Drywall', 1000, { sheetSqft: 48 });
+    assert.equal(eng.packagesForRole('tape', r.tape, { name: "Joint Tape 500'", unit: 'roll' }), 1); // ceil(370/500)
+  });
+  test('paper/wire pass through as rolls', () => {
+    const r = eng.computePhase('Lath', 1000, {});
+    assert.equal(eng.packagesForRole('paper', r.paper, { name: 'Building Paper' }), 4);
+    assert.equal(eng.packagesForRole('wire', r.wire, { name: 'Stucco Wire' }), 3);
+  });
+  test('color coat falls back to coverage (null)', () => {
+    const r = eng.computePhase('Color Coat', 1000, {});
+    assert.equal(
+      eng.packagesForRole('colorcoat', r.colorcoat, { name: 'Marblewall', coveragePerUnit: 80 }),
+      null
+    );
+  });
+  test('stored package overrides the parsed name', () => {
+    const r = eng.computePhase('Drywall', 1000, { sheetSqft: 48 });
+    assert.equal(
+      eng.packagesForRole('mud', r.mud, {
+        name: 'Mud 3.5 Gal',
+        unit: 'pail',
+        packageValue: 5,
+        packageUnit: 'gal',
+      }),
+      10 // ceil(50/5) using the stored 5gal, not the name's 3.5
+    );
+  });
+});
+
 describe('waste factor by application method', () => {
   test('spray 5%, trowel 12% (default)', () => {
     assert.equal(eng.wasteFactor('spray'), 1.05);
