@@ -2896,6 +2896,17 @@ function calcForSupplier(supplier, waste, selectedPhases, opts = {}) {
   return { supplier, phases, items, materialTotal };
 }
 
+// Application Method presets fill the Waste % field (spray 5%, hand-troweled 12%
+// per the engineering spec). The field stays editable, so "Custom" leaves it be.
+function setApplicationMethod() {
+  const sel = document.getElementById('calcApplicationMethod');
+  const wasteEl = document.getElementById('calcWaste');
+  if (!sel || !wasteEl) return;
+  if (sel.value === 'spray') wasteEl.value = '5';
+  else if (sel.value === 'trowel') wasteEl.value = '12';
+}
+window.setApplicationMethod = setApplicationMethod;
+
 function calculateJob() {
   const waste = parseFloat(document.getElementById('calcWaste').value) || 0;
   const profitPct = parseFloat(document.getElementById('calcProfit').value) || 0;
