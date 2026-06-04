@@ -2504,9 +2504,9 @@ tr.drag-over td {
 .v2-topnav-inner {
   max-width: 1440px;
   margin: 0 auto;
-  display: grid;
+  display: flex;
   align-items: center;
-  grid-template-columns: 1fr auto 1fr;
+  justify-content: space-between;
   padding: 0 var(--v2-s10);
   height: 56px;
   gap: var(--v2-s6);
@@ -2518,7 +2518,6 @@ tr.drag-over td {
   align-items: center;
   gap: var(--v2-s2);
   flex-shrink: 0;
-  justify-self: start;
 }
 
 .v2-brand {
@@ -2584,9 +2583,11 @@ tr.drag-over td {
 .v2-topnav-links {
   display: flex;
   gap: var(--v2-s5);
-  justify-self: center;
-  align-self: stretch;
   align-items: center;
+  /* Take the middle and center the links in it, so the gaps to the logo and the
+     search balance out instead of the links hugging the (wider) search. */
+  flex: 1;
+  justify-content: center;
 }
 .v2-nav-link {
   background: none;
@@ -2627,7 +2628,6 @@ tr.drag-over td {
   gap: var(--v2-s3);
   align-items: center;
   flex-shrink: 0;
-  justify-self: end;
 }
 
 .v2-topnav-search {
@@ -3753,7 +3753,6 @@ select.calc-v2-input {
 /* Mobile breakpoint: spec §9 explicitly: "At narrow widths (< 768px)" */
 @media (max-width: 768px) {
   .v2-topnav-inner {
-    grid-template-columns: 1fr auto;
     padding: 0 var(--v2-s4);
     gap: var(--v2-s3);
   }
