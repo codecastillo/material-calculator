@@ -1,4 +1,4 @@
-const CACHE_NAME = 'esticount-v18';
+const CACHE_NAME = 'esticount-v19';
 const APP_SHELL = [
   '/index.html',
   '/css/styles.css',
@@ -13,6 +13,7 @@ const APP_SHELL = [
   '/js/handlers.js',
   '/js/ui-handlers.js',
   '/js/sw-register.js',
+  '/js/engineering.js',
   '/js/app.js',
   '/js/api.js',
   '/assets/logo.png',
