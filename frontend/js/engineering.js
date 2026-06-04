@@ -137,5 +137,69 @@
     return out;
   }
 
-  return { CONSTANTS: C, WASTE, wasteFactor, materialRole, computePhase };
+  // Read a package size out of a product name (or unit). Returns { value, unit }
+  // where unit is one of gal | ft | count | lb, or null when nothing is found.
+  // Used to convert a role's net need (gallons, screws, linear ft) into the
+  // product's real container (pail, box, roll). A stored package on the material
+  // takes precedence over this.
+  function parsePackage(name) {
+    const s = String(name || '').toLowerCase();
+    let m;
+    if ((m = s.match(/(\d+(?:\.\d+)?)\s*gal/))) return { value: +m[1], unit: 'gal' };
+    if ((m = s.match(/(\d+)\s*pc\s*\/\s*box/))) return { value: +m[1], unit: 'count' };
+    if ((m = s.match(/(\d+(?:\.\d+)?)\s*m\b/))) return { value: +m[1] * 1000, unit: 'count' }; // 8M = 8000
+    if ((m = s.match(/x\s*(\d+)\s*yd/))) return { value: +m[1] * 3, unit: 'ft' }; // 60yd -> 180 ft
+    if ((m = s.match(/(\d+)\s*'/))) return { value: +m[1], unit: 'ft' }; // 500'
+    if ((m = s.match(/(\d+(?:\.\d+)?)\s*(?:#|lbs?)/))) return { value: +m[1], unit: 'lb' };
+    return null;
+  }
+
+  // Convert a role's net need (er, from computePhase) into the number of the
+  // product's purchase units. Returns null when the conversion isn't safe, so the
+  // caller falls back to the product's own coverage math (no wrong counts).
+  function packagesForRole(role, er, m) {
+    if (!er) return null;
+    const stored = m && m.packageValue > 0 ? { value: m.packageValue, unit: m.packageUnit } : null;
+    const pkg = stored || parsePackage(m && m.name);
+    const okPkg = (u) => pkg && pkg.unit === u && pkg.value > 0;
+    switch (role) {
+      case 'paper':
+      case 'wire':
+      case 'sheet':
+      case 'cement':
+      case 'mortar':
+        return er.qty; // formula already yields the purchase unit (roll/sheet/bag)
+      case 'colorcoat':
+      case 'stone_flat':
+        return null; // use the product's own sqft coverage
+      case 'mud':
+      case 'paint':
+      case 'primer':
+        return okPkg('gal') ? ceil(er.qty / pkg.value) : null;
+      case 'screw':
+        return okPkg('count') ? ceil(er.qty / pkg.value) : null;
+      case 'tape': {
+        const lf = er.area != null ? er.area : er.qty;
+        return okPkg('ft') ? ceil(lf / pkg.value) : null;
+      }
+      case 'stone_corner': {
+        const lf = er.area != null ? er.area : er.qty;
+        return okPkg('ft') ? ceil(lf / pkg.value) : ceil(lf);
+      }
+      case 'sand':
+        return /ton/i.test((m && m.unit) || '') ? ceil(er.qty * 1.35) : ceil(er.qty);
+      default:
+        return null;
+    }
+  }
+
+  return {
+    CONSTANTS: C,
+    WASTE,
+    wasteFactor,
+    materialRole,
+    computePhase,
+    parsePackage,
+    packagesForRole,
+  };
 });

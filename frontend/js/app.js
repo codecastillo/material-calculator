@@ -683,6 +683,10 @@ async function loadData() {
                 : '') == 'Drywall' && (m.unit || '') == 'sheet',
             lastUpdated: m.updated_at ? new Date(m.updated_at).getTime() : Date.now(),
             previousPrice: null,
+            // Optional package override (e.g. 3.5 gal/pail). Null until the
+            // package columns are migrated; the engine parses the name otherwise.
+            packageValue: m.package_value != null ? Number(m.package_value) : null,
+            packageUnit: m.package_unit || null,
           }));
         })
       );
@@ -2803,19 +2807,15 @@ function calcForSupplier(supplier, waste, selectedPhases, opts = {}) {
   // First pass: each material's own quantity from its dimensions and rate.
   const selfQtyBySku = {};
   const computed = mats.map((m) => {
-    // Engineering model: products whose role formula already yields the purchase
-    // unit (paper/wire rolls, drywall sheets) use the mathematically derived
-    // count, which folds in code-mandated laps. Other roles stay on coverage
-    // until they carry a package size to convert net need into their container.
+    // Engineering model: derive the quantity from the per-role formula, then
+    // convert that net need into the product's purchase unit (rolls, sheets,
+    // pails, boxes) via its package size. When the conversion isn't safe the
+    // product falls back to its own coverage math below, so nothing breaks.
     const role =
       typeof Engineering !== 'undefined' && Engineering.materialRole
         ? Engineering.materialRole(m)
         : null;
-    const directRole =
-      role === 'paper' ||
-      role === 'wire' ||
-      (role === 'sheet' && !(m.isDrywallSheet && hasDrywallAreas));
-    if (directRole) {
+    if (role && Engineering.computePhase) {
       const cat = m.category;
       let phaseSqft;
       if (cat === 'Drywall')
@@ -2824,12 +2824,20 @@ function calcForSupplier(supplier, waste, selectedPhases, opts = {}) {
         const dimKey = stuccoPhases.includes(cat) ? 'Stucco' : cat;
         phaseSqft = (phaseDims[dimKey]?.sqft || 0) * w;
       }
-      if (phaseSqft > 0) {
-        const eng = Engineering.computePhase(cat, phaseSqft, { sheetSqft: opts.sheetSqft });
-        const er = eng[role];
-        if (er && er.qty != null) {
-          selfQtyBySku[m.sku] = er.qty;
-          return { m, ovr: null, selfQty: er.qty, engineered: true };
+      // Let the multi-area drywall UI keep driving sheet counts.
+      const skipSheet = role === 'sheet' && m.isDrywallSheet && hasDrywallAreas;
+      if (!skipSheet && phaseSqft > 0) {
+        const eng = Engineering.computePhase(cat, phaseSqft, {
+          sheetSqft: opts.sheetSqft,
+          coats: paintCoats,
+          surface: opts.paintSurface,
+          grayThicknessIn: opts.grayThicknessIn,
+          cornerLinearFt: (phaseDims['Stone'] && phaseDims['Stone'].linearFt) || 0,
+        });
+        const pkgs = Engineering.packagesForRole(role, eng[role], m);
+        if (pkgs != null) {
+          selfQtyBySku[m.sku] = pkgs;
+          return { m, ovr: null, selfQty: pkgs, engineered: true };
         }
       }
     }
