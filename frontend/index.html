@@ -780,6 +780,17 @@
                         min="0"
                       /><span class="hint">Weep screed, corner aid, casing bead</span>
                     </div>
+                    <div class="calc-v2-field">
+                      <label>Base coat thickness (in)</label
+                      ><input
+                        type="number"
+                        class="calc-v2-input"
+                        id="calcGrayThickness"
+                        value="0.75"
+                        min="0.125"
+                        step="0.125"
+                      /><span class="hint">Scratch + brown, for site-mixed cement &amp; sand</span>
+                    </div>
                   </div>
                 </div>
               </section>
@@ -848,6 +859,13 @@
                         <option value="1">1 Coat</option>
                         <option value="2">2 Coats</option>
                         <option value="3">3 Coats</option>
+                      </select>
+                    </div>
+                    <div class="calc-v2-field">
+                      <label>Surface</label
+                      ><select class="calc-v2-input" id="calcPaintSurface">
+                        <option value="smooth">Smooth drywall (400 sf/gal)</option>
+                        <option value="textured">Textured / stucco (250 sf/gal)</option>
                       </select>
                     </div>
                   </div>
