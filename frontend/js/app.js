@@ -2740,20 +2740,27 @@ function rebuildTaxDropdown() {
 }
 
 function calcForSupplier(supplier, waste, selectedPhases, opts = {}) {
-  const w = 1 + waste / 100;
   const paintCoats = opts.paintCoats || 1;
   const drywallAreas = opts.drywallAreas || [];
   const phaseDims = opts.phaseDims || {}; // {category: {sqft, linearFt}}
 
+  // Per-phase waste factor: gray/color coat follow the application method, the
+  // rest use built-in defaults. Falls back to the legacy global waste param when
+  // the engineering module isn't loaded.
+  const wf = (cat) =>
+    typeof Engineering !== 'undefined' && Engineering.phaseWasteFactor
+      ? Engineering.phaseWasteFactor(cat, opts.applicationMethod)
+      : 1 + (waste || 0) / 100;
+
   // Drywall area handling
   const hasDrywallAreas = drywallAreas.length > 0 && selectedPhases?.includes('Drywall');
   const totalDrywallSqft = hasDrywallAreas
-    ? drywallAreas.reduce((s, a) => s + (a.sqft || 0), 0) * w
+    ? drywallAreas.reduce((s, a) => s + (a.sqft || 0), 0) * wf('Drywall')
     : 0;
   const sheetSqftMap = {};
   if (hasDrywallAreas)
     drywallAreas.forEach((a) => {
-      sheetSqftMap[a.sku] = (a.sqft || 0) * w;
+      sheetSqftMap[a.sku] = (a.sqft || 0) * wf('Drywall');
     });
 
   // Stucco phases share dimensions
@@ -2814,6 +2821,20 @@ function calcForSupplier(supplier, waste, selectedPhases, opts = {}) {
     }
   }
 
+  // Recommend only the materials that fill a real role for their phase, so an
+  // order isn't padded with off-role extras a supplier happened to file under the
+  // phase (floats, masks, duct tape, foam). Items the user explicitly picked are
+  // exempt, and they stay available in the per-phase picker.
+  if (typeof Engineering !== 'undefined' && Engineering.roleAllowedForPhase) {
+    const picksByPhase = (typeof selectedMaterials === 'object' && selectedMaterials) || {};
+    mats = mats.filter((m) => {
+      if (m.isDrywallSheet) return true;
+      const picks = picksByPhase[m.category];
+      if (picks && picks.length && picks.includes(m.id)) return true;
+      return Engineering.roleAllowedForPhase(Engineering.materialRole(m), m.category);
+    });
+  }
+
   // First pass: each material's own quantity from its dimensions and rate.
   const selfQtyBySku = {};
   const computed = mats.map((m) => {
@@ -2829,22 +2850,44 @@ function calcForSupplier(supplier, waste, selectedPhases, opts = {}) {
       const cat = m.category;
       let phaseSqft;
       if (cat === 'Drywall')
-        phaseSqft = hasDrywallAreas ? totalDrywallSqft : (phaseDims['Drywall']?.sqft || 0) * w;
+        phaseSqft = hasDrywallAreas
+          ? totalDrywallSqft
+          : (phaseDims['Drywall']?.sqft || 0) * wf('Drywall');
       else {
         const dimKey = stuccoPhases.includes(cat) ? 'Stucco' : cat;
-        phaseSqft = (phaseDims[dimKey]?.sqft || 0) * w;
+        phaseSqft = (phaseDims[dimKey]?.sqft || 0) * wf(cat);
       }
       // Let the multi-area drywall UI keep driving sheet counts.
       const skipSheet = role === 'sheet' && m.isDrywallSheet && hasDrywallAreas;
       if (!skipSheet && phaseSqft > 0) {
-        const eng = Engineering.computePhase(cat, phaseSqft, {
-          sheetSqft: opts.sheetSqft,
-          coats: paintCoats,
-          surface: opts.paintSurface,
-          grayThicknessIn: opts.grayThicknessIn,
-          cornerLinearFt: (phaseDims['Stone'] && phaseDims['Stone'].linearFt) || 0,
-        });
-        const pkgs = Engineering.packagesForRole(role, eng[role], m);
+        let er;
+        if (role === 'screw' && cat === 'Drywall' && hasDrywallAreas) {
+          // Per-area screw spacing: ceilings (12" o.c.) take more than walls (16").
+          const EC = Engineering.CONSTANTS;
+          let screws = 0;
+          drywallAreas.forEach((a) => {
+            const rate = /ceil/i.test(a.label || '') ? EC.SCREW_SF_CEILING : EC.SCREW_SF_WALL;
+            screws += ((a.sqft || 0) * wf('Drywall')) / rate;
+          });
+          er = { qty: Math.ceil(screws) };
+        } else if (role === 'paint') {
+          // Per-product yield: elastomeric is far thicker than standard paint.
+          const yld = Engineering.paintYield({
+            elastomeric: Engineering.isElastomeric(m.name),
+            surface: opts.paintSurface,
+          });
+          er = { qty: Math.ceil((phaseSqft / yld) * paintCoats) };
+        } else {
+          const eng = Engineering.computePhase(cat, phaseSqft, {
+            sheetSqft: opts.sheetSqft,
+            coats: paintCoats,
+            surface: opts.paintSurface,
+            grayThicknessIn: opts.grayThicknessIn,
+            cornerLinearFt: (phaseDims['Stone'] && phaseDims['Stone'].linearFt) || 0,
+          });
+          er = eng[role];
+        }
+        const pkgs = Engineering.packagesForRole(role, er, m);
         if (pkgs != null) {
           selfQtyBySku[m.sku] = pkgs;
           return { m, ovr: null, selfQty: pkgs, engineered: true };
@@ -2856,12 +2899,13 @@ function calcForSupplier(supplier, waste, selectedPhases, opts = {}) {
       base = sheetSqftMap[m.sku] || 0;
     } else if (m.category === 'Drywall' && !m.isDrywallSheet && hasDrywallAreas) {
       const dwDims = phaseDims['Drywall'] || {};
-      base = m.calcType === 'linear' ? (dwDims.linearFt || 0) * w : totalDrywallSqft;
+      base = m.calcType === 'linear' ? (dwDims.linearFt || 0) * wf('Drywall') : totalDrywallSqft;
     } else {
       // Look up per-phase dimensions; stucco phases share 'Stucco' dims
       const dimKey = stuccoPhases.includes(m.category) ? 'Stucco' : m.category;
       const dims = phaseDims[dimKey] || { sqft: 0, linearFt: 0 };
-      base = m.calcType === 'linear' ? (dims.linearFt || 0) * w : (dims.sqft || 0) * w;
+      const f = wf(m.category);
+      base = m.calcType === 'linear' ? (dims.linearFt || 0) * f : (dims.sqft || 0) * f;
     }
     // Use the recipe line's rate override when set, else the product's coverage.
     const ovr = recipeOverrideBySku && recipeOverrideBySku[m.sku];
@@ -2914,19 +2958,12 @@ function calcForSupplier(supplier, waste, selectedPhases, opts = {}) {
   return { supplier, phases, items, materialTotal };
 }
 
-// Application Method presets fill the Waste % field (spray 5%, hand-troweled 12%
-// per the engineering spec). The field stays editable, so "Custom" leaves it be.
-function setApplicationMethod() {
-  const sel = document.getElementById('calcApplicationMethod');
-  const wasteEl = document.getElementById('calcWaste');
-  if (!sel || !wasteEl) return;
-  if (sel.value === 'spray') wasteEl.value = '5';
-  else if (sel.value === 'trowel') wasteEl.value = '12';
-}
-window.setApplicationMethod = setApplicationMethod;
-
 function calculateJob() {
-  const waste = parseFloat(document.getElementById('calcWaste').value) || 0;
+  // Waste is no longer a user field: each phase carries a built-in default and
+  // the application method (spray/trowel) drives the stucco coating phases. The
+  // legacy `waste` param is kept at 0 so calcForSupplier's per-phase factors win.
+  const waste = 0;
+  const applicationMethod = document.getElementById('calcApplicationMethod')?.value || 'trowel';
   const profitPct = parseFloat(document.getElementById('calcProfit').value) || 0;
   const taxPct =
     parseFloat(document.getElementById('calcTax').value) ||
@@ -2971,8 +3008,18 @@ function calculateJob() {
   const isAll = supplier === 'All Suppliers';
   const grayThicknessIn =
     parseFloat(document.getElementById('calcGrayThickness')?.value) || undefined;
-  const paintSurface = document.getElementById('calcPaintSurface')?.value || 'smooth';
-  const calcOpts = { paintCoats, drywallAreas, phaseDims, grayThicknessIn, paintSurface };
+  // Surface is inferred, not asked: stucco/stone work is textured, otherwise
+  // smooth drywall. Elastomeric is detected per-product downstream.
+  const stuccoLike = ['Lath', 'Gray Coat', 'Color Coat', 'Stone'];
+  const paintSurface = selectedPhases.some((p) => stuccoLike.includes(p)) ? 'textured' : 'smooth';
+  const calcOpts = {
+    paintCoats,
+    drywallAreas,
+    phaseDims,
+    grayThicknessIn,
+    paintSurface,
+    applicationMethod,
+  };
 
   let r;
   if (isAll) {
@@ -3045,6 +3092,9 @@ function calculateJob() {
       selectedPhases,
       drywallAreas,
       phaseDims,
+      applicationMethod,
+      paintSurface,
+      grayThicknessIn,
       bestPerPhase,
     };
   } else {
@@ -3062,6 +3112,9 @@ function calculateJob() {
       selectedPhases,
       drywallAreas,
       phaseDims,
+      applicationMethod,
+      paintSurface,
+      grayThicknessIn,
     };
   }
 
@@ -3499,6 +3552,9 @@ function orderV2CalcOpts(r) {
     paintCoats: r.paintCoats || 1,
     drywallAreas: r.drywallAreas || [],
     phaseDims: r.phaseDims || {},
+    applicationMethod: r.applicationMethod,
+    paintSurface: r.paintSurface,
+    grayThicknessIn: r.grayThicknessIn,
   };
 }
 
@@ -4464,7 +4520,6 @@ function loadJob(id) {
     : job.projectAddress || '';
   const dnEl = document.getElementById('calcDeliveryNotes');
   if (dnEl) dnEl.value = job.isTemplate ? '' : job.deliveryNotes || '';
-  document.getElementById('calcWaste').value = job.waste || 10;
   document.getElementById('calcProfit').value = job.profitPct || 20;
   document.getElementById('calcTax').value = job.taxPct || 0;
   document.getElementById('calcLabor').value = job.laborRate || 0;
@@ -6394,7 +6449,7 @@ async function initApp() {
     }, 500);
   }
   [
-    'calcWaste',
+    'calcApplicationMethod',
     'calcProfit',
     'calcTax',
     'calcLabor',

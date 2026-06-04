@@ -699,29 +699,14 @@
                   <div class="calc-v2-form-row">
                     <div class="calc-v2-field">
                       <label>Application Method</label
-                      ><select
-                        class="calc-v2-input"
-                        id="calcApplicationMethod"
-                        data-on-change="setApplicationMethod"
-                      >
-                        <option value="custom">Custom waste %</option>
-                        <option value="spray">Pump / spray applied (+5%)</option>
-                        <option value="trowel">Hand-troweled / small batch (+12%)</option>
+                      ><select class="calc-v2-input" id="calcApplicationMethod">
+                        <option value="trowel" selected>Hand-troweled / small batch</option>
+                        <option value="spray">Pump / spray applied</option>
                       </select>
+                      <span class="hint">Sets waste per phase automatically</span>
                     </div>
                   </div>
-                  <div class="calc-v2-form-row calc-v2-form-row-3">
-                    <div class="calc-v2-field">
-                      <label>Waste %</label
-                      ><input
-                        type="number"
-                        class="calc-v2-input"
-                        id="calcWaste"
-                        value="10"
-                        min="0"
-                        max="50"
-                      />
-                    </div>
+                  <div class="calc-v2-form-row">
                     <div class="calc-v2-field">
                       <label>Markup %</label
                       ><input
@@ -859,13 +844,6 @@
                         <option value="1">1 Coat</option>
                         <option value="2">2 Coats</option>
                         <option value="3">3 Coats</option>
-                      </select>
-                    </div>
-                    <div class="calc-v2-field">
-                      <label>Surface</label
-                      ><select class="calc-v2-input" id="calcPaintSurface">
-                        <option value="smooth">Smooth drywall (400 sf/gal)</option>
-                        <option value="textured">Textured / stucco (250 sf/gal)</option>
                       </select>
                     </div>
                   </div>
