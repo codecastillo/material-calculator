@@ -2803,6 +2803,36 @@ function calcForSupplier(supplier, waste, selectedPhases, opts = {}) {
   // First pass: each material's own quantity from its dimensions and rate.
   const selfQtyBySku = {};
   const computed = mats.map((m) => {
+    // Engineering model: products whose role formula already yields the purchase
+    // unit (paper/wire rolls, drywall sheets) use the mathematically derived
+    // count, which folds in code-mandated laps. Other roles stay on coverage
+    // until they carry a package size to convert net need into their container.
+    const role =
+      typeof Engineering !== 'undefined' && Engineering.materialRole
+        ? Engineering.materialRole(m)
+        : null;
+    const directRole =
+      role === 'paper' ||
+      role === 'wire' ||
+      (role === 'sheet' && !(m.isDrywallSheet && hasDrywallAreas));
+    if (directRole) {
+      const cat = m.category;
+      let phaseSqft;
+      if (cat === 'Drywall')
+        phaseSqft = hasDrywallAreas ? totalDrywallSqft : (phaseDims['Drywall']?.sqft || 0) * w;
+      else {
+        const dimKey = stuccoPhases.includes(cat) ? 'Stucco' : cat;
+        phaseSqft = (phaseDims[dimKey]?.sqft || 0) * w;
+      }
+      if (phaseSqft > 0) {
+        const eng = Engineering.computePhase(cat, phaseSqft, { sheetSqft: opts.sheetSqft });
+        const er = eng[role];
+        if (er && er.qty != null) {
+          selfQtyBySku[m.sku] = er.qty;
+          return { m, ovr: null, selfQty: er.qty, engineered: true };
+        }
+      }
+    }
     let base;
     if (m.isDrywallSheet && hasDrywallAreas) {
       base = sheetSqftMap[m.sku] || 0;
@@ -2830,9 +2860,9 @@ function calcForSupplier(supplier, waste, selectedPhases, opts = {}) {
   const phases = {};
   categories.forEach((c) => (phases[c] = { total: 0, count: 0 }));
   let materialTotal = 0;
-  const items = computed.map(({ m, ovr, selfQty }) => {
+  const items = computed.map(({ m, ovr, selfQty, engineered }) => {
     let qty = selfQty;
-    if (ovr && ovr.per && ovr.ratio > 0) {
+    if (!engineered && ovr && ovr.per && ovr.ratio > 0) {
       qty = Math.ceil((selfQtyBySku[ovr.per] || 0) * ovr.ratio);
     }
     const pack = PACK_SIZES[m.sku];
