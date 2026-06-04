@@ -61,6 +61,8 @@ router.post('/', async (req, res, next) => {
       calc_type,
       sort_order,
       notes,
+      package_value,
+      package_unit,
     } = req.body;
     if (!supplier_id || !name)
       return res.status(400).json({ error: 'supplier_id and name required' });
@@ -79,6 +81,8 @@ router.post('/', async (req, res, next) => {
         calc_type: calc_type || 'sqft',
         sort_order: sort_order || 0,
         notes: notes || null,
+        package_value: package_value != null && package_value !== '' ? package_value : null,
+        package_unit: package_unit || null,
       })
       .select()
       .single();
@@ -104,6 +108,8 @@ router.put('/:id', async (req, res, next) => {
       'calc_type',
       'sort_order',
       'notes',
+      'package_value',
+      'package_unit',
     ].forEach((f) => {
       if (req.body[f] !== undefined) updates[f] = req.body[f];
     });

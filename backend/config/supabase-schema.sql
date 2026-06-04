@@ -58,6 +58,12 @@ CREATE TABLE IF NOT EXISTS materials (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Optional package size so the engineering model can convert net material need
+-- (gallons, screws, linear ft) into the product's real container. Null falls
+-- back to parsing the size from the product name.
+ALTER TABLE materials ADD COLUMN IF NOT EXISTS package_value NUMERIC;
+ALTER TABLE materials ADD COLUMN IF NOT EXISTS package_unit TEXT;
+
 CREATE TABLE IF NOT EXISTS jobs (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,

@@ -1713,7 +1713,7 @@ function renderMaterialRow(m, sectionCat) {
       })
       .join('');
     return `<tr class="price-v2-edit-row" data-id="${m.id}"><td colspan="7">
-            <div style="display:grid;grid-template-columns:100px 1fr 110px 200px 90px 90px auto;gap:10px;align-items:start">
+            <div style="display:grid;grid-template-columns:100px 1fr 110px 180px 90px 90px 120px auto;gap:10px;align-items:start">
                 <div><div style="font-family:var(--v2-font-mono);font-size:.65rem;color:var(--v2-text-tertiary);text-transform:uppercase;letter-spacing:.10em;margin-bottom:4px">SKU</div><input class="price-v2-edit-input mono" id="edit-sku" value="${escAttr(m.sku)}"></div>
                 <div><div style="font-family:var(--v2-font-mono);font-size:.65rem;color:var(--v2-text-tertiary);text-transform:uppercase;letter-spacing:.10em;margin-bottom:4px">NAME</div>
                     <input class="price-v2-edit-input" id="edit-name" value="${escAttr(m.name)}">
@@ -1726,6 +1726,7 @@ function renderMaterialRow(m, sectionCat) {
                 </div>
                 <div><div style="font-family:var(--v2-font-mono);font-size:.65rem;color:var(--v2-text-tertiary);text-transform:uppercase;letter-spacing:.10em;margin-bottom:4px">PRICE</div><input class="price-v2-edit-input mono" id="edit-price" type="number" step="0.01" min="0" value="${m.pricePerUnit}" style="text-align:right"></div>
                 <div><div style="font-family:var(--v2-font-mono);font-size:.65rem;color:var(--v2-text-tertiary);text-transform:uppercase;letter-spacing:.10em;margin-bottom:4px">COVERAGE</div><input class="price-v2-edit-input mono" id="edit-coverage" type="number" step="0.1" min="0.1" value="${m.coveragePerUnit}" style="text-align:right"></div>
+                <div><div style="font-family:var(--v2-font-mono);font-size:.65rem;color:var(--v2-text-tertiary);text-transform:uppercase;letter-spacing:.10em;margin-bottom:4px">PACKAGE</div><input class="price-v2-edit-input mono" id="edit-package-value" type="number" step="0.01" min="0" value="${m.packageValue != null ? m.packageValue : ''}" placeholder="auto" style="text-align:right"><select class="price-v2-edit-select" id="edit-package-unit" style="margin-top:6px"><option value="">auto</option><option value="gal"${m.packageUnit === 'gal' ? ' selected' : ''}>gal</option><option value="ft"${m.packageUnit === 'ft' ? ' selected' : ''}>ft</option><option value="count"${m.packageUnit === 'count' ? ' selected' : ''}>count</option><option value="lb"${m.packageUnit === 'lb' ? ' selected' : ''}>lb</option></select></div>
                 <div style="display:flex;flex-direction:column;gap:6px;align-self:flex-end"><button class="price-v2-btn-save" data-on-click="saveMaterialEdit" data-args="${m.id}">Save</button><button class="price-v2-btn-cancel" data-on-click="cancelEdit">Cancel</button></div>
             </div>
         </td></tr>`;
@@ -1845,6 +1846,11 @@ async function saveMaterialEdit(id) {
   const newCat = newCats[0];
   const newCalcType = document.getElementById('edit-calcType').value;
   const notes = (document.getElementById('edit-notes')?.value || '').trim();
+  const pkgRaw = document.getElementById('edit-package-value')?.value;
+  const pkgVal =
+    pkgRaw !== '' && pkgRaw != null && !isNaN(parseFloat(pkgRaw)) ? parseFloat(pkgRaw) : null;
+  const pkgUnit =
+    pkgVal != null ? document.getElementById('edit-package-unit')?.value || null : null;
   mat.name = name;
   mat.sku = document.getElementById('edit-sku').value.trim();
   mat.unit = document.getElementById('edit-unit').value;
@@ -1854,6 +1860,8 @@ async function saveMaterialEdit(id) {
   mat.calcType = newCalcType;
   mat.coveragePerUnit = coverage;
   mat.notes = notes;
+  mat.packageValue = pkgVal;
+  mat.packageUnit = pkgUnit;
   mat.lastUpdated = Date.now();
   if (api.getToken()) {
     try {
@@ -1866,6 +1874,8 @@ async function saveMaterialEdit(id) {
         coverage_per_unit: coverage,
         calc_type: newCalcType === 'linear' ? 'linear_ft' : 'sqft',
         notes,
+        package_value: pkgVal,
+        package_unit: pkgUnit,
       });
     } catch (e) {
       console.warn('API:', e.message);
