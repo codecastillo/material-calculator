@@ -76,6 +76,9 @@ const api = {
   async createSupplier(name) {
     return api._fetch('/suppliers', { method: 'POST', body: JSON.stringify({ name }) });
   },
+  async updateSupplier(id, fields) {
+    return api._fetch('/suppliers/' + id, { method: 'PUT', body: JSON.stringify(fields) });
+  },
   async deleteSupplier(id) {
     return api._fetch('/suppliers/' + id, { method: 'DELETE' });
   },

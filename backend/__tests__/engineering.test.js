@@ -31,6 +31,10 @@ describe('materialRole detection', () => {
     ['Duct Tape White 2"x60yd', null],
     ['Green Foam Float 5"x12"', null],
     ['Diamond Mesh 27"x96" 2.50#', 'lath'],
+    ['2.5# Diamond Flat Lath 27x97', 'lath'],
+    ['K-Lath 1-Kote 20ga 36x150', 'wire'],
+    ['Dryvit Genesis DM Adhesive & Base Coat 50#', 'basecoat'],
+    ['Dryvit Mojave Mid Base 5g', 'colorcoat'],
   ];
   for (const [name, expected] of cases) {
     test(`${name} -> ${expected}`, () => {

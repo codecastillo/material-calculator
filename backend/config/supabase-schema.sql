@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS suppliers (
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+-- A second name a supplier is known by (e.g. "L&W" for an "ABC Supply" account).
+ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS alias TEXT;
 
 CREATE TABLE IF NOT EXISTS categories (
     id SERIAL PRIMARY KEY,

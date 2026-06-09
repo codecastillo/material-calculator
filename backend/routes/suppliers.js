@@ -53,6 +53,34 @@ router.post('/', async (req, res, next) => {
   }
 });
 
+// Update a supplier's name or alias (the alias is a second name this supplier
+// is known by, e.g. "L&W" for an "ABC Supply" account).
+router.put('/:id', async (req, res, next) => {
+  try {
+    const fields = {};
+    if (req.body.name !== undefined) {
+      if (!req.body.name) return res.status(400).json({ error: 'Name cannot be empty' });
+      fields.name = req.body.name;
+    }
+    if (req.body.alias !== undefined) fields.alias = req.body.alias || null;
+    if (!Object.keys(fields).length) {
+      return res.status(400).json({ error: 'Nothing to update' });
+    }
+    const { data: supplier, error } = await supabase
+      .from('suppliers')
+      .update(fields)
+      .eq('id', req.params.id)
+      .eq('user_id', req.user.id)
+      .select()
+      .single();
+    if (error) throw error;
+    if (!supplier) return res.status(404).json({ error: 'Supplier not found' });
+    res.json({ supplier });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.delete('/:id', async (req, res, next) => {
   try {
     const { error } = await supabase

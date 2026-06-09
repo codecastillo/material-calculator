@@ -644,10 +644,13 @@ async function loadData() {
 
       suppliers = supData.suppliers.map((s) => s.name);
       const supplierIdMap = {};
+      const supplierAliasMap = {};
       supData.suppliers.forEach((s) => {
         supplierIdMap[s.name] = s.id;
+        if (s.alias) supplierAliasMap[s.name] = s.alias;
       });
       window._supplierIdMap = supplierIdMap;
+      window._supplierAliasMap = supplierAliasMap;
 
       categories = catData.categories.map((c) => c.name);
       const categoryIdMap = {};
@@ -1251,13 +1254,15 @@ function renderSupplierTabs() {
   const filterValue = document.getElementById('categoryFilter')?.value || 'All';
 
   // Supplier rows
+  const aliasMap = window._supplierAliasMap || {};
   const supplierRows = suppliers
     .map((s) => {
       const mats = materialsBySupplier[s] || [];
       const isActive = s === activeSupplier;
+      const alias = aliasMap[s];
       return `<button class="price-v2-supplier-item${isActive ? ' active' : ''}" data-on-click="switchSupplier" data-on-contextmenu="confirmDeleteSupplier" data-args="${escAttr(s)}" aria-current="${isActive ? 'true' : 'false'}">
             <span class="price-v2-supplier-row1">
-                <span class="price-v2-supplier-name">${escHtml(s)}</span>
+                <span class="price-v2-supplier-name">${escHtml(s)}${alias ? `<span class="price-v2-supplier-alias">${escHtml(alias)}</span>` : ''}</span>
                 <span class="price-v2-supplier-spend">${priceV2ShortMoney(priceV2SupplierSpend(s))}</span>
             </span>
             <span class="price-v2-supplier-count">${mats.length} item${mats.length === 1 ? '' : 's'}</span>
@@ -1293,6 +1298,7 @@ function renderSupplierTabs() {
             <div class="price-v2-eyebrow">SUPPLIERS &middot; ${suppliers.length}</div>
             <ul class="price-v2-supplier-list">${supplierRows}</ul>
             <button class="price-v2-add-supplier" data-on-click="openAddSupplierModal">Add supplier</button>
+            <button class="price-v2-add-supplier" data-on-click="openEditSupplierModal">Edit current</button>
         </section>
         <section class="price-v2-filter">
             <div class="price-v2-eyebrow">FILTER</div>
@@ -1465,6 +1471,35 @@ async function deleteSupplier() {
   notify(`"${name}" removed`, 'success');
 }
 
+// Edit the active supplier's alias (a second name it is known by, e.g. "L&W"
+// for an "ABC Supply" account). Name stays read-only here to avoid re-keying
+// materialsBySupplier; renaming is done via add/remove.
+function openEditSupplierModal() {
+  if (!activeSupplier) return;
+  const label = document.getElementById('editSupplierNameLabel');
+  const aliasInput = document.getElementById('editSupplierAlias');
+  if (label) label.textContent = activeSupplier;
+  if (aliasInput) aliasInput.value = (window._supplierAliasMap || {})[activeSupplier] || '';
+  openModal('editSupplierModal');
+}
+async function saveSupplierEdit() {
+  const name = activeSupplier;
+  const alias = (document.getElementById('editSupplierAlias')?.value || '').trim();
+  window._supplierAliasMap = window._supplierAliasMap || {};
+  if (alias) window._supplierAliasMap[name] = alias;
+  else delete window._supplierAliasMap[name];
+  if (api.getToken() && window._supplierIdMap?.[name]) {
+    try {
+      await api.updateSupplier(window._supplierIdMap[name], { alias });
+    } catch (e) {
+      console.warn('API:', e.message);
+    }
+  }
+  renderSupplierTabs();
+  closeModal('editSupplierModal');
+  notify('Supplier updated', 'success');
+}
+
 // Categories
 function getSupplierPhases(supplier) {
   const mats = materialsBySupplier[supplier] || [];
@@ -1580,6 +1615,179 @@ function getScopeForPhase(phase) {
     if (phases.includes(phase)) return scope;
   }
   return phase;
+}
+
+// Phases each engineering role legitimately belongs to. Used by the catalog
+// health check to spot items filed under the wrong phase (e.g. a base coat
+// listed under Lath). Roles used across phases (staples, fasteners) list each.
+const ROLE_HOME_PHASE = {
+  paper: ['Lath'],
+  wire: ['Lath'],
+  lath: ['Lath'],
+  staple: ['Lath', 'Drywall'],
+  nail: ['Lath', 'Drywall'],
+  trim: ['Lath'],
+  basecoat: ['Gray Coat'],
+  cement: ['Gray Coat'],
+  lime: ['Gray Coat'],
+  sand: ['Gray Coat'],
+  fiber: ['Gray Coat', 'Drywall'],
+  colorcoat: ['Color Coat'],
+  pigment: ['Color Coat'],
+  sheet: ['Drywall'],
+  mud: ['Drywall'],
+  tape: ['Drywall'],
+  screw: ['Drywall'],
+  cornerbead: ['Drywall'],
+  sanding: ['Drywall'],
+  paint: ['Painting'],
+  primer: ['Painting'],
+  stone_flat: ['Stone'],
+  stone_corner: ['Stone'],
+  mortar: ['Stone'],
+};
+const PRICE_OUTLIER_FACTOR = 1.25; // flag a supplier priced >25% over the cheapest
+
+// Scan every supplier's catalog for data problems the calculator cares about.
+// Pure read over materialsBySupplier; returns grouped findings for the report.
+function analyzeCatalog() {
+  const eng = typeof Engineering !== 'undefined' ? Engineering : null;
+  const phaseRoles = (eng && eng.PHASE_ROLES) || {};
+  const out = { dropped: [], miscat: [], dup: [], badData: [], stale: [], outliers: [] };
+  const byName = {};
+
+  Object.entries(materialsBySupplier || {}).forEach(([sup, mats]) => {
+    const seen = {};
+    (mats || []).forEach((m) => {
+      const cats = materialCategories(m);
+      const role = eng && eng.materialRole ? eng.materialRole(m) : null;
+
+      cats.forEach((cat) => {
+        // Phase quantifies specific roles, but this item doesn't fill one, so the
+        // calculator will skip it unless the user picks it by hand.
+        if (phaseRoles[cat] && eng && !eng.roleAllowedForPhase(role, cat)) {
+          out.dropped.push({ sup, name: m.name, cat });
+        }
+      });
+
+      // Item's role belongs to a different phase than where it's filed.
+      const homes = ROLE_HOME_PHASE[role];
+      if (role && homes && !homes.some((h) => cats.includes(h))) {
+        out.miscat.push({ sup, name: m.name, role, expected: homes.join(' or '), cats });
+      }
+
+      if (!(Number(m.pricePerUnit) > 0) || !(Number(m.coveragePerUnit) > 0)) {
+        out.badData.push({ sup, name: m.name, price: m.pricePerUnit, coverage: m.coveragePerUnit });
+      }
+
+      if (isStale(m)) out.stale.push({ sup, name: m.name });
+
+      const key = normSku(m.sku) ? 's:' + normSku(m.sku) : 'n:' + normName(m.name);
+      if (seen[key]) out.dup.push({ sup, name: m.name });
+      else seen[key] = m.name;
+
+      const nk = normName(m.name);
+      (byName[nk] = byName[nk] || []).push({ sup, name: m.name, price: Number(m.pricePerUnit) });
+    });
+  });
+
+  // Same product across suppliers: flag any priced well above the cheapest.
+  Object.values(byName).forEach((list) => {
+    const priced = list.filter((x) => x.price > 0);
+    if (priced.length < 2) return;
+    const min = Math.min(...priced.map((x) => x.price));
+    if (!(min > 0)) return;
+    priced.forEach((x) => {
+      if (x.price > min * PRICE_OUTLIER_FACTOR)
+        out.outliers.push({ sup: x.sup, name: x.name, price: x.price, min });
+    });
+  });
+
+  return out;
+}
+
+function runCatalogHealth() {
+  const f = analyzeCatalog();
+  const total =
+    f.dup.length + f.badData.length + f.miscat.length + f.outliers.length + f.dropped.length;
+  const section = (title, hint, rows, severity) => {
+    if (!rows.length) return '';
+    return `<div class="health-group health-${severity}">
+        <div class="health-group-head"><span class="health-count">${rows.length}</span> ${escHtml(title)}</div>
+        <div class="health-group-hint">${escHtml(hint)}</div>
+        <ul class="health-list">${rows.join('')}</ul>
+      </div>`;
+  };
+  const li = (sup, name, detail) =>
+    `<li><span class="health-sup">${escHtml(sup)}</span> ${escHtml(name)}${detail ? ` <span class="health-detail">${escHtml(detail)}</span>` : ''}</li>`;
+
+  const parts = [];
+  parts.push(
+    section(
+      'Duplicate items',
+      'Same supplier lists this item more than once. Remove the extra to avoid double pricing.',
+      f.dup.map((d) => li(d.sup, d.name, 'duplicate')),
+      'high'
+    )
+  );
+  parts.push(
+    section(
+      'Missing price or coverage',
+      'A zero price or coverage makes the calculator under-order or skip the item.',
+      f.badData.map((d) => li(d.sup, d.name, `price ${d.price}, coverage ${d.coverage}`)),
+      'high'
+    )
+  );
+  parts.push(
+    section(
+      'Filed under the wrong phase',
+      'The item reads as one phase but is listed under another, so it may not be quoted on the right job.',
+      f.miscat.map((d) => li(d.sup, d.name, `looks like ${d.role}, belongs in ${d.expected}`)),
+      'mid'
+    )
+  );
+  parts.push(
+    section(
+      'Priced above the market',
+      `This supplier is more than ${Math.round((PRICE_OUTLIER_FACTOR - 1) * 100)}% over the cheapest quote for the same item.`,
+      f.outliers.map((d) =>
+        li(d.sup, d.name, `$${d.price.toFixed(2)} vs $${d.min.toFixed(2)} lowest`)
+      ),
+      'mid'
+    )
+  );
+  parts.push(
+    section(
+      'Not auto-recommended',
+      'These sit under a calc phase but fill no recognized role, so they are only added when picked by hand.',
+      f.dropped.map((d) => li(d.sup, d.name, `in ${d.cat}`)),
+      'low'
+    )
+  );
+
+  const staleBySup = {};
+  f.stale.forEach((s) => {
+    (staleBySup[s.sup] = staleBySup[s.sup] || []).push(s.name);
+  });
+  const staleSummary = Object.entries(staleBySup)
+    .map(
+      ([sup, names]) =>
+        `<li><span class="health-sup">${escHtml(sup)}</span> ${names.length} item${names.length === 1 ? '' : 's'} not updated in 30+ days</li>`
+    )
+    .join('');
+  if (staleSummary)
+    parts.push(
+      `<div class="health-group health-low"><div class="health-group-head"><span class="health-count">${f.stale.length}</span> Stale prices (re-quote)</div><div class="health-group-hint">Worth asking these suppliers for a fresh quote.</div><ul class="health-list">${staleSummary}</ul></div>`
+    );
+
+  const body = document.getElementById('catalogHealthBody');
+  if (body) {
+    const header = total
+      ? `<p class="health-summary">${total} issue${total === 1 ? '' : 's'} to review, plus ${f.stale.length} stale price${f.stale.length === 1 ? '' : 's'}.</p>`
+      : `<p class="health-summary health-clean">No catalog issues found.${f.stale.length ? ` ${f.stale.length} stale price${f.stale.length === 1 ? '' : 's'} worth re-quoting.` : ''}</p>`;
+    body.innerHTML = header + parts.filter(Boolean).join('');
+  }
+  openModal('catalogHealthModal');
 }
 
 function renderMaterialTable() {
@@ -2093,119 +2301,215 @@ function parseCSVLine(line) {
   r.push(c.trim());
   return r;
 }
+// Pending import plan, built from a CSV but not applied until the user confirms
+// the preview. Cleared on apply or cancel.
+let _pendingImport = null;
+
+// Parse a CSV into an apply plan WITHOUT touching the catalog, so the preview
+// can show exactly what would change (new / price-changed / unchanged) first.
+function buildImportPlan(text) {
+  const lines = text.split(/\r?\n/).filter((l) => l.trim());
+  if (lines.length < 2) {
+    notify('Empty CSV', 'error');
+    return null;
+  }
+  const hdr = parseCSVLine(lines[0]).map((h) => h.toLowerCase().replace(/[^a-z]/g, ''));
+  const ni = hdr.findIndex((h) => h === 'name'),
+    si = hdr.findIndex((h) => h === 'sku'),
+    ui = hdr.findIndex((h) => h === 'unit'),
+    pi = hdr.findIndex((h) => h.includes('price')),
+    ci = hdr.findIndex((h) => h.includes('category') || h.includes('phase')),
+    cvi = hdr.findIndex((h) => h.includes('coverage')),
+    ti = hdr.findIndex((h) => h.includes('type') || h.includes('calctype'));
+  if (ni === -1) {
+    notify('Need "name" column', 'error');
+    return null;
+  }
+  const mats = materialsBySupplier[activeSupplier] || [];
+  const seenInCsv = new Set();
+  const plan = {
+    supplier: activeSupplier,
+    newItems: [],
+    changed: [],
+    unchanged: 0,
+    csvDup: 0,
+    skip: 0,
+  };
+  const money = (n) => Math.round(Number(n) * 100);
+  const sameCats = (a, b) => a.slice().sort().join('|') === b.slice().sort().join('|');
+  for (let i = 1; i < lines.length; i++) {
+    const f = parseCSVLine(lines[i]);
+    const name = f[ni]?.trim();
+    if (!name) {
+      plan.skip++;
+      continue;
+    }
+    const catRaw = f[ci]?.trim() || categories[0] || 'Lath';
+    const catList = catRaw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const primaryCat = catList[0];
+    const cov = parseFloat(f[cvi]) || 100;
+    if (cov <= 0) {
+      plan.skip++;
+      continue;
+    }
+    const ct = f[ti]?.trim() || 'area';
+    const sku = f[si]?.trim() || '';
+    const price = parseFloat(f[pi]) || 0;
+    const unit = f[ui]?.trim() || 'each';
+    const calcType = CALC_TYPES.includes(ct) ? ct : 'area';
+    const targetSku = normSku(sku);
+    const targetNorm = normName(name);
+    const rowKey = targetSku ? 'sku:' + targetSku : 'name:' + targetNorm;
+    if (seenInCsv.has(rowKey)) {
+      plan.csvDup++;
+      continue;
+    }
+    seenInCsv.add(rowKey);
+    const vals = { name, sku, unit, price, primaryCat, catList, cov, calcType };
+    let existing = targetSku ? mats.find((m) => normSku(m.sku) === targetSku) : null;
+    if (!existing && targetNorm) existing = mats.find((m) => normName(m.name) === targetNorm);
+    if (existing) {
+      const fields = [];
+      if (money(existing.pricePerUnit) !== money(price)) fields.push('price');
+      if (Number(existing.coveragePerUnit) !== cov) fields.push('coverage');
+      if ((existing.unit || 'each') !== unit) fields.push('unit');
+      if ((existing.name || '') !== name) fields.push('name');
+      if (!sameCats(materialCategories(existing), catList)) fields.push('phase');
+      if (fields.length) {
+        plan.changed.push({
+          ref: existing,
+          vals,
+          oldPrice: Number(existing.pricePerUnit) || 0,
+          newPrice: price,
+          fields,
+        });
+      } else plan.unchanged++;
+    } else {
+      plan.newItems.push({ vals });
+    }
+  }
+  return plan;
+}
+
+function renderImportPreview(plan) {
+  const body = document.getElementById('importPreviewBody');
+  if (!body) return;
+  const money = (n) => '$' + Number(n).toFixed(2);
+  const changedRows = plan.changed
+    .map((c) => {
+      const priceChg = c.fields.includes('price') && Number(c.oldPrice) !== Number(c.newPrice);
+      const pct = priceChg && c.oldPrice > 0 ? (c.newPrice / c.oldPrice - 1) * 100 : null;
+      const detail = priceChg
+        ? `<span class="imp-${c.newPrice >= c.oldPrice ? 'up' : 'down'}">${money(c.oldPrice)} &rarr; ${money(c.newPrice)}${pct != null ? ` (${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%)` : ''}</span>`
+        : `<span class="imp-detail">${escHtml(c.fields.join(', '))} changed</span>`;
+      return `<li>${escHtml(c.vals.name)} ${detail}</li>`;
+    })
+    .join('');
+  const newRows = plan.newItems
+    .map(
+      (n) =>
+        `<li>${escHtml(n.vals.name)} <span class="imp-detail">${escHtml(n.vals.primaryCat)} &middot; ${money(n.vals.price)}</span></li>`
+    )
+    .join('');
+  const changeCount = plan.changed.length + plan.newItems.length;
+  const extra = [];
+  if (plan.csvDup) extra.push(`${plan.csvDup} duplicate row${plan.csvDup === 1 ? '' : 's'}`);
+  if (plan.skip) extra.push(`${plan.skip} skipped`);
+  body.innerHTML = `
+    <p class="imp-summary">Importing to <strong>${escHtml(plan.supplier)}</strong>: ${plan.changed.length} changed, ${plan.newItems.length} new, ${plan.unchanged} unchanged${extra.length ? `, ${extra.join(', ')}` : ''}.</p>
+    ${plan.changed.length ? `<div class="imp-group"><div class="imp-head">Changed (${plan.changed.length})</div><ul class="imp-list">${changedRows}</ul></div>` : ''}
+    ${plan.newItems.length ? `<div class="imp-group"><div class="imp-head">New (${plan.newItems.length})</div><ul class="imp-list">${newRows}</ul></div>` : ''}
+    ${plan.unchanged ? `<div class="imp-group imp-muted"><div class="imp-head">Unchanged (${plan.unchanged})</div></div>` : ''}`;
+  const btn = document.getElementById('importApplyBtn');
+  if (btn) {
+    btn.disabled = changeCount === 0;
+    btn.textContent = changeCount
+      ? `Apply ${changeCount} change${changeCount === 1 ? '' : 's'}`
+      : 'Nothing to apply';
+  }
+}
+
 function handleCSVImport(event) {
   const file = event.target.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = function (e) {
-    const lines = e.target.result.split(/\r?\n/).filter((l) => l.trim());
-    if (lines.length < 2) {
-      notify('Empty CSV', 'error');
-      return;
-    }
-    const hdr = parseCSVLine(lines[0]).map((h) => h.toLowerCase().replace(/[^a-z]/g, ''));
-    const ni = hdr.findIndex((h) => h === 'name'),
-      si = hdr.findIndex((h) => h === 'sku'),
-      ui = hdr.findIndex((h) => h === 'unit'),
-      pi = hdr.findIndex((h) => h.includes('price')),
-      ci = hdr.findIndex((h) => h.includes('category') || h.includes('phase')),
-      cvi = hdr.findIndex((h) => h.includes('coverage')),
-      ti = hdr.findIndex((h) => h.includes('type') || h.includes('calctype'));
-    if (ni === -1) {
-      notify('Need "name" column', 'error');
-      return;
-    }
-    pushUndo();
-    let imp = 0,
-      upd = 0,
-      skip = 0,
-      csvDup = 0;
-    const mats = materialsBySupplier[activeSupplier] || [];
-    const now = Date.now();
-    const seenInCsv = new Set();
-    const newMats = [],
-      updatedMats = [];
-    for (let i = 1; i < lines.length; i++) {
-      const f = parseCSVLine(lines[i]);
-      const name = f[ni]?.trim();
-      if (!name) {
-        skip++;
-        continue;
-      }
-      const catRaw = f[ci]?.trim() || categories[0] || 'Lath';
-      const catList = catRaw
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-      catList.forEach((c) => {
-        if (!categories.includes(c)) categories.push(c);
-      });
-      const primaryCat = catList[0];
-      const cov = parseFloat(f[cvi]) || 100;
-      if (cov <= 0) {
-        skip++;
-        continue;
-      }
-      const ct = f[ti]?.trim() || 'area';
-      const sku = f[si]?.trim() || '';
-      const price = parseFloat(f[pi]) || 0;
-      const unit = f[ui]?.trim() || 'each';
-      const calcType = CALC_TYPES.includes(ct) ? ct : 'area';
-      const targetSku = normSku(sku);
-      const targetNorm = normName(name);
-      const rowKey = targetSku ? 'sku:' + targetSku : 'name:' + targetNorm;
-      if (seenInCsv.has(rowKey)) {
-        csvDup++;
-        continue;
-      }
-      seenInCsv.add(rowKey);
-      let existing = targetSku ? mats.find((m) => normSku(m.sku) === targetSku) : null;
-      if (!existing && targetNorm) existing = mats.find((m) => normName(m.name) === targetNorm);
-      if (existing) {
-        existing.name = name;
-        existing.unit = unit;
-        existing.pricePerUnit = price;
-        existing.category = primaryCat;
-        existing.categories = catList;
-        existing.coveragePerUnit = cov;
-        existing.calcType = calcType;
-        existing.lastUpdated = now;
-        upd++;
-        updatedMats.push(existing);
-      } else {
-        const nm = {
-          id: genId(),
-          name,
-          sku,
-          unit,
-          pricePerUnit: price,
-          category: primaryCat,
-          categories: catList,
-          coveragePerUnit: cov,
-          calcType,
-          lastUpdated: now,
-        };
-        mats.push(nm);
-        newMats.push(nm);
-        imp++;
-      }
-    }
-    materialsBySupplier[activeSupplier] = mats;
-    saveAll();
-    populateCategoryFilter();
-    renderMaterialTable();
-    const parts = [];
-    if (imp) parts.push(`${imp} added`);
-    if (upd) parts.push(`${upd} updated`);
-    if (csvDup) parts.push(`${csvDup} duplicate row${csvDup === 1 ? '' : 's'} in CSV`);
-    if (skip) parts.push(`${skip} skipped`);
-    notify(parts.join(', ') || 'Nothing imported', imp + upd > 0 ? 'success' : 'error');
-    if (imp + upd > 0 && api && api.getToken && api.getToken()) {
-      syncImportToBackend(newMats, updatedMats).catch((e) => console.warn('CSV sync error', e));
-    }
+    const plan = buildImportPlan(e.target.result);
+    if (!plan) return;
+    _pendingImport = plan;
+    renderImportPreview(plan);
+    openModal('importPreviewModal');
   };
   reader.readAsText(file);
   event.target.value = '';
+}
+
+function cancelImport() {
+  _pendingImport = null;
+  closeModal('importPreviewModal');
+}
+
+// Commit the previewed plan: update changed rows, add new ones, sync to backend.
+function applyImportPlan() {
+  const plan = _pendingImport;
+  if (!plan) {
+    closeModal('importPreviewModal');
+    return;
+  }
+  pushUndo();
+  const mats = materialsBySupplier[plan.supplier] || [];
+  const now = Date.now();
+  const newMats = [],
+    updatedMats = [];
+  plan.changed.forEach(({ ref, vals }) => {
+    ref.name = vals.name;
+    ref.unit = vals.unit;
+    ref.pricePerUnit = vals.price;
+    ref.category = vals.primaryCat;
+    ref.categories = vals.catList;
+    ref.coveragePerUnit = vals.cov;
+    ref.calcType = vals.calcType;
+    ref.lastUpdated = now;
+    updatedMats.push(ref);
+  });
+  plan.newItems.forEach(({ vals }) => {
+    vals.catList.forEach((c) => {
+      if (!categories.includes(c)) categories.push(c);
+    });
+    const nm = {
+      id: genId(),
+      name: vals.name,
+      sku: vals.sku,
+      unit: vals.unit,
+      pricePerUnit: vals.price,
+      category: vals.primaryCat,
+      categories: vals.catList,
+      coveragePerUnit: vals.cov,
+      calcType: vals.calcType,
+      lastUpdated: now,
+    };
+    mats.push(nm);
+    newMats.push(nm);
+  });
+  materialsBySupplier[plan.supplier] = mats;
+  saveAll();
+  populateCategoryFilter();
+  renderMaterialTable();
+  const parts = [];
+  if (newMats.length) parts.push(`${newMats.length} added`);
+  if (updatedMats.length) parts.push(`${updatedMats.length} updated`);
+  notify(
+    parts.join(', ') || 'No changes applied',
+    newMats.length + updatedMats.length ? 'success' : 'error'
+  );
+  if (newMats.length + updatedMats.length > 0 && api && api.getToken && api.getToken()) {
+    syncImportToBackend(newMats, updatedMats).catch((e) => console.warn('CSV sync error', e));
+  }
+  _pendingImport = null;
+  closeModal('importPreviewModal');
 }
 
 // Persist a freshly-imported batch to the backend so it survives a reload.

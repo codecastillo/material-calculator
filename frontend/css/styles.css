@@ -4001,3 +4001,110 @@ input[type='number'] {
   padding: 24px 28px;
   margin-bottom: 24px;
 }
+
+/* Catalog health report and CSV import preview (shared list styling) */
+.health-summary,
+.imp-summary {
+  font-size: 0.9rem;
+  color: var(--text2);
+  margin: 0 0 18px;
+}
+.health-summary.health-clean {
+  color: var(--ok);
+}
+.health-group,
+.imp-group {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border2);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  background: var(--surface2);
+}
+.health-group.health-high {
+  border-left-color: var(--err);
+}
+.health-group.health-mid {
+  border-left-color: var(--warn);
+}
+.health-group.health-low {
+  border-left-color: var(--text3);
+}
+.health-group-head,
+.imp-head {
+  font-weight: 600;
+  color: var(--text);
+  font-size: 0.92rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.health-count {
+  display: inline-block;
+  min-width: 22px;
+  text-align: center;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text2);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+.health-group-hint {
+  color: var(--text3);
+  font-size: 0.78rem;
+  margin: 4px 0 8px;
+}
+.health-list,
+.imp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.84rem;
+}
+.health-list li,
+.imp-list li {
+  padding: 4px 0;
+  border-top: 1px solid var(--border);
+  color: var(--text);
+}
+.health-list li:first-child,
+.imp-list li:first-child {
+  border-top: none;
+}
+.health-sup {
+  display: inline-block;
+  min-width: 96px;
+  color: var(--text3);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.health-detail,
+.imp-detail {
+  color: var(--text3);
+  font-size: 0.78rem;
+}
+.imp-group.imp-muted {
+  opacity: 0.7;
+}
+.imp-up {
+  color: var(--err);
+  font-variant-numeric: tabular-nums;
+}
+.imp-down {
+  color: var(--ok);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Supplier alias chip shown beside the supplier name in the catalog sidebar */
+.price-v2-supplier-alias {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--surface2);
+  color: var(--text3);
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+}

@@ -514,6 +514,9 @@
                   Import CSV
                 </button>
                 <button class="price-v2-text-link" data-on-click="exportCSV">Export</button>
+                <button class="price-v2-text-link" data-on-click="runCatalogHealth">
+                  Health check
+                </button>
                 <input
                   type="file"
                   id="csvFileInput"
@@ -1566,6 +1569,35 @@
         </div>
       </div>
 
+      <div class="modal-overlay" id="catalogHealthModal">
+        <div class="modal modal-wide">
+          <h3>Catalog health</h3>
+          <div class="health-body" id="catalogHealthBody"></div>
+          <div class="modal-actions">
+            <button
+              class="btn btn-secondary"
+              data-on-click="closeModal"
+              data-args="catalogHealthModal"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-overlay" id="importPreviewModal">
+        <div class="modal modal-wide">
+          <h3>Import preview</h3>
+          <div class="import-body" id="importPreviewBody"></div>
+          <div class="modal-actions">
+            <button class="btn btn-secondary" data-on-click="cancelImport">Cancel</button>
+            <button class="btn btn-success" id="importApplyBtn" data-on-click="applyImportPlan">
+              Apply changes
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div class="modal-overlay" id="addCategoryModal">
         <div class="modal">
           <h3>Add New Phase</h3>
@@ -1684,6 +1716,37 @@
             >
               Cancel</button
             ><button class="btn btn-success" data-on-click="addSupplier">Add</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-overlay" id="editSupplierModal">
+        <div class="modal">
+          <h3>Edit Supplier</h3>
+          <div class="field">
+            <label>Supplier</label>
+            <div class="input" id="editSupplierNameLabel" style="background: var(--bg)"></div>
+          </div>
+          <div class="field">
+            <label
+              >Also known as
+              <span style="color: var(--text3); font-weight: 400">(alias)</span></label
+            ><input
+              type="text"
+              class="input"
+              id="editSupplierAlias"
+              placeholder="e.g. L&amp;W"
+              autocomplete="off"
+            />
+          </div>
+          <div class="modal-actions">
+            <button
+              class="btn btn-secondary"
+              data-on-click="closeModal"
+              data-args="editSupplierModal"
+            >
+              Cancel</button
+            ><button class="btn btn-success" data-on-click="saveSupplierEdit">Save</button>
           </div>
         </div>
       </div>

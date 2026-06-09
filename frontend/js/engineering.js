@@ -144,7 +144,6 @@
         'marblewall',
         'versatex',
         'senerflex',
-        'dryvit',
         'color coat',
         'finish coat',
         'freestyle',
@@ -155,6 +154,9 @@
       )
     )
       return 'colorcoat';
+    // K-Lath is a wire-lath brand; match it before base coat so a name like
+    // "K-Lath 1-Kote" is read as wire, not misread as a coating by "1-kote".
+    if (has('k-lath', 'klath')) return 'wire';
     if (has('fiber mesh', 'fibermesh', 'fiberglass mesh')) return 'fiber';
     if (
       has(
@@ -174,7 +176,7 @@
     if (has('plastic cement', 'portland', 'plaster cement')) return 'cement';
     if (has('lime')) return 'lime';
     if (has('plaster sand', 'masonry sand', 'sand')) return 'sand';
-    if (has('diamond mesh', 'metal lath', 'expanded metal', '3.4 lath')) return 'lath';
+    if (has('diamond mesh', 'metal lath', 'expanded metal', '3.4 lath', 'flat lath')) return 'lath';
     if (
       has(
         'casing',
