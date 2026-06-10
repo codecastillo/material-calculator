@@ -514,6 +514,9 @@
                   Import CSV
                 </button>
                 <button class="price-v2-text-link" data-on-click="exportCSV">Export</button>
+                <button class="price-v2-text-link" data-on-click="openPasteQuoteModal">
+                  Paste quote
+                </button>
                 <button class="price-v2-text-link" data-on-click="runCatalogHealth">
                   Health check
                 </button>
@@ -1585,6 +1588,34 @@
         </div>
       </div>
 
+      <div class="modal-overlay" id="pasteQuoteModal">
+        <div class="modal">
+          <h3>Paste quote</h3>
+          <p class="onboarding-sub">
+            Open the supplier's quote PDF, Select All, copy, and paste the text here. It updates
+            matched prices and adds new items as stubs. Scanned/image PDFs have no copyable text;
+            use CSV for those.
+          </p>
+          <div class="field">
+            <textarea
+              class="input"
+              id="pasteQuoteText"
+              rows="10"
+              placeholder="Paste the copied quote text..."
+            ></textarea>
+          </div>
+          <div class="modal-actions">
+            <button
+              class="btn btn-secondary"
+              data-on-click="closeModal"
+              data-args="pasteQuoteModal"
+            >
+              Cancel</button
+            ><button class="btn btn-success" data-on-click="parsePastedQuote">Parse</button>
+          </div>
+        </div>
+      </div>
+
       <div class="modal-overlay" id="importPreviewModal">
         <div class="modal modal-wide">
           <h3>Import preview</h3>
@@ -2071,6 +2102,7 @@
     <script src="js/ui-handlers.js"></script>
     <script src="js/api.js"></script>
     <script src="js/engineering.js"></script>
+    <script src="js/quoteimport.js"></script>
     <script src="js/app.js"></script>
     <script src="js/sw-register.js"></script>
   </body>

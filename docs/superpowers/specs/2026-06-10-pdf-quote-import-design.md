@@ -1,97 +1,85 @@
-# PDF Quote Import, design
+# Quote Import, design
 
 ## Goal
 
-Upload a supplier's quote PDF and have EstiCount extract the supplier name and
-line-item prices, resolve which supplier the prices belong to (by name or
-alias), and run the result through the existing import diff preview so the user
-confirms before anything is written. This removes the manual "export the quote
-to CSV" step from the price-refresh workflow.
+Cut the manual work of re-typing supplier prices from a quote. The user copies
+the quote text from their PDF viewer and pastes it into EstiCount, which detects
+the supplier (by name or alias), parses the line items, and runs them through
+the existing import diff preview so the user confirms before anything is
+written.
+
+## Why paste, not PDF upload (decision record)
+
+Investigated server-side PDF parsing against the three real quotes:
+
+- **Pacific quote: no text layer** (image/scanned). No text parser can read it;
+  only OCR could, which is out of scope.
+- **LKL / L&W quotes: correct text exists but the font encoding defeats the Node
+  libraries.** `pdf-parse` corrupts specific characters (the digit `2`, the `/`),
+  which is unacceptable for prices. `pdfjs-dist` is ESM-only with audit warnings
+  and awkward in this CommonJS backend. `poppler`/`pdftotext` reads them
+  perfectly but is a system binary, adding Railway deploy risk for an
+  occasional-use feature.
+
+The user's PDF viewer (Preview/Acrobat) extracts the text correctly. So pasting
+viewer-copied text sidesteps the encoding problem entirely, needs no server PDF
+engine, no new dependency, and no deploy change. Image-only PDFs still cannot be
+read by any text method and fall back to CSV/manual.
 
 ## Scope
 
-In scope:
+In scope: parse pasted quote text (the shared LKL/L&W "QUOTE" layout, plus a
+generic line scanner), detect supplier, match by name/alias, update prices of
+matched items, create new items as stubs, all through the existing preview.
 
-- Text-based PDFs from the three known suppliers (Pacific Supply, the shared
-  L.K.L. Associates / L&W Supply "QUOTE" template) plus a generic fallback for
-  any other layout.
-- Extracting supplier name, item description, price, and SKU/item code when the
-  format exposes one.
-- Reusing the existing diff preview and apply path.
-
-Out of scope (YAGNI):
-
-- OCR for scanned/image-only PDFs (text-based only).
-- Inferring coverage or phase from a quote (price sheets do not carry them).
-
-## Approach
-
-Server-side parsing (chosen over client-side to avoid vendoring PDF.js under the
-`script-src 'self'` CSP and to keep the messy parsing logic in testable Node).
+Out of scope (YAGNI): PDF upload/parsing, OCR, inferring coverage or phase from a
+quote.
 
 ## Components
 
-### Backend
+### Parser, `frontend/js/quoteimport.js` (UMD, pure, unit-tested in Node)
 
-- **Dependency:** `pdf-parse` for PDF text extraction. Run `npm audit` after
-  adding; resolve any high/critical findings.
-- **`backend/lib/quoteParser.js`** (pure, no I/O):
-  - `parseQuote(text) -> { supplierName, rows: [{ name, price, sku?, unit? }] }`.
-  - Detects supplier from header text; applies a tuned extractor for Pacific and
-    the LKL/L&W template, else a generic line scanner (price-like token per
-    line, preceding text is the description, drop headers/subtotals/totals).
-- **`POST /api/materials/parse-quote`** (auth required; returns data only, no DB
-  write):
-  - Body: `{ dataBase64, filename }`. Validates `%PDF` magic bytes and a size
-    cap (e.g. 5 MB). Decodes, runs `pdf-parse`, then `parseQuote`.
-  - Returns `{ supplierName, rows }`; `422` with a message on parse failure or
-    no rows; `400` on a non-PDF or oversized body.
-  - Express JSON body limit raised as needed for this route.
+- `parseQuoteText(text) -> { supplierName, rows: [{ name, price, sku? }] }`.
+- Supplier detection from header signatures (Pacific, LKL, L&W) with a generic
+  company-line fallback.
+- Row extraction: pair a price-bearing data line with its adjacent description
+  line; take the first clean `NNN.NN` price token; capture the item code as SKU
+  when present; skip headers/subtotals/totals.
 
-### Frontend
+### Frontend wiring, `frontend/js/app.js` + `index.html`
 
-- **`api.parseQuote(dataBase64, filename)`** in `frontend/js/api.js`.
-- **"Import quote (PDF)"** control beside "Import CSV" on the catalog header; a
-  hidden `accept="application/pdf"` file input. On select: read file -> base64
-  -> `api.parseQuote` -> `{ supplierName, rows }`.
-- **Supplier resolution:** normalize the parsed supplier name and match against
-  existing supplier names and aliases (`window._supplierAliasMap` + `suppliers`).
-  - Match -> that supplier is the import target.
-  - No match -> confirm "This looks like '<name>', not in your list, create it?"
-    On confirm, `api.createSupplier`, refresh `suppliers` / id map / alias map,
-    then import into it.
-  - No supplier detected -> fall back to the active supplier.
-- **Reuse the preview:** refactor the CSV importer's plan builder into
-  `buildImportPlanFromRows(rows, supplier)`. The CSV path parses to rows then
-  calls it; the PDF path passes the server rows + resolved supplier. The
-  existing `renderImportPreview` and `applyImportPlan` are unchanged.
+- A "Paste quote" control beside "Import CSV" opens a modal with a textarea.
+- On parse: `QuoteImport.parseQuoteText(text)` -> resolve supplier (match parsed
+  name against supplier names and aliases; no match prompts to create; none
+  detected falls back to the active supplier) -> build a **price-only** plan ->
+  show the existing preview -> apply.
+- Refactor the CSV importer's diff loop into `buildImportPlanFromRows(rows,
+supplier, { priceOnly })`. CSV passes fully-specified rows with `priceOnly:
+false` (unchanged behavior). Paste passes name/price/sku rows with `priceOnly:
+true`: matched items get only their price (and unit if present) updated,
+  coverage and phase untouched; new items are created as stubs (default coverage
+  and phase) and listed separately in the preview.
+- `renderImportPreview` and `applyImportPlan` are unchanged.
 
 ## Data flow
 
-1. User picks a PDF.
-2. Frontend -> `POST /api/materials/parse-quote` -> `{ supplierName, rows }`.
-3. Frontend resolves supplier (name/alias match, else prompt-create, else active).
-4. `buildImportPlanFromRows(rows, supplier)` diffs against that supplier's
-   catalog -> preview (changed / new / unchanged).
-5. Apply -> existing `applyImportPlan` updates prices, creates new items as
-   stubs, syncs to backend.
-
-## New-item behavior
-
-Matched items get their price (and unit when present) updated. New items are
-created as stubs with default coverage and phase, listed separately in the
-preview and flagged, since a price sheet does not define coverage or phase. The
-catalog health check surfaces anything left incomplete.
+1. User pastes quote text, clicks Parse.
+2. `parseQuoteText` -> `{ supplierName, rows }`.
+3. Resolve supplier (name/alias match, else prompt-create, else active).
+4. `buildImportPlanFromRows(rows, supplier, { priceOnly: true })` diffs against
+   that supplier's catalog -> preview (changed / new / unchanged).
+5. Apply -> existing `applyImportPlan` updates prices, creates stub new items,
+   syncs to backend.
 
 ## Error handling
 
-- Non-PDF, oversized, parse failure, or zero rows: notify the user, do not open
-  the preview.
-- Server catches `pdf-parse` errors and returns `422` with a readable message.
+- No rows parsed (e.g. text from an image PDF, or unrecognized layout): notify
+  the user it could not read line items and to try CSV, do not open the preview.
 
 ## Testing
 
-- Node unit tests for `quoteParser` against text snippets from all three known
-  formats plus a generic sample (supplier name + representative rows).
-- A light endpoint test (auth required, non-PDF rejected). Real PDF binaries are
-  hard to fixture, so the parser logic carries the bulk of the coverage.
+- Node unit tests for `quoteimport.parseQuoteText` against synthetic fixtures
+  modeled on the real LKL/L&W layout (generic item names and made-up prices, so
+  no real supplier pricing lands in the repo) plus a generic sample and an
+  empty/garbage input.
+- No backend changes, so no new endpoint tests.

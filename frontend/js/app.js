@@ -2305,8 +2305,100 @@ function parseCSVLine(line) {
 // the preview. Cleared on apply or cancel.
 let _pendingImport = null;
 
-// Parse a CSV into an apply plan WITHOUT touching the catalog, so the preview
-// can show exactly what would change (new / price-changed / unchanged) first.
+const _impMoney = (n) => Math.round(Number(n) * 100);
+const _impSameCats = (a, b) => a.slice().sort().join('|') === b.slice().sort().join('|');
+
+// Build an apply plan from already-parsed rows WITHOUT touching the catalog, so
+// the preview can show exactly what would change first. Each row:
+//   { name, price, sku?, unit?, cov?, calcType?, catList?, priceOnly? }
+// A priceOnly row (from a pasted quote, which carries no coverage or phase)
+// updates only the price of a matched item and creates new items as stubs; a
+// full row (CSV) carries every field.
+function buildImportPlanFromRows(rows, supplier) {
+  const mats = materialsBySupplier[supplier] || [];
+  const seen = new Set();
+  const plan = { supplier, newItems: [], changed: [], unchanged: 0, csvDup: 0, skip: 0 };
+  const defaultCat = categories[0] || 'Lath';
+  rows.forEach((row) => {
+    if (!row || !row.name) {
+      plan.skip++;
+      return;
+    }
+    const targetSku = normSku(row.sku || '');
+    const targetNorm = normName(row.name);
+    const rowKey = targetSku ? 'sku:' + targetSku : 'name:' + targetNorm;
+    if (seen.has(rowKey)) {
+      plan.csvDup++;
+      return;
+    }
+    seen.add(rowKey);
+    let existing = targetSku ? mats.find((m) => normSku(m.sku) === targetSku) : null;
+    if (!existing && targetNorm) existing = mats.find((m) => normName(m.name) === targetNorm);
+
+    let vals;
+    if (row.priceOnly && existing) {
+      // Refresh price only; keep the item's coverage, phase, and name intact.
+      vals = {
+        name: existing.name,
+        sku: existing.sku || '',
+        unit: row.unit || existing.unit || 'each',
+        price: row.price,
+        primaryCat: existing.category,
+        catList: materialCategories(existing),
+        cov: Number(existing.coveragePerUnit) || 100,
+        calcType: existing.calcType || 'area',
+      };
+    } else if (row.priceOnly) {
+      // New item from a price sheet: a stub the user completes (no coverage/phase).
+      vals = {
+        name: row.name,
+        sku: row.sku || '',
+        unit: row.unit || 'each',
+        price: row.price,
+        primaryCat: defaultCat,
+        catList: [defaultCat],
+        cov: 100,
+        calcType: 'area',
+        stub: true,
+      };
+    } else {
+      vals = {
+        name: row.name,
+        sku: row.sku || '',
+        unit: row.unit || 'each',
+        price: row.price,
+        primaryCat: (row.catList && row.catList[0]) || defaultCat,
+        catList: row.catList && row.catList.length ? row.catList : [defaultCat],
+        cov: row.cov > 0 ? row.cov : 100,
+        calcType: row.calcType || 'area',
+      };
+    }
+
+    if (existing) {
+      const fields = [];
+      if (_impMoney(existing.pricePerUnit) !== _impMoney(vals.price)) fields.push('price');
+      if (Number(existing.coveragePerUnit) !== Number(vals.cov)) fields.push('coverage');
+      if ((existing.unit || 'each') !== vals.unit) fields.push('unit');
+      if ((existing.name || '') !== vals.name) fields.push('name');
+      if (!_impSameCats(materialCategories(existing), vals.catList)) fields.push('phase');
+      if (fields.length) {
+        plan.changed.push({
+          ref: existing,
+          vals,
+          oldPrice: Number(existing.pricePerUnit) || 0,
+          newPrice: vals.price,
+          fields,
+        });
+      } else plan.unchanged++;
+    } else {
+      plan.newItems.push({ vals });
+    }
+  });
+  return plan;
+}
+
+// CSV adapter: parse columns into full rows then diff. Registers any new
+// categories the CSV introduces, matching prior behavior.
 function buildImportPlan(text) {
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
   if (lines.length < 2) {
@@ -2325,23 +2417,13 @@ function buildImportPlan(text) {
     notify('Need "name" column', 'error');
     return null;
   }
-  const mats = materialsBySupplier[activeSupplier] || [];
-  const seenInCsv = new Set();
-  const plan = {
-    supplier: activeSupplier,
-    newItems: [],
-    changed: [],
-    unchanged: 0,
-    csvDup: 0,
-    skip: 0,
-  };
-  const money = (n) => Math.round(Number(n) * 100);
-  const sameCats = (a, b) => a.slice().sort().join('|') === b.slice().sort().join('|');
+  const rows = [];
+  let skip = 0;
   for (let i = 1; i < lines.length; i++) {
     const f = parseCSVLine(lines[i]);
     const name = f[ni]?.trim();
     if (!name) {
-      plan.skip++;
+      skip++;
       continue;
     }
     const catRaw = f[ci]?.trim() || categories[0] || 'Lath';
@@ -2349,49 +2431,107 @@ function buildImportPlan(text) {
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean);
-    const primaryCat = catList[0];
+    catList.forEach((c) => {
+      if (!categories.includes(c)) categories.push(c);
+    });
     const cov = parseFloat(f[cvi]) || 100;
     if (cov <= 0) {
-      plan.skip++;
+      skip++;
       continue;
     }
     const ct = f[ti]?.trim() || 'area';
-    const sku = f[si]?.trim() || '';
-    const price = parseFloat(f[pi]) || 0;
-    const unit = f[ui]?.trim() || 'each';
-    const calcType = CALC_TYPES.includes(ct) ? ct : 'area';
-    const targetSku = normSku(sku);
-    const targetNorm = normName(name);
-    const rowKey = targetSku ? 'sku:' + targetSku : 'name:' + targetNorm;
-    if (seenInCsv.has(rowKey)) {
-      plan.csvDup++;
-      continue;
-    }
-    seenInCsv.add(rowKey);
-    const vals = { name, sku, unit, price, primaryCat, catList, cov, calcType };
-    let existing = targetSku ? mats.find((m) => normSku(m.sku) === targetSku) : null;
-    if (!existing && targetNorm) existing = mats.find((m) => normName(m.name) === targetNorm);
-    if (existing) {
-      const fields = [];
-      if (money(existing.pricePerUnit) !== money(price)) fields.push('price');
-      if (Number(existing.coveragePerUnit) !== cov) fields.push('coverage');
-      if ((existing.unit || 'each') !== unit) fields.push('unit');
-      if ((existing.name || '') !== name) fields.push('name');
-      if (!sameCats(materialCategories(existing), catList)) fields.push('phase');
-      if (fields.length) {
-        plan.changed.push({
-          ref: existing,
-          vals,
-          oldPrice: Number(existing.pricePerUnit) || 0,
-          newPrice: price,
-          fields,
-        });
-      } else plan.unchanged++;
-    } else {
-      plan.newItems.push({ vals });
-    }
+    rows.push({
+      name,
+      sku: f[si]?.trim() || '',
+      unit: f[ui]?.trim() || 'each',
+      price: parseFloat(f[pi]) || 0,
+      cov,
+      calcType: CALC_TYPES.includes(ct) ? ct : 'area',
+      catList,
+      priceOnly: false,
+    });
   }
+  const plan = buildImportPlanFromRows(rows, activeSupplier);
+  plan.skip += skip;
   return plan;
+}
+
+// Paste-quote import: parse the pasted text, resolve the supplier by name or
+// alias, and show the same preview. Prices only; coverage and phase are never
+// guessed from a quote.
+function openPasteQuoteModal() {
+  const ta = document.getElementById('pasteQuoteText');
+  if (ta) ta.value = '';
+  openModal('pasteQuoteModal');
+}
+
+async function resolveQuoteSupplier(parsedName) {
+  if (!parsedName) return activeSupplier;
+  const norm = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const target = norm(parsedName);
+  const aliasMap = window._supplierAliasMap || {};
+  const match = suppliers.find((s) => {
+    const ns = norm(s);
+    const na = norm(aliasMap[s]);
+    return (
+      ns === target ||
+      (na && na === target) ||
+      (na && na.length >= 2 && target.includes(na)) ||
+      (ns.length >= 4 && target.includes(ns))
+    );
+  });
+  if (match) return match;
+  if (
+    !window.confirm(`"${parsedName}" isn't in your suppliers yet. Create it and import into it?`)
+  ) {
+    return null;
+  }
+  if (!suppliers.includes(parsedName)) {
+    suppliers.push(parsedName);
+    materialsBySupplier[parsedName] = materialsBySupplier[parsedName] || [];
+    if (api.getToken && api.getToken()) {
+      try {
+        const r = await api.createSupplier(parsedName);
+        if (r && r.supplier) {
+          window._supplierIdMap = window._supplierIdMap || {};
+          window._supplierIdMap[parsedName] = r.supplier.id;
+        }
+      } catch (e) {
+        console.warn('create supplier:', e.message);
+      }
+    }
+    saveAll();
+    renderSupplierTabs();
+  }
+  return parsedName;
+}
+
+async function parsePastedQuote() {
+  const text = document.getElementById('pasteQuoteText')?.value || '';
+  if (typeof QuoteImport === 'undefined' || !QuoteImport.parseQuoteText) {
+    notify('Quote parser not loaded', 'error');
+    return;
+  }
+  const { supplierName, rows } = QuoteImport.parseQuoteText(text);
+  if (!rows.length) {
+    notify(
+      'Could not read line items. A scanned/image PDF has no copyable text; use CSV instead.',
+      'error'
+    );
+    return;
+  }
+  const supplier = await resolveQuoteSupplier(supplierName);
+  if (!supplier) return;
+  closeModal('pasteQuoteModal');
+  const planRows = rows.map((r) => ({
+    name: r.name,
+    price: r.price,
+    sku: r.sku || '',
+    priceOnly: true,
+  }));
+  _pendingImport = buildImportPlanFromRows(planRows, supplier);
+  renderImportPreview(_pendingImport);
+  openModal('importPreviewModal');
 }
 
 function renderImportPreview(plan) {
@@ -2411,7 +2551,7 @@ function renderImportPreview(plan) {
   const newRows = plan.newItems
     .map(
       (n) =>
-        `<li>${escHtml(n.vals.name)} <span class="imp-detail">${escHtml(n.vals.primaryCat)} &middot; ${money(n.vals.price)}</span></li>`
+        `<li>${escHtml(n.vals.name)} <span class="imp-detail">${escHtml(n.vals.primaryCat)} &middot; ${money(n.vals.price)}${n.vals.stub ? ' &middot; set phase &amp; coverage after' : ''}</span></li>`
     )
     .join('');
   const changeCount = plan.changed.length + plan.newItems.length;
