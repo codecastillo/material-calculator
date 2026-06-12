@@ -91,6 +91,34 @@
     const name = String((m && m.name) || '').toLowerCase();
     const has = (...words) => words.some((w) => name.includes(w));
 
+    // Painting-phase items are coatings: paint unless a standalone primer/sealer,
+    // and never the masking sundries filed alongside them. Brand and line names
+    // (Behr Premium Plus, Glidden, Evershield) rarely contain the word "paint",
+    // so classify by phase here instead of by keyword.
+    if (m && m.category === 'Painting') {
+      if (
+        has(
+          'tape',
+          'plastic',
+          'poly',
+          'visqueen',
+          'sheeting',
+          'film',
+          'drop cloth',
+          'rosin',
+          'masking',
+          'paper',
+          'canvas',
+          'mask'
+        )
+      )
+        return null;
+      // Paint-and-primer in one is paint; a standalone primer/sealer/filler is primer.
+      if (!has('paint') && has('primer', 'sealer', 'undercoat', 'block filler', 'pva'))
+        return 'primer';
+      return 'paint';
+    }
+
     // Tools / consumables / sheeting that share keywords with real roles.
     if (has('caulk')) return null;
     if (has('poly', 'visqueen', 'plastic', 'sheeting')) return null;

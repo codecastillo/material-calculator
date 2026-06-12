@@ -43,6 +43,31 @@ describe('materialRole detection', () => {
   }
 });
 
+describe('materialRole for Painting-phase items (category-aware)', () => {
+  // Brand/line names without a "paint" keyword still classify as paint when
+  // filed under Painting; standalone primers/sealers are primer; sundries drop.
+  const cases = [
+    ['Behr Premium Plus Interior Flat 5 gal', 'paint'],
+    ['Glidden Premium Exterior Satin 5 gal', 'paint'],
+    ['Royal Exterior Flat High Hiding White 5 gal', 'paint'],
+    ['Dunn-Edwards Evershield Exterior Flat 1 gal', 'paint'],
+    ['PPG Permanizer Exterior Acrylic Satin 1 gal', 'paint'],
+    ['PPG Perma-Crete Pitt-Flex Elastomeric Coating 5 gal', 'paint'],
+    ['Clark+Kensington Interior Flat Paint and Primer 1 gal', 'paint'], // combo = paint
+    ['Glidden PVA Drywall Primer 5 gal', 'primer'],
+    ['Behr Multi-Surface Stain-Blocking Primer Sealer 5 gal', 'primer'],
+    ['Behr PRO p50 Concrete Block Filler 5 gal', 'primer'],
+    ['3M ScotchBlue Painters Tape 1.88in x 60yd', null], // "paint" in "Painters" must not win
+    ['HDX Painters Plastic 9ft x 400ft 0.31mil', null],
+    ['Trimaco Brown Masking Paper 9in x 1000ft', null],
+  ];
+  for (const [name, expected] of cases) {
+    test(`${name} -> ${expected}`, () => {
+      assert.equal(eng.materialRole({ name, category: 'Painting' }), expected);
+    });
+  }
+});
+
 describe('Lath net yields (code laps)', () => {
   test('paper roll yield is 292.85 net sf', () => {
     assert.equal(eng.CONSTANTS.PAPER_2PLY_SF_PER_ROLL, 292.85);
