@@ -3315,12 +3315,35 @@ function calcForSupplier(supplier, waste, selectedPhases, opts = {}) {
           });
           er = { qty: Math.ceil(screws) };
         } else if (role === 'paint') {
-          // Per-product yield: elastomeric is far thicker than standard paint.
-          const yld = Engineering.paintYield({
-            elastomeric: Engineering.isElastomeric(m.name),
-            surface: opts.paintSurface,
-          });
+          // Drive gallons from the product's own per-coat coverage (its stored
+          // manufacturer spread rate), de-rated for surface texture. Elastomerics
+          // are high-build, so texture does not de-rate them. Fall back to the
+          // flat yield only when the product has no usable coverage.
+          const elasto = Engineering.isElastomeric(m.name);
+          const cov = Number(m.coveragePerUnit) || 0;
+          if (cov > 0) {
+            const derate = elasto ? 1 : Engineering.textureDerate(opts.paintTexture);
+            const containers = Math.ceil((phaseSqft * paintCoats) / (cov * derate));
+            selfQtyBySku[m.sku] = containers;
+            return { m, ovr: null, selfQty: containers, engineered: true };
+          }
+          const yld = Engineering.paintYield({ elastomeric: elasto, surface: opts.paintSurface });
           er = { qty: Math.ceil((phaseSqft / yld) * paintCoats) };
+        } else if (role === 'primer') {
+          // Primer is for new/bare work; a repaint over sound paint skips it.
+          if (opts.primeSurface === false) {
+            selfQtyBySku[m.sku] = 0;
+            return { m, ovr: null, selfQty: 0, engineered: true };
+          }
+          const cov = Number(m.coveragePerUnit) || 0;
+          if (cov > 0) {
+            const derate = Engineering.textureDerate(opts.paintTexture);
+            const containers = Math.ceil(phaseSqft / (cov * derate)); // one primer coat
+            selfQtyBySku[m.sku] = containers;
+            return { m, ovr: null, selfQty: containers, engineered: true };
+          }
+          const eng = Engineering.computePhase(cat, phaseSqft, { coats: 1 });
+          er = eng[role];
         } else {
           const eng = Engineering.computePhase(cat, phaseSqft, {
             sheetSqft: opts.sheetSqft,
@@ -3455,13 +3478,23 @@ function calculateJob() {
   // Surface is inferred, not asked: stucco/stone work is textured, otherwise
   // smooth drywall. Elastomeric is detected per-product downstream.
   const stuccoLike = ['Lath', 'Gray Coat', 'Color Coat', 'Stone'];
-  const paintSurface = selectedPhases.some((p) => stuccoLike.includes(p)) ? 'textured' : 'smooth';
+  const isStuccoJob = selectedPhases.some((p) => stuccoLike.includes(p));
+  const paintSurface = isStuccoJob ? 'textured' : 'smooth';
+  // Texture severity de-rates paint coverage; default to medium on stucco/stone
+  // jobs and smooth otherwise, overridable in the UI.
+  const paintTexture =
+    document.getElementById('calcPaintTexture')?.value || (isStuccoJob ? 'medium' : 'smooth');
+  // Substrate: new/bare work gets primer; a repaint over sound paint skips it.
+  const primeSurface =
+    (document.getElementById('calcPaintSubstrate')?.value || 'new') !== 'repaint';
   const calcOpts = {
     paintCoats,
     drywallAreas,
     phaseDims,
     grayThicknessIn,
     paintSurface,
+    paintTexture,
+    primeSurface,
     applicationMethod,
   };
 
@@ -3538,6 +3571,8 @@ function calculateJob() {
       phaseDims,
       applicationMethod,
       paintSurface,
+      paintTexture,
+      primeSurface,
       grayThicknessIn,
       bestPerPhase,
     };
@@ -3558,6 +3593,8 @@ function calculateJob() {
       phaseDims,
       applicationMethod,
       paintSurface,
+      paintTexture,
+      primeSurface,
       grayThicknessIn,
     };
   }
@@ -3998,6 +4035,8 @@ function orderV2CalcOpts(r) {
     phaseDims: r.phaseDims || {},
     applicationMethod: r.applicationMethod,
     paintSurface: r.paintSurface,
+    paintTexture: r.paintTexture,
+    primeSurface: r.primeSurface,
     grayThicknessIn: r.grayThicknessIn,
   };
 }
@@ -6904,6 +6943,8 @@ async function initApp() {
     'calcStoneSqft',
     'calcStoneLinearFt',
     'calcPaintSqft',
+    'calcPaintTexture',
+    'calcPaintSubstrate',
   ].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', autoRecalc);

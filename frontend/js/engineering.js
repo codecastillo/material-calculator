@@ -56,6 +56,8 @@
   };
   function phaseWasteFactor(phase, method) {
     if (phase === 'Gray Coat' || phase === 'Color Coat') return wasteFactor(method);
+    // Paint loss tracks application: spray overspray wastes more than brush/roll.
+    if (phase === 'Painting') return method === 'spray' ? 1.15 : 1.05;
     return 1 + (PHASE_WASTE[phase] != null ? PHASE_WASTE[phase] : 0.1);
   }
 
@@ -82,6 +84,15 @@
     opts = opts || {};
     if (opts.elastomeric) return C.ELASTOMERIC_SF_PER_GAL;
     return opts.surface === 'textured' ? C.PAINT_TEXTURED_SF_PER_GAL : C.PAINT_SMOOTH_SF_PER_GAL;
+  }
+
+  // Coverage de-rate by surface texture, relative to a smooth (manufacturer-rated)
+  // baseline. From manufacturer spec sheets + painting-industry data: rough stucco
+  // soaks up far more coating than smooth drywall. A product's per-coat coverage is
+  // multiplied by this. Elastomerics are exempt (applied at a fixed high build).
+  const TEXTURE_DERATE = { smooth: 1.0, light: 0.63, medium: 0.5, heavy: 0.38 };
+  function textureDerate(level) {
+    return TEXTURE_DERATE[level] != null ? TEXTURE_DERATE[level] : 1.0;
   }
 
   // Classify a product into a calc role from its name (+ drywall-sheet hint).
@@ -364,6 +375,7 @@
     roleAllowedForPhase,
     isElastomeric,
     paintYield,
+    textureDerate,
     materialRole,
     computePhase,
     parsePackage,

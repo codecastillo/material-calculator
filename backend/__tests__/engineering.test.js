@@ -261,6 +261,21 @@ describe('phaseWasteFactor', () => {
     assert.equal(eng.phaseWasteFactor('Drywall', 'spray'), 1.1);
     assert.equal(eng.phaseWasteFactor('Painting', 'trowel'), 1.05);
   });
+  test('painting waste tracks spray vs brush/roll', () => {
+    assert.equal(eng.phaseWasteFactor('Painting', 'spray'), 1.15);
+    assert.equal(eng.phaseWasteFactor('Painting', 'trowel'), 1.05);
+    assert.equal(eng.phaseWasteFactor('Painting'), 1.05);
+  });
+});
+
+describe('textureDerate', () => {
+  test('coverage de-rate by surface texture', () => {
+    assert.equal(eng.textureDerate('smooth'), 1.0);
+    assert.equal(eng.textureDerate('light'), 0.63);
+    assert.equal(eng.textureDerate('medium'), 0.5);
+    assert.equal(eng.textureDerate('heavy'), 0.38);
+    assert.equal(eng.textureDerate(undefined), 1.0); // unknown -> no de-rate
+  });
 });
 
 describe('roleAllowedForPhase', () => {
